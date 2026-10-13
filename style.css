@@ -1722,3 +1722,11 @@ button.ui-img:active img{transform:scale(.93)}
 .w-stop{position:absolute;right:12px;top:10px;z-index:30;width:66px;height:66px;padding:0;border:0;background:none;box-shadow:none;cursor:pointer}
 .w-stop img{width:100%;height:100%;filter:drop-shadow(0 3px 0 rgba(0,0,0,.4))}
 .w-stop[hidden]{display:none}
+/* 版478：週が変わる時の暗転 */
+#weekFx{position:absolute;inset:0;z-index:80;pointer-events:none;background:rgba(0,0,0,0);transition:background .4s ease;display:grid;place-items:center}
+#weekFx.wf-dark{background:rgba(0,0,0,.55);pointer-events:auto}
+#weekFx.wf-light{background:rgba(0,0,0,0)}
+#weekFx .wf-in{text-align:center;opacity:0;transform:scale(.8);transition:opacity .25s,transform .35s cubic-bezier(.2,1.6,.4,1)}
+#weekFx.wf-show .wf-in{opacity:1;transform:scale(1)}
+#weekFx b{display:block;font:900 64px/1.1 "DotGothic16","Hiragino Kaku Gothic ProN",sans-serif;color:#fff;text-shadow:0 4px 0 #000,0 0 18px rgba(0,0,0,.6);letter-spacing:4px}
+#weekFx small{display:block;margin-top:8px;font:900 28px/1.2 "Hiragino Kaku Gothic ProN",sans-serif;color:#ffe14a;text-shadow:0 3px 0 #000}

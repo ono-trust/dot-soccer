@@ -101,12 +101,24 @@
     }
   }
   // 木：丸い樹冠（カルチョビットAの、ころんとした木）
+  // 版478：季節（3〜5月＝春、6〜8月＝夏、9〜11月＝秋、12〜2月＝冬）で街の色が変わる
+  const SEASON_PAL = {
+    spring: { ground: '#4cc63a', road: '#72e05e', lot: '#42b832', lot2: '#3fb42e', park: '#62d052', park2: '#58cc48', bld: ['#a4f0b2', '#62d27e', '#50c46c'], trees: [['#f7a8c8', '#ffd0e2'], ['#f39abd', '#ffc6dc'], ['#1f8f30', '#34ab44']], field: '#8ee278' },
+    summer: { ground: '#2fb526', road: '#5ad646', lot: '#2aa820', lot2: '#27a41e', park: '#4cc63c', park2: '#42c232', bld: ['#93eda4', '#55cf73', '#44bf62'], trees: [['#0f7a22', '#1f9a32'], ['#13822a', '#24a238']], field: '#7cdc62' },
+    autumn: { ground: '#9fbf3a', road: '#c8d872', lot: '#93b434', lot2: '#8eae30', park: '#b0c85a', park2: '#a8c250', bld: ['#f0e2b0', '#d2b070', '#c09a5a'], trees: [['#e2541e', '#f47a3a'], ['#f0a020', '#ffc04a'], ['#c8321e', '#e45a3a'], ['#d8b020', '#f0d04a']], field: '#a8d070' },
+    winter: { ground: '#e6eef2', road: '#c4d0d8', lot: '#dce6ec', lot2: '#d6e2e8', park: '#cfdae2', park2: '#c8d4dc', bld: ['#ffffff', '#aebdcc', '#c2cfdc'], trees: [['#e8f0f2', '#ffffff'], ['#dbe6ea', '#f6fafb']], field: '#dfe9ee', snow: true },
+  };
+  const seasonOfMonth = (m) => (m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter');
+  const SEASON_JP = { spring: '春', summer: '夏', autumn: '秋', winter: '冬' };
+  let seasonNow = 'spring';
+  const SP = () => SEASON_PAL[seasonNow] || SEASON_PAL.spring;
   function tree(ctx, gx, gy, s = 1) {
-    const [x, y] = iso(gx, gy);
-    ctx.fillStyle = 'rgba(0,60,0,0.25)'; ctx.beginPath(); ctx.ellipse(x + 3, y, 11 * s, 5 * s, 0, 0, 7); ctx.fill();
+    const [x, y] = iso(gx, gy), P = SP(), tc = P.trees[Math.abs(Math.round(gx * 7 + gy * 13)) % P.trees.length];
+    ctx.fillStyle = P.snow ? 'rgba(80,100,120,0.18)' : 'rgba(0,60,0,0.25)'; ctx.beginPath(); ctx.ellipse(x + 3, y, 11 * s, 5 * s, 0, 0, 7); ctx.fill();
     ctx.fillStyle = '#6b4a24'; ctx.fillRect(x - 2, y - 10 * s, 4, 10 * s);
-    ctx.fillStyle = '#17862a'; ctx.beginPath(); ctx.ellipse(x, y - 25 * s, 11 * s, 19 * s, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = '#26a33a'; ctx.beginPath(); ctx.ellipse(x - 3.5 * s, y - 28 * s, 6 * s, 13 * s, 0, 0, 7); ctx.fill();
+    if (P.snow) { ctx.strokeStyle = '#6b4a24'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - 9 * s); ctx.lineTo(x - 8 * s, y - 30 * s); ctx.moveTo(x, y - 14 * s); ctx.lineTo(x + 9 * s, y - 34 * s); ctx.moveTo(x, y - 9 * s); ctx.lineTo(x + 1 * s, y - 40 * s); ctx.stroke(); ctx.lineWidth = 1; }
+    ctx.fillStyle = tc[0]; ctx.beginPath(); ctx.ellipse(x, y - 25 * s, 11 * s, 19 * s, 0, 0, 7); if (P.snow) { ctx.globalAlpha = 0.85; ctx.ellipse(x, y - 25 * s, 11 * s, 19 * s, 0, 0, 7); } ctx.fill(); ctx.globalAlpha = 1;
+    ctx.fillStyle = tc[1]; ctx.beginPath(); ctx.ellipse(x - 3.5 * s, y - 28 * s, 6 * s, 13 * s, 0, 0, 7); ctx.fill();
   }
   // 車（白い小さな車）
   function car(ctx, gx, gy, rot) {
@@ -141,18 +153,18 @@
     const c = cv.getContext('2d');
     if (view) c.setTransform(view.s, 0, 0, view.s, -view.x * view.s, -view.y * view.s);   // 一部分を大きく描く（秘書の場面の背景）
     // 地面と道（道は少し明るい緑の帯）
-    c.fillStyle = '#3cc22e'; c.fillRect(0, 0, 1280, 720);
+    const PS = SP(); c.fillStyle = PS.ground; c.fillRect(0, 0, 1280, 720);
     const G0 = -8, G1 = 44;
-    const roadX = (gx, w) => { poly(c, [iso(gx, G0), iso(gx + w, G0), iso(gx + w, G1), iso(gx, G1)], '#64de50'); poly(c, [iso(gx + 0.08, G0), iso(gx + w - 0.08, G0), iso(gx + w - 0.08, G1), iso(gx + 0.08, G1)], null, 'rgba(255,255,255,0.12)'); };
-    const roadY = (gy, w) => { poly(c, [iso(G0, gy), iso(G1, gy), iso(G1, gy + w), iso(G0, gy + w)], '#64de50'); poly(c, [iso(G0, gy + 0.08), iso(G1, gy + 0.08), iso(G1, gy + w - 0.08), iso(G0, gy + w - 0.08)], null, 'rgba(255,255,255,0.12)'); };
+    const roadX = (gx, w) => { poly(c, [iso(gx, G0), iso(gx + w, G0), iso(gx + w, G1), iso(gx, G1)], PS.road); poly(c, [iso(gx + 0.08, G0), iso(gx + w - 0.08, G0), iso(gx + w - 0.08, G1), iso(gx + 0.08, G1)], null, 'rgba(255,255,255,0.12)'); };
+    const roadY = (gy, w) => { poly(c, [iso(G0, gy), iso(G1, gy), iso(G1, gy + w), iso(G0, gy + w)], PS.road); poly(c, [iso(G0, gy + 0.08), iso(G1, gy + 0.08), iso(G1, gy + w - 0.08), iso(G0, gy + w - 0.08)], null, 'rgba(255,255,255,0.12)'); };
     // 区画（少し濃い緑の敷地）
-    const lot = (gx, gy, w, d, col) => poly(c, quad(gx, gy, w, d), col || '#36b42a');
-    lot(13, 6.5, 7.5, 6.8); lot(23.8, 9.2, 6.4, 5.2); lot(27.6, 18.6, 5, 4.4); lot(9.2, 24.6, 15.8, 8, '#34b028');
+    const lot = (gx, gy, w, d, col) => poly(c, quad(gx, gy, w, d), col || PS.lot);
+    lot(13, 6.5, 7.5, 6.8); lot(23.8, 9.2, 6.4, 5.2); lot(27.6, 18.6, 5, 4.4); lot(9.2, 24.6, 15.8, 8, PS.lot2);
     roadX(12.0, 1.0); roadX(22.6, 1.0); roadX(33.2, 1.0); roadY(4.8, 1.0); roadY(15.6, 1.1); roadY(23.4, 1.0);
     // 駐車場（スタジアムの左）
-    poly(c, quad(9.6, 25.0, 4.6, 6.8), '#55cf45');
+    poly(c, quad(9.6, 25.0, 4.6, 6.8), PS.park);
     for (let k = 0; k < 6; k++) poly(c, [iso(9.9, 25.7 + k * 1.05), iso(13.9, 25.7 + k * 1.05)], null, 'rgba(255,255,255,0.6)', 1.5);
-    poly(c, quad(26.8, 22.2, 4.4, 1.0), '#4cc93c');
+    poly(c, quad(26.8, 22.2, 4.4, 1.0), PS.park2);
     const objs = [], labels = [];
     const add = (k, f) => objs.push({ k, f });
     // 街のビル（淡い緑の小さなビルが集まった街区）
@@ -164,7 +176,7 @@
         const w = 0.8 + r() * 0.4, d = 0.8 + r() * 0.4, h = 0.5 + r() * 1.3, gx = bx + i + r() * 0.15, gy = by + j + r() * 0.15;
         const onRoad = [12, 22.6, 33.2].some((x) => gx < x + 1.05 && gx + w > x - 0.05) || [4.8, 15.6, 23.4].some((y) => gy < y + 1.1 && gy + d > y - 0.05);
         if (onRoad) continue;
-        add(gx + w + gy + d, () => { box(c, gx, gy, w, d, h, '#93eda4', '#55cf73', '#44bf62'); bands(c, gx, gy, w, d, h, 'rgba(255,255,255,0.22)', 0.34, 0.1); });
+        add(gx + w + gy + d, () => { box(c, gx, gy, w, d, h, PS.bld[0], PS.bld[1], PS.bld[2]); bands(c, gx, gy, w, d, h, 'rgba(255,255,255,0.22)', 0.34, 0.1); });
       }
     }
     // 木（道ぞいと街区のまわり）
@@ -216,7 +228,7 @@
     for (let k = 0; k < 6; k++) for (let j = 0; j < 6; j++) if (pr() < 0.62) { const gx = 10.1 + j * 0.62, gy = 25.8 + k * 1.05; add(gx + gy, () => car(c, gx, gy, false)); }
     // ---------- クラブハウス（上）：練習グラウンド・照明・赤い屋根の建物 ----------
     add(13.6 + 7.6, () => {
-      poly(c, quad(13.6, 7.4, 5.2, 3.6, 0.02), '#86e070');
+      poly(c, quad(13.6, 7.4, 5.2, 3.6, 0.02), PS.field);
       poly(c, quad(13.9, 7.7, 4.6, 3.0, 0.03), null, 'rgba(255,255,255,0.9)', 1.6);
       c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(...iso(16.2, 7.7, 0.03)); c.lineTo(...iso(16.2, 10.7, 0.03)); c.stroke(); c.lineWidth = 1;
       for (let k = 0; k < 7; k++) { const [x, y] = iso(14.6 + k * 0.55, 8.6 + (k % 2) * 0.9, 0.03); c.fillStyle = '#e23b2b'; c.beginPath(); c.moveTo(x, y - 9); c.lineTo(x + 4, y); c.lineTo(x - 4, y); c.closePath(); c.fill(); }
@@ -361,11 +373,29 @@
     ctx.closePath(); ctx.fillStyle = col; ctx.fill();
   }
   function isMatchWeek() { if (!save) return false; const fx = C.nextFixture(save); return !!(fx && fx.week <= save.week && !C.campState(save)); }
+  // 季節の舞うもの：春＝桜の花びら、夏＝日ざし、秋＝落ち葉、冬＝雪
+  function seasonFx(c, t) {
+    const sn = seasonNow;
+    if (sn === 'summer') { const g = c.createRadialGradient(1180, -40, 20, 1180, -40, 520); g.addColorStop(0, 'rgba(255,250,200,0.55)'); g.addColorStop(1, 'rgba(255,240,160,0)'); c.fillStyle = g; c.fillRect(600, 0, 680, 560); c.fillStyle = 'rgba(255,200,80,0.05)'; c.fillRect(0, 0, 1280, 720); return; }
+    if (sn === 'winter') c.fillStyle = 'rgba(220,235,255,0.08)', c.fillRect(0, 0, 1280, 720);
+    const N = sn === 'winter' ? 90 : 34;
+    for (let k = 0; k < N; k++) {
+      const sp = sn === 'winter' ? 28 + (k % 7) * 5 : 36 + (k % 5) * 8, x0 = (k * 137.5) % 1340 - 30, y = ((t * sp + k * 97) % 780) - 30, x = x0 + Math.sin(t * 1.3 + k) * 26 - y * 0.25;
+      const xx = ((x % 1340) + 1340) % 1340 - 30;
+      if (sn === 'winter') { c.fillStyle = 'rgba(255,255,255,0.9)'; c.beginPath(); c.arc(xx, y, 1.6 + (k % 3), 0, 7); c.fill(); continue; }
+      c.save(); c.translate(xx, y); c.rotate(t * 2 + k); c.scale(1, Math.abs(Math.sin(t * 3 + k)) * 0.7 + 0.3);
+      c.fillStyle = sn === 'spring' ? (k % 2 ? '#ffc8dc' : '#ffb0cc') : ['#e8641e', '#f0a020', '#c8321e', '#d8b020'][k % 4];
+      c.beginPath(); c.ellipse(0, 0, sn === 'spring' ? 4 : 5.5, sn === 'spring' ? 2.6 : 3.4, 0, 0, 7); c.fill(); c.restore();
+    }
+  }
+  let townSeason = null;
   function drawHome(t) {
-    if (!townCv) buildTown();
+    { const sn = save ? seasonOfMonth(cal(save.week || 1).m) : 'spring'; if (sn !== seasonNow) { seasonNow = sn; townCv = null; } }
+    if (!townCv || townSeason !== seasonNow) { buildTown(); townSeason = seasonNow; }
     const c = hx; t = (t || 0) / 1000;
     c.drawImage(townCv, 0, 0);
     hot = townHot;
+    seasonFx(c, t);   /* 版478 */
     if (isMatchWeek()) {
       const { gx: sx, gy: sy, w: sw, d: sd } = ST, z = 1.05;
       // 両チームのエンブレムの大きな旗（ホームが左）
@@ -1573,8 +1603,19 @@
     for (const n of list) await modal(`<div class="cnews"><div class="cn-face">${coachFace()}</div><div class="cn-say"><b class="cn-name">コーチ</b><p>監督！${WHERE[n.where] || ''}${esc(n.name)}がケガをしてしまいました。<br>${esc(n.kind)}で、回復には<b>${n.weeks}週間</b>必要です。</p></div></div>`, [{ label: '▶', primary: true }]);
   }
   // 1週間を終える（全体練習・疲労回復・ケガの経過 → 次の週）
+  // 版478：週が変わる時、画面が一瞬うす暗くなって、新しい週を見せて、また明るくなる
+  function weekFx(phase, label, sub) {
+    let el = document.getElementById('weekFx');
+    if (!el) { el = document.createElement('div'); el.id = 'weekFx'; el.innerHTML = '<div class="wf-in"><b></b><small></small></div>'; (document.getElementById('app') || document.body).appendChild(el); }
+    if (phase === 'dark') { el.querySelector('b').textContent = ''; el.querySelector('small').textContent = ''; el.className = 'wf-dark'; return new Promise((r) => setTimeout(r, 420)); }
+    if (phase === 'show') { el.querySelector('b').textContent = label; el.querySelector('small').textContent = sub || ''; el.className = 'wf-dark wf-show'; return new Promise((r) => setTimeout(r, sub ? 1250 : 850)); }
+    el.className = 'wf-light'; return new Promise((r) => setTimeout(r, 450));
+  }
   async function endWeek() {
+    const sn0 = seasonOfMonth(cal(save.week || 1).m);
+    await weekFx('dark');
     const res = C.endWeek(save); store();
+    { const k = cal(save.week || 1), sn1 = seasonOfMonth(k.m); if (view === 'home') renderHome(); await weekFx('show', `${k.m}月 ${k.w}週`, sn1 !== sn0 ? `${SEASON_JP[sn1]}になりました` : ''); await weekFx('light'); }
     await coachNews(res.news);
     const tc = res.rep.filter((o) => o.typeTo).map((o) => `<p><b class="cr-type">${esc(o.name)}：タイプが ${esc(o.typeFrom)} → ${esc(o.typeTo)} に変わった！</b></p>`).join('');
     if (res.camp) await modal(res.campDone ? `<h2>⛺ ${res.camp.name}終了！</h2><p>4週間の合宿で、全員がひとまわり成長しました。</p>${tc}<p>${res.camp.name === '夏合宿' ? '9月から<b>リーグ後半戦</b>です。' : '3月から<b>新シーズン</b>です！'}</p>` : `<h2>⛺ ${res.camp.name} ${res.camp.week}週目 終了</h2><p>全体練習で、全員が少しずつ成長しました。</p>${tc}<p class="hintp">あと${res.camp.weeks - res.camp.week}週。特訓は週${C.CAMP.trains}回・カードの効果${C.CAMP.mult}倍です。</p>`, [{ label: 'OK', primary: true }]);
