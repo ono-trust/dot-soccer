@@ -1880,3 +1880,5 @@ html.short #assocScreen .sc-o,html.phone #assocScreen .sc-o{min-width:0;text-ove
 .gc-auto.on{background:#2a9ad8;border-color:#bfe8ff}
 .b-auto{background:#5a5a8a}
 .gcc:has(.b-auto) .gcc-f{opacity:.7}
+#coachTalk{z-index:70}   /* 版510：全画面の画面（スカウトなど）の上でも、はい・いいえを押せるように */
+.ct-btns{z-index:2}
