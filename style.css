@@ -2328,3 +2328,8 @@ html.short .rbtns{top:88px;gap:4px}html.short .rbtns button{width:72px;height:72
 .gc3-art{mix-blend-mode:normal!important;-webkit-mask-image:radial-gradient(ellipse 60% 80% at 50% 44%,#000 55%,transparent 98%)!important;mask-image:radial-gradient(ellipse 60% 80% at 50% 44%,#000 55%,transparent 98%)!important}
 .gc3-art{-webkit-mask-image:radial-gradient(ellipse 64% 95% at 50% 75%,#000 60%,transparent 100%)!important;mask-image:radial-gradient(ellipse 64% 95% at 50% 75%,#000 60%,transparent 100%)!important}
 .gc3-art{height:654px!important}
+/* 版545：スカウトのかとうを、監督の案と同じ大きさ・位置に（頭のてっぺん〜あごが画面の上から1割〜6割） */
+.gc3-art{left:-228px!important;top:52px!important;width:1022px!important;height:681px!important;object-fit:fill!important;
+  -webkit-mask-image:radial-gradient(ellipse 34% 62% at 50% 48%,#000 70%,transparent 100%)!important;mask-image:radial-gradient(ellipse 34% 62% at 50% 48%,#000 70%,transparent 100%)!important}
+.gc3-art{left:-185px!important;top:61px!important;width:869px!important;height:579px!important;
+  -webkit-mask-image:linear-gradient(90deg,transparent 14%,#000 30%,#000 70%,transparent 86%)!important;mask-image:linear-gradient(90deg,transparent 14%,#000 30%,#000 70%,transparent 86%)!important}
