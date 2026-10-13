@@ -1029,7 +1029,7 @@
   // 顔の絵（dataURL）。まだ読み込めていなければ null
   // bib：控え選手はユニフォームの上にビブス（肩から下の胴の部分だけ、蛍光色のメッシュ）
   function faceURL(p, bib) {
-    if (p.faceKey && window.STAR_FACES && p.faceKey in window.STAR_FACES) return starFace(p.faceKey, (C.ensureClub(save).kit || {}).shirt || '#2f6fd6', p.position === 'GK');   // 版505：スカウトで来た選手は、元の顔
+    if (p.faceKey && window.STAR_FACES && p.faceKey in window.STAR_FACES) return starFace(p.faceKey, (C.ensureClub(save).kit || {}).shirt || '#2f6fd6', p.position === 'GK', STAR_FIT);   // 版505：スカウトで来た選手は、元の顔
     faceLoad();
     if (!faceTotal || faceLoaded < faceTotal) return null;
     const g = faceGenes(p), set = window.FACE_SET, F = set[g.id], skin = FACE_SKIN[p.skin || 0] || FACE_SKIN[0], hair = FACE_HAIR[p.hairColor || 0] || FACE_HAIR[0], gk = p.position === 'GK';
@@ -1077,11 +1077,14 @@
     const url = c.toDataURL(); faceCache.set(key, url); return url;
   }
   // 顔の<img>（読み込み前はドット絵を出しておき、読み込めたら差し替え）
+  let faceRetryT = 0, faceRetryN = 0;
+  function faceRetry() { if (faceRetryT) return; faceRetryN = 0; const tick = () => { faceRetryT = 0; try { faceFill(); } catch (_) {} if (document.querySelector('img[data-face]') && ++faceRetryN < 20) faceRetryT = setTimeout(tick, 400); }; faceRetryT = setTimeout(tick, 300); }
   function facePic(p, cls, bib) {
     const url = faceURL(p, bib);
     if (url) return `<img class="fc ${cls || ''}" src="${url}" alt="" draggable="false">`;
     const id = 'f' + (p.name || '') + (p.number || '') + (bib ? 'b' : ''); facePending.set(id, { p, bib });
-    return `<img class="fc ${cls || ''}" data-face="${esc(id)}" src="${sprURL.get(p.name + (p.position === 'GK' ? 'g' : '') + p.hair + p.hairColor + p.skin) || ''}" alt="" draggable="false">`;
+    faceRetry();   // 版513：読み込みが終わったのに入れ替わらない顔が残らないよう、少し待って入れ直す
+    return `<img class="fc ${cls || ''}" data-face="${esc(id)}" src="${sprURL.get(p.name + (p.position === 'GK' ? 'g' : '') + p.hair + p.hairColor + p.skin) || BLANK}" alt="" draggable="false">`;
   }
   // コーチのドット絵：選手の絵の服を黒いジャージに塗り替える
   let coachURL = null;
@@ -1267,16 +1270,30 @@
     return moved;
   }
   // 版512：スマホ（画面の高さが低い）では、スタメン画面（1280×720で作ってある）を丸ごと縮めて収める
-  function fitSq2() {
-    const L = $('#clubLayer'), sq = L && L.querySelector('.sq2'); if (!sq) return;
-    if (!document.documentElement.classList.contains('short')) { sq.style.cssText = ''; return; }
-    const W = L.clientWidth, H = L.clientHeight, k = Math.min(W / 1280, H / 720);
-    sq.style.cssText = `inset:auto;left:${(W - 1280 * k) / 2}px;top:${(H - 720 * k) / 2}px;width:1280px;height:720px;transform:scale(${k.toFixed(4)});transform-origin:0 0;background:none`;
+  function fitSq2() {   // 版513：選手カード（ポップ）が板からはみ出さないように寄せる
+    const L = $('#clubLayer'), bd = L && L.querySelector('.s2board'), pp = bd && bd.querySelector('.s2pop'); if (!pp) return;
+    const W = bd.clientWidth, H = bd.clientHeight, x = parseFloat(pp.style.left) || 0, y = parseFloat(pp.style.top) || 0;
+    pp.style.left = Math.max(6, Math.min(W - pp.offsetWidth - 6, x)) + 'px'; pp.style.top = Math.max(6, Math.min(H - pp.offsetHeight - 6, y)) + 'px';
   }
-  addEventListener('stagefit', () => fitSq2());
+  addEventListener('stagefit', () => { const L = $('#clubLayer'); if (L && L.querySelector('.sq2') && !$('#cv-club').hidden) renderLineup2(); });
   function renderLineup2() {
     const ps = save.team.players, tac = C.ensureTactics(save), cells = tac.cells, roles = C.slotRoles(cells);
-    const R = C.GRID_R, COLS = C.GRID_C, PX0 = 20, PY0 = 64, CW = 46, CH = 46, PW = CW * COLS, PH = CH * (R + 2);
+    const R = C.GRID_R, COLS = C.GRID_C;
+    // 版513：スマホ（高さの低い画面）は、縮めずに画面の大きさに合わせて組み直す（顔と文字を大きく）
+    const PHN = document.documentElement.classList.contains('short');
+    let PX0 = 20, PY0 = 64, CW = 46, CH = 46, BX1 = 776, BX2 = 882, BY0 = 116, BDY = 77, boardCss = '', benchCss = ['', ''];
+    if (PHN) {
+      const Lw = $('#clubLayer').clientWidth || 1040, Lh = $('#clubLayer').clientHeight || 520;
+      const BW = 96, bh = Lh - 12;
+      CH = Math.floor((bh - 54) / (R + 2)); CW = Math.max(40, Math.min(50, Math.floor((Lw - 104 - 96 - BW * 2 - 44) / COLS)));
+      PX0 = 12; PY0 = 44;
+      const bw = PX0 + CW * COLS + 12 + BW * 2 + 6 + 10, bl = Math.max(104, Math.round(104 + (Lw - 104 - 96 - bw) / 2));
+      boardCss = ` style="left:${bl}px;top:6px;width:${bw}px;height:${bh}px"`;
+      const bx = PX0 + CW * COLS + 12, btop = 38, bH = bh - btop - 10;
+      benchCss = [` style="left:${bx}px;top:${btop}px;width:${BW}px;height:${bH}px"`, ` style="left:${bx + BW + 6}px;top:${btop}px;width:${BW}px;height:${bH}px"`];
+      BX1 = bx + BW / 2; BX2 = bx + BW + 6 + BW / 2; BY0 = btop + 46; BDY = Math.floor((bH - 46 - 44) / (C.BENCH_N - 1));
+    }
+    const PW = CW * COLS, PH = CH * (R + 2);
     const cx = (c) => PX0 + c * CW + CW / 2, cy = (r) => PY0 + (R - 1 - r) * CH + CH / 2;
     if (unpile(cells)) store();   // 版512：となりのマスに重なった選手は、すき間のあるマスへ
     const occ = {}; for (let i = 1; i < 11; i++) if (cells[i]) occ[cells[i].r + ':' + cells[i].c] = i;
@@ -1296,7 +1313,7 @@
     for (let i = 1; i < 11; i++) { const c = cells[i]; if (c) dots += chip(ps[i], i, cx(c.c), cy(c.r)); }
     // 控え：1列目（ベンチ入り）・2列目（灰色）
     const bench = ps.slice(11);
-    const col = (arr, k0, x, grey) => arr.map((q, k) => chip(q, k0 + k, x, 116 + k * 77, 'bn' + (grey ? ' grey' : ''))).join('');
+    const col = (arr, k0, x, grey) => arr.map((q, k) => chip(q, k0 + k, x, BY0 + k * BDY, 'bn' + (grey ? ' grey' : ''))).join('');
     const b1 = bench.slice(0, C.BENCH_N), b2 = bench.slice(C.BENCH_N);
     
     const label = C.formationLabel(cells);
@@ -1304,17 +1321,17 @@
     const sel = sqPop >= 0 ? ps[sqPop] : null;
     let pop = '';
     if (sel) { C.ensurePts(sel); const rk = PK.map((k) => C.rankInfo(sel.pts[k]).g);
-      pop = `<div class="s2pop" style="${sqPop < 11 && sqPop > 0 && cells[sqPop] ? `left:${Math.min(560, Math.max(30, cx(cells[sqPop].c) - 170))}px;top:${Math.max(70, cy(cells[sqPop].r) - 150)}px` : sqPop === 0 ? `left:${PX0 + PW / 2 - 170}px;top:${PY0 + R * CH - 120}px` : `left:560px;top:${Math.min(470, 60 + (sqPop - 11) * 75)}px`}"><div class="s2ph"><i class="pos ${POSC[sel.position]}">${sel.position}</i><b>${sel.number}</b><span>${esc(sel.name)}</span>${starHTML(C.ensureStar(sel), sel.totsu)}<button class="s2px">×</button></div>
+      pop = `<div class="s2pop" style="${sqPop < 11 && sqPop > 0 && cells[sqPop] ? `left:${Math.min(560, Math.max(30, cx(cells[sqPop].c) - 170))}px;top:${Math.max(70, cy(cells[sqPop].r) - 150)}px` : sqPop === 0 ? `left:${PX0 + PW / 2 - 170}px;top:${PY0 + R * CH - 120}px` : (PHN ? `left:${BX1 - 400}px;top:${BY0 - 60 + ((sqPop - 11) % C.BENCH_N) * BDY}px` : `left:560px;top:${Math.min(470, 60 + (sqPop - 11) * 75)}px`)}"><div class="s2ph"><i class="pos ${POSC[sel.position]}">${sel.position}</i><b>${sel.number}</b><span>${esc(sel.name)}</span>${starHTML(C.ensureStar(sel), sel.totsu)}<button class="s2px">×</button></div>
         <div class="s2pr">${PK.map((k, j) => `<span title="${esc(D.PARAMS[j].name)}">${ico(k)}<i class="rk2 g-${rk[j]}">${rk[j]}</i></span>`).join('')}</div>
         <div class="s2pt"><span class="tbadge ${TYPE_CLS[sel.type] || 'ty-bal'}">${esc(sel.type || '')}</span><i class="cdot ${condDot(sel)}"></i><small>疲労 ${Math.round(sel.fatigue || 0)}%</small></div>
         <div class="s2rl">${Object.keys(ROLE_NAME).map((k) => `<button data-role="${k}" class="${tac.roles[k] === sel.name ? 'on' : ''}"><i class="s2rt rt-${k}">${ROLE_TAG[k]}</i>${ROLE_NAME[k]}</button>`).join('')}</div>
         <button class="s2pd" data-pd="${sqPop}">選手データを見る</button></div>`; }
-    $('#clubLayer').innerHTML = `<div class="sq2"><div class="s2board">
+    $('#clubLayer').innerHTML = `<div class="sq2${PHN ? ' ph' : ''}"><div class="s2board"${boardCss}>
         <div class="s2head"${sqResOpen && sqRes >= 0 ? ' style="visibility:hidden"' : ''}><img src="${emblemURL(save.team.name, 40)}" alt=""><b>${esc(save.team.name)}</b><em>［${esc(label)}］</em></div>
         <div class="s2pitch" style="left:${PX0}px;top:${PY0}px;width:${PW}px;height:${PH}px"><i class="s2gk" style="top:${R * CH}px;height:${CH * 2}px"></i><i class="s2box" style="left:${PW * 0.22}px;width:${PW * 0.56}px;top:${R * CH - CH * 0.15}px;height:${CH * 2.15}px"></i><i class="s2box2" style="left:${PW * 0.34}px;width:${PW * 0.32}px;top:${R * CH + CH * 0.85}px;height:${CH * 1.15}px"></i></div>
         ${grid}${zl}
-        <div class="s2bench"><b class="s2bh">ベンチ入り</b></div><div class="s2bench g"><b class="s2bh">ベンチ外</b></div>
-        ${Array.from({ length: C.BENCH_N }, (_, k) => `<i class="s2e" style="left:776px;top:${116 + k * 77}px"></i><i class="s2e" style="left:882px;top:${116 + k * 77}px"></i>`).join('')}${dots}${col(b1, 11, 776, false)}${col(b2, 11 + C.BENCH_N, 882, true)}
+        <div class="s2bench"${benchCss[0]}><b class="s2bh">ベンチ入り</b></div><div class="s2bench g"${benchCss[1]}><b class="s2bh">ベンチ外</b></div>
+        ${Array.from({ length: C.BENCH_N }, (_, k) => `<i class="s2e" style="left:${BX1}px;top:${BY0 + k * BDY}px"></i><i class="s2e" style="left:${BX2}px;top:${BY0 + k * BDY}px"></i>`).join('')}${dots}${col(b1, 11, BX1, false)}${col(b2, 11 + C.BENCH_N, BX2, true)}
         ${pop}</div>
       <button class="s2btn s2nb" data-a="note"><span>${formMini(tac.formation === 'custom' ? '4-4-2' : tac.formation)}</span><b>フォーメーション</b></button>
       <button class="s2btn s2db" data-a="show" title="${sqShow === 'type' ? '選手タイプ' : '調子'}（切りかえ）"><span><img class="s2chg" src="icons/ui_change.png" alt="切りかえ"></span></button>
@@ -2607,8 +2624,10 @@
   const starImgs = {}, starURLs = new Map();
   const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
   function starKey(tid, q) { const F = window.STAR_FACES; if (F && q && q.face && !q.face.startsWith('mob_') && q.face in F) return q.face; if (F && q && q.face) return null; return F && q && !q.gen && (tid + '_' + q.no) in F ? tid + '_' + q.no : null; }   /* 移籍してきた選手は、元の顔のまま（版455） */
-  function starFace(key, shirt, gk) {
-    const ck = key + '|' + shirt + '|' + (gk ? 1 : 0); if (starURLs.has(ck)) return starURLs.get(ck);
+  // 版513：自分のチームに来た選手の顔は、ほかの選手と同じ大きさに見えるよう縮めて下にそろえる
+  const STAR_FIT = 0.8;
+  function starFace(key, shirt, gk, fit) {
+    const ck = key + '|' + shirt + '|' + (gk ? 1 : 0) + '|' + (fit || 1); if (starURLs.has(ck)) return starURLs.get(ck);
     let L = starImgs[key];
     if (!L) { L = starImgs[key] = { img: new Image(), n: 0 }; L.img.onload = L.img.onerror = () => { L.n = 1; starFill(); try { faceFill(); } catch (_) {} }; L.img.src = `faces/star/${key}.png`; }
     if (!L.n) return null;
@@ -2626,7 +2645,8 @@
       for (let yy = y0 + 1; yy < H - 1; yy++) for (let xx = 1; xx < W - 1; xx++) { const k = yy * W + xx; if (!mask[k] && px[k * 4 + 3] > 0 && mask[k - 1] && mask[k + 1] && mask[k - W] && mask[k + W]) mask[k] = 2; }
       const t = gk ? [242, 200, 30] : hexRgb(shirt || '#2f6fd6'), base = window.STAR_FACES[key] || 80;
       for (let k = 0; k < W * H; k++) if (mask[k]) { const i = k * 4, l = (px[i] * 0.3 + px[i + 1] * 0.59 + px[i + 2] * 0.11) / base; px[i] = Math.min(255, t[0] * l); px[i + 1] = Math.min(255, t[1] * l); px[i + 2] = Math.min(255, t[2] * l); }
-      x.putImageData(d, 0, 0); url = c.toDataURL();
+      x.putImageData(d, 0, 0);
+      if (fit && fit < 1) { const c2 = document.createElement('canvas'), H2 = Math.round(W * 308 / 320); c2.width = W; c2.height = H2; c2.getContext('2d').drawImage(c, (W - W * fit) / 2, H2 - H * fit, W * fit, H * fit); url = c2.toDataURL(); /* ほかの選手の顔（320×308）と同じ形・同じ頭の大きさに */ } else url = c.toDataURL();
     } catch (e) { /* 読み込めない環境では、元の青いシャツのまま */ }
     starURLs.set(ck, url); return url;
   }
@@ -3251,7 +3271,7 @@
     runMatch('練習試合', '', op, (score, ev, played) => { const got = C.playPractice(save, score, played); afterRound(got, { practice: true }); if (onDone) onDone(); }, { comp: '練習試合', label: '', home: true, practice: true, tut: 'practice' });
     return true;
   }
-  window.__career = { openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
+  window.__career = { faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====
