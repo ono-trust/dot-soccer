@@ -67,7 +67,7 @@
   // 試合を始める（フリー試合・育成モード共通）。onDone があれば、試合後に呼ぶ
   let onMatchDone = null, mctx = null;
   const SND = () => window.DotSound || { play() {}, crowd() {}, bgm() {} };   // 版499：サウンド
-  let hitAll = [], shownScore = '', dribOwner = -1, dribT = 0, kickAll = [], kickPtr = 0, koWhistleT = -1, chipHeard = new Map();
+  let hitAll = [], shownScore = '', dribOwner = -1, dribT = 0, kickAll = [], kickPtr = 0, koWhistleT = -1, oohT = -1, chipHeard = new Map();
   function startWith(mine, theirs, seed, homeShort, awayShort, done, opts) {
     closePlv();
     { const dc = document.getElementById('digestCtl'); if (dc) dc.style.display = 'none'; }
@@ -85,7 +85,7 @@
         const was = playing; stop(); if (mctx.opts.confirmQuit && !(await mctx.opts.confirmQuit())) { if (was) play(); return; } closePlv(); ws.hidden = true; onMatchDone = null; SND().crowd(false); document.getElementById('half').hidden = true; const q = mctx.opts.onQuit; if (q) q(); };   /* 版481：「観戦をやめますか？」はい／いいえ */ } }   /* 版477：観戦を途中でやめる */
     match.homeShort = homeShort || match.homeShort; match.awayShort = awayShort || match.awayShort;
     prepTimeline();
-    kickAll = kickTimes.flat().map((k) => k.t).sort((x, y) => x - y); hitAll = [...(match.actions || []).filter((x) => x.a === 'head').map((x) => ({ t: x.t, n: 'header' })), ...match.events.filter((e) => e.type === 'save' || (e.type === 'gk' && e.act !== 'miss')).map((e) => ({ t: e.t, n: /parry|punch|fumble/.test(e.act || '') ? 'parry' : 'catch' }))].sort((x, y) => x.t - y.t); kickPtr = 0; koWhistleT = 0.05; shownScore = ''; chipHeard = new Map(); SND().bgm(null); SND().crowd(true);
+    kickAll = kickTimes.flat().map((k) => k.t).sort((x, y) => x - y); hitAll = [...(match.actions || []).filter((x) => x.a === 'head').map((x) => ({ t: x.t, n: 'header' })), ...match.events.filter((e) => e.type === 'save' || (e.type === 'gk' && e.act !== 'miss')).map((e) => ({ t: e.t, n: /parry|punch|fumble/.test(e.act || '') ? 'parry' : 'catch' }))].sort((x, y) => x.t - y.t); kickPtr = 0; koWhistleT = 0.05; oohT = -1; shownScore = ''; chipHeard = new Map(); SND().bgm(null); SND().crowd(mctx && mctx.opts && mctx.opts.noIntro ? true : 'far');   /* 版558：本家は入場前の画面では、観客の声が遠く小さい */
     warmUp();
     // 育成モードは入場・対戦カードの画面を先に見せているので、すぐキックオフへ
     show = mctx.opts.noIntro ? { phase: 'kickoff', hold: true, koT: 0, start: 0, goal: null, rt: 0, walk: true } : { phase: 'preCrowd', hold: true, koT: 0, start: 0, goal: null, rt: 0 };
@@ -256,6 +256,7 @@
       const simT0 = simT;
       simT += dt * RATE * speed * (speed < 4 ? slowAt(simT) : 1);   // 白夜の視界の間は、ゆっくり
       if (koWhistleT >= 0 && simT0 < koWhistleT && simT >= koWhistleT) { SND().play('whistle'); koWhistleT = -1; }
+      if (oohT >= 0 && simT >= oohT) { if (speed < 16) SND().play('ooh'); oohT = -1; }   // 版558：おしいシュートの「おぉー」
       if (simT >= match.duration) {
         // 試合終了（ゴール演出の途中でも、ここで締める。止まったままにならないように）
         simT = match.duration;
@@ -530,7 +531,7 @@
       show = { phase: 'preVs', hold: true, koT: 0, start: 0, goal: null, rt: 0 };
       cam.init = false;
     } else if (show.phase === 'preVs' && show.rt > 3.4) {
-      show = { phase: 'kickoff', hold: true, koT: 0, start: 0, goal: null, rt: 0 };
+      show = { phase: 'kickoff', hold: true, koT: 0, start: 0, goal: null, rt: 0 }; SND().crowd(true);
     } else if (show.phase === 'hurry') {
       // 負けている側の得点：ボールを拾って蹴り返し、急いで戻るところを普通のカメラで。キックオフの少し前から、いつもの寄り
       if (simT >= show.koT - 2.6) show = { ...show, phase: 'kickoff', start: simT, rt: 0, noFade: true };
@@ -3403,7 +3404,7 @@
     // ゴール直後は、大きな点数が切り替わるまで上の点数も前のまま
     let sc = st.score;
     if (show && show.goal && (show.phase === 'toNet' || show.phase === 'freeze' || show.phase === 'gkSad' || (show.phase === 'score' && show.rt < 0.85))) { sc = show.goal.score.slice(); sc[show.goal.team] = Math.max(0, sc[show.goal.team] - 1); }
-    { const key = sc[0] + '-' + sc[1]; if (shownScore && key !== shownScore && show && show.goal && show.phase === 'score') SND().play('scoreUp'); shownScore = key; }   // 版501：点数が変わる時にゴールの音
+    { const key = sc[0] + '-' + sc[1]; shownScore = key; }   // 版558：本家は点数が出る時に音を鳴らさない（観客の歓声だけ）
     $('#hs').textContent = sc[0];
     $('#as').textContent = sc[1];
   }
@@ -3448,8 +3449,10 @@
         if (!active || (nb.prio || 0) >= (banner.prio || 0)) banner = nb;
         else if (nb.prio) nextBanner = nb; // 大事な知らせは後で出す
       }
-      if (e.type === 'goal') { startGoalShow(e); SND().play('cheer'); }
-      if ((e.type === 'foul' || e.type === 'offside') && speed < 16) SND().play('whistle');
+      if (e.type === 'goal') { oohT = -1; startGoalShow(e); SND().play('cheer'); }
+      if ((e.type === 'foul' || e.type === 'offside') && speed < 16) SND().play('foul');   // 版558：本家のファールは「ピッピッ」
+      if (e.type === 'shot' && speed < 16) { SND().play('shot'); if (!e.on && e.d < 24) oohT = e.t + 0.45; }   // 版558：シュートは強い音。外れたら観客が「おぉー」
+      if ((e.type === 'post' || e.type === 'save') && speed < 16) oohT = e.t + 0.25;
       if (e.type === 'card' && speed < 16) SND().play('card');
       if (e.type === 'half') { SND().play('whistle2'); koWhistleT = e.t + 0.6; }
       if ((e.type === 'offside' || e.type === 'foul') && !show && speed < 4) startJudge(e);
@@ -3858,6 +3861,7 @@
   function openLocker() {
     const el = lkEl();
     lk = { t0: performance.now(), left: LK_SEC, last: performance.now(), leaving: false, raf: 0, sit: lkSeats() };
+    SND().crowd('duck'); setTimeout(() => { if (lk) SND().bgm('half'); }, 900);   // 版558：本家のロッカールームは明るい曲が流れ、観客の声は聞こえない
     el.hidden = false; el._fit(); el.querySelector('.lk-sub').hidden = true;   // 版556：見えてから大きさを合わせる（黒い余白が出ていた）
     { const w = !!(mctx && mctx.opts && mctx.opts.watch); el.querySelector('.lk-btns').style.visibility = w ? 'hidden' : ''; }   // 観戦：交代・戦術はない
     const bl = el.querySelector('.lk-black'); bl.style.transition = 'none'; bl.style.opacity = '1';
@@ -3880,6 +3884,7 @@
     const el = document.getElementById('locker');
     if (lk) cancelAnimationFrame(lk.raf);
     lk = null; if (el) el.hidden = true;
+    SND().bgm(null); if (!$('#match').hidden) SND().crowd(true);
   }
   // 後半開始：暗転してからキックオフへ
   function lkStartSecond() {
