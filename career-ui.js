@@ -3080,7 +3080,8 @@
   try { const v = localStorage.getItem('dotTopGap'); topGap = v == null ? (touch && inFrame ? 1 : 0) : +v; } catch (_) { topGap = touch && inFrame ? 1 : 0; }
   function fit() {
     const vv = window.visualViewport;
-    const vw = Math.round(vv ? vv.width : innerWidth), vh = Math.round(vv ? vv.height : innerHeight);
+    const standalone = !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches));
+    const vw = Math.round(vv ? vv.width : innerWidth), vh = Math.round(standalone ? Math.max(innerHeight, vv ? vv.height : 0, document.documentElement.clientHeight || 0) : (vv ? vv.height : innerHeight));   // 版484：ホーム画面アプリでは、iPhoneが高さを小さく返すことがある（下が白く空く）ので大きい方を使う
     const portrait = touch && vh > vw;
     html.classList.toggle('portrait', portrait);
     if (portrait) return;
@@ -3103,6 +3104,7 @@
   let synth = false;
   const refit = () => { if (synth) return; cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { fit(); window.dispatchEvent(new Event('stagefit')); }); };
   fit();
+  [200, 700, 1500].forEach((ms) => setTimeout(refit, ms)); addEventListener('pageshow', refit);   // 版484：起動直後に高さが変わることがあるので、少しあとにも合わせ直す
   addEventListener('resize', refit); addEventListener('orientationchange', () => setTimeout(refit, 250));
   if (window.visualViewport) visualViewport.addEventListener('resize', refit);
   // 試合画面のキャンバスは器の大きさが変わったら描き直す
