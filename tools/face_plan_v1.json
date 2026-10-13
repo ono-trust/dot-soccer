@@ -1,0 +1,961 @@
+[
+ {
+  "file": "face_01.png",
+  "cols": 3,
+  "rows": 2,
+  "players": [
+   {
+    "tid": "tokyo",
+    "no": 9,
+    "name": "かとう"
+   },
+   {
+    "tid": "sendai",
+    "no": 9,
+    "name": "にしの"
+   },
+   {
+    "tid": "kobe",
+    "no": 10,
+    "name": "おおかわ"
+   },
+   {
+    "tid": "naniwa",
+    "no": 10,
+    "name": "きのした"
+   },
+   {
+    "tid": "sapporo",
+    "no": 6,
+    "name": "ことう"
+   },
+   {
+    "tid": "nagoya",
+    "no": 7,
+    "name": "かい"
+   }
+  ]
+ },
+ {
+  "file": "face_02.png",
+  "cols": 3,
+  "rows": 2,
+  "players": [
+   {
+    "tid": "kyoto",
+    "no": 2,
+    "name": "みやうち"
+   },
+   {
+    "tid": "hakata",
+    "no": 2,
+    "name": "あおやま"
+   },
+   {
+    "tid": "hiroshima",
+    "no": 8,
+    "name": "ひがし"
+   },
+   {
+    "tid": "satsuma",
+    "no": 4,
+    "name": "あかい"
+   },
+   {
+    "tid": "yokohama",
+    "no": 1,
+    "name": "れんの"
+   }
+  ]
+ },
+ {
+  "file": "face_03.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "kyoto",
+    "no": 9,
+    "name": "くもい"
+   },
+   {
+    "tid": "hakata",
+    "no": 9,
+    "name": "イゴール"
+   },
+   {
+    "tid": "nagoya",
+    "no": 9,
+    "name": "エドゥ"
+   },
+   {
+    "tid": "hiroshima",
+    "no": 9,
+    "name": "てらだ"
+   },
+   {
+    "tid": "niigata",
+    "no": 9,
+    "name": "さくま"
+   },
+   {
+    "tid": "sapporo",
+    "no": 9,
+    "name": "はなだ"
+   },
+   {
+    "tid": "yokohama",
+    "no": 9,
+    "name": "ジエゴ"
+   },
+   {
+    "tid": "satsuma",
+    "no": 9,
+    "name": "はまだ"
+   },
+   {
+    "tid": "shimonoseki",
+    "no": 9,
+    "name": "おかべ"
+   }
+  ]
+ },
+ {
+  "file": "face_04.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "ise",
+    "no": 10,
+    "name": "オスカル"
+   },
+   {
+    "tid": "hakodate",
+    "no": 10,
+    "name": "やまうち"
+   },
+   {
+    "tid": "wakayama",
+    "no": 9,
+    "name": "きしもと"
+   },
+   {
+    "tid": "nara",
+    "no": 9,
+    "name": "マルコ"
+   },
+   {
+    "tid": "kokura",
+    "no": 10,
+    "name": "しまだ"
+   },
+   {
+    "tid": "okayama",
+    "no": 9,
+    "name": "ほそだ"
+   },
+   {
+    "tid": "asahikawa",
+    "no": 10,
+    "name": "ベルント"
+   },
+   {
+    "tid": "matsuyama",
+    "no": 9,
+    "name": "いいだ"
+   },
+   {
+    "tid": "matsumoto",
+    "no": 10,
+    "name": "さなだ"
+   }
+  ]
+ },
+ {
+  "file": "face_05.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "kumamoto",
+    "no": 10,
+    "name": "なぎさ"
+   },
+   {
+    "tid": "fukui",
+    "no": 10,
+    "name": "ウォルター"
+   },
+   {
+    "tid": "naha",
+    "no": 9,
+    "name": "キケ"
+   },
+   {
+    "tid": "kanazawa",
+    "no": 9,
+    "name": "いとう"
+   },
+   {
+    "tid": "saga",
+    "no": 9,
+    "name": "やなぎ"
+   },
+   {
+    "tid": "himeji",
+    "no": 9,
+    "name": "もりおか"
+   },
+   {
+    "tid": "utsunomiya",
+    "no": 9,
+    "name": "イニゴ"
+   },
+   {
+    "tid": "miyazaki",
+    "no": 9,
+    "name": "たいら"
+   },
+   {
+    "tid": "toyama",
+    "no": 9,
+    "name": "すがわら"
+   }
+  ]
+ },
+ {
+  "file": "face_06.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "kawagoe",
+    "no": 9,
+    "name": "ルイス"
+   },
+   {
+    "tid": "tokushima",
+    "no": 9,
+    "name": "いちかわ"
+   },
+   {
+    "tid": "mito",
+    "no": 9,
+    "name": "となみ"
+   },
+   {
+    "tid": "fujisawa",
+    "no": 10,
+    "name": "ザック"
+   },
+   {
+    "tid": "toyohashi",
+    "no": 9,
+    "name": "しのだ"
+   },
+   {
+    "tid": "nagasaki",
+    "no": 9,
+    "name": "ふくだ"
+   },
+   {
+    "tid": "takamatsu",
+    "no": 9,
+    "name": "ケビン"
+   },
+   {
+    "tid": "aizu",
+    "no": 10,
+    "name": "ひがし"
+   },
+   {
+    "tid": "yamagata",
+    "no": 9,
+    "name": "くろだ"
+   }
+  ]
+ },
+ {
+  "file": "face_07.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "kofu",
+    "no": 9,
+    "name": "さわだ"
+   },
+   {
+    "tid": "morioka",
+    "no": 10,
+    "name": "かめい"
+   },
+   {
+    "tid": "akita",
+    "no": 10,
+    "name": "ながさわ"
+   },
+   {
+    "tid": "nagaoka",
+    "no": 9,
+    "name": "ひぐち"
+   },
+   {
+    "tid": "aomori",
+    "no": 9,
+    "name": "まつお"
+   },
+   {
+    "tid": "takasaki",
+    "no": 9,
+    "name": "かすが"
+   },
+   {
+    "tid": "marugame",
+    "no": 10,
+    "name": "のむら"
+   },
+   {
+    "tid": "imabari",
+    "no": 10,
+    "name": "ふせ"
+   },
+   {
+    "tid": "kurashiki",
+    "no": 9,
+    "name": "おくだ"
+   }
+  ]
+ },
+ {
+  "file": "face_08.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "kure",
+    "no": 10,
+    "name": "かがわ"
+   },
+   {
+    "tid": "shunan",
+    "no": 9,
+    "name": "となみ"
+   },
+   {
+    "tid": "niihama",
+    "no": 10,
+    "name": "つだ"
+   },
+   {
+    "tid": "tottori",
+    "no": 9,
+    "name": "パトリス"
+   },
+   {
+    "tid": "naruto",
+    "no": 9,
+    "name": "すがわら"
+   },
+   {
+    "tid": "sado",
+    "no": 9,
+    "name": "きしだ"
+   },
+   {
+    "tid": "otaru",
+    "no": 9,
+    "name": "しんどう"
+   },
+   {
+    "tid": "hitachi",
+    "no": 10,
+    "name": "おおくぼ"
+   },
+   {
+    "tid": "ishinomaki",
+    "no": 10,
+    "name": "フリオ"
+   }
+  ]
+ },
+ {
+  "file": "face_09.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "suwa",
+    "no": 9,
+    "name": "よこい"
+   },
+   {
+    "tid": "hida",
+    "no": 9,
+    "name": "いそべ"
+   },
+   {
+    "tid": "izumo",
+    "no": 9,
+    "name": "あいかわ"
+   },
+   {
+    "tid": "beppu",
+    "no": 10,
+    "name": "えぐち"
+   },
+   {
+    "tid": "uwajima",
+    "no": 9,
+    "name": "うえだ"
+   },
+   {
+    "tid": "muroto",
+    "no": 10,
+    "name": "まつもと"
+   },
+   {
+    "tid": "onomichi",
+    "no": 9,
+    "name": "たけむら"
+   }
+  ]
+ },
+ {
+  "file": "face_10.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "naniwa",
+    "no": 1,
+    "name": "しらかわ"
+   },
+   {
+    "tid": "naniwa",
+    "no": 7,
+    "name": "すぎた"
+   },
+   {
+    "tid": "kyoto",
+    "no": 8,
+    "name": "セサル"
+   },
+   {
+    "tid": "sendai",
+    "no": 1,
+    "name": "みかど"
+   },
+   {
+    "tid": "sendai",
+    "no": 2,
+    "name": "むらおか"
+   },
+   {
+    "tid": "hakata",
+    "no": 1,
+    "name": "なかむら"
+   },
+   {
+    "tid": "nagoya",
+    "no": 1,
+    "name": "いだ"
+   },
+   {
+    "tid": "hiroshima",
+    "no": 7,
+    "name": "ベルナト"
+   },
+   {
+    "tid": "niigata",
+    "no": 7,
+    "name": "やまおか"
+   }
+  ]
+ },
+ {
+  "file": "face_11.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "niigata",
+    "no": 8,
+    "name": "てらにし"
+   },
+   {
+    "tid": "sapporo",
+    "no": 7,
+    "name": "さかぐち"
+   },
+   {
+    "tid": "sapporo",
+    "no": 8,
+    "name": "さかき"
+   },
+   {
+    "tid": "tokyo",
+    "no": 1,
+    "name": "たちばな"
+   },
+   {
+    "tid": "tokyo",
+    "no": 8,
+    "name": "かめい"
+   },
+   {
+    "tid": "yokohama",
+    "no": 8,
+    "name": "モイセス"
+   },
+   {
+    "tid": "kobe",
+    "no": 2,
+    "name": "ポール"
+   },
+   {
+    "tid": "kobe",
+    "no": 7,
+    "name": "かまた"
+   },
+   {
+    "tid": "satsuma",
+    "no": 1,
+    "name": "しま"
+   }
+  ]
+ },
+ {
+  "file": "face_12.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "satsuma",
+    "no": 7,
+    "name": "ふせ"
+   },
+   {
+    "tid": "shimonoseki",
+    "no": 2,
+    "name": "えのもと"
+   },
+   {
+    "tid": "shimonoseki",
+    "no": 7,
+    "name": "かわぐち"
+   },
+   {
+    "tid": "ise",
+    "no": 2,
+    "name": "まつもと"
+   },
+   {
+    "tid": "ise",
+    "no": 7,
+    "name": "レオ"
+   },
+   {
+    "tid": "hakodate",
+    "no": 7,
+    "name": "ふじわら"
+   },
+   {
+    "tid": "hakodate",
+    "no": 11,
+    "name": "わかまつ"
+   },
+   {
+    "tid": "wakayama",
+    "no": 1,
+    "name": "ハビエル"
+   },
+   {
+    "tid": "wakayama",
+    "no": 7,
+    "name": "たかぎ"
+   }
+  ]
+ },
+ {
+  "file": "face_13.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "nara",
+    "no": 1,
+    "name": "のざき"
+   },
+   {
+    "tid": "nara",
+    "no": 2,
+    "name": "そのだ"
+   },
+   {
+    "tid": "kokura",
+    "no": 2,
+    "name": "うるま"
+   },
+   {
+    "tid": "kokura",
+    "no": 11,
+    "name": "アンドレ"
+   },
+   {
+    "tid": "okayama",
+    "no": 2,
+    "name": "いしだ"
+   },
+   {
+    "tid": "okayama",
+    "no": 8,
+    "name": "たけうち"
+   },
+   {
+    "tid": "asahikawa",
+    "no": 2,
+    "name": "いまむら"
+   },
+   {
+    "tid": "asahikawa",
+    "no": 7,
+    "name": "せら"
+   },
+   {
+    "tid": "matsuyama",
+    "no": 7,
+    "name": "ふくだ"
+   }
+  ]
+ },
+ {
+  "file": "face_14.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "matsuyama",
+    "no": 8,
+    "name": "はなだ"
+   },
+   {
+    "tid": "matsumoto",
+    "no": 1,
+    "name": "あずま"
+   },
+   {
+    "tid": "matsumoto",
+    "no": 11,
+    "name": "こじま"
+   },
+   {
+    "tid": "kumamoto",
+    "no": 1,
+    "name": "いまい"
+   },
+   {
+    "tid": "kumamoto",
+    "no": 2,
+    "name": "かわばた"
+   },
+   {
+    "tid": "fukui",
+    "no": 1,
+    "name": "あきもと"
+   },
+   {
+    "tid": "fukui",
+    "no": 2,
+    "name": "さかい"
+   },
+   {
+    "tid": "naha",
+    "no": 1,
+    "name": "わだ"
+   },
+   {
+    "tid": "naha",
+    "no": 7,
+    "name": "いしい"
+   }
+  ]
+ },
+ {
+  "file": "face_15.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "kanazawa",
+    "no": 7,
+    "name": "ロベルト"
+   },
+   {
+    "tid": "kanazawa",
+    "no": 8,
+    "name": "うえの"
+   },
+   {
+    "tid": "saga",
+    "no": 1,
+    "name": "おざわ"
+   },
+   {
+    "tid": "himeji",
+    "no": 2,
+    "name": "すぎた"
+   },
+   {
+    "tid": "utsunomiya",
+    "no": 1,
+    "name": "つのだ"
+   },
+   {
+    "tid": "miyazaki",
+    "no": 1,
+    "name": "サウル"
+   },
+   {
+    "tid": "toyama",
+    "no": 7,
+    "name": "ひぐち"
+   },
+   {
+    "tid": "kawagoe",
+    "no": 2,
+    "name": "デニス"
+   },
+   {
+    "tid": "tokushima",
+    "no": 1,
+    "name": "おおかわ"
+   }
+  ]
+ },
+ {
+  "file": "face_16.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "mito",
+    "no": 8,
+    "name": "なかた"
+   },
+   {
+    "tid": "fujisawa",
+    "no": 1,
+    "name": "きど"
+   },
+   {
+    "tid": "toyohashi",
+    "no": 1,
+    "name": "さいき"
+   },
+   {
+    "tid": "nagasaki",
+    "no": 2,
+    "name": "マキシ"
+   },
+   {
+    "tid": "takamatsu",
+    "no": 8,
+    "name": "たかだ"
+   },
+   {
+    "tid": "aizu",
+    "no": 1,
+    "name": "たけの"
+   },
+   {
+    "tid": "yamagata",
+    "no": 8,
+    "name": "くぼ"
+   },
+   {
+    "tid": "kofu",
+    "no": 1,
+    "name": "かない"
+   },
+   {
+    "tid": "morioka",
+    "no": 7,
+    "name": "まるやま"
+   }
+  ]
+ },
+ {
+  "file": "face_17.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "akita",
+    "no": 1,
+    "name": "おおはし"
+   },
+   {
+    "tid": "nagaoka",
+    "no": 2,
+    "name": "ファビオ"
+   },
+   {
+    "tid": "aomori",
+    "no": 7,
+    "name": "あさひ"
+   },
+   {
+    "tid": "takasaki",
+    "no": 7,
+    "name": "ひろせ"
+   },
+   {
+    "tid": "marugame",
+    "no": 1,
+    "name": "くさの"
+   },
+   {
+    "tid": "imabari",
+    "no": 11,
+    "name": "いせ"
+   },
+   {
+    "tid": "kurashiki",
+    "no": 8,
+    "name": "くぼた"
+   },
+   {
+    "tid": "kure",
+    "no": 2,
+    "name": "むかい"
+   },
+   {
+    "tid": "shunan",
+    "no": 1,
+    "name": "せきね"
+   }
+  ]
+ },
+ {
+  "file": "face_18.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "niihama",
+    "no": 1,
+    "name": "つつみ"
+   },
+   {
+    "tid": "tottori",
+    "no": 8,
+    "name": "ぬまた"
+   },
+   {
+    "tid": "naruto",
+    "no": 7,
+    "name": "かない"
+   },
+   {
+    "tid": "sado",
+    "no": 1,
+    "name": "こいずみ"
+   },
+   {
+    "tid": "otaru",
+    "no": 7,
+    "name": "はっとり"
+   },
+   {
+    "tid": "hitachi",
+    "no": 1,
+    "name": "うるま"
+   },
+   {
+    "tid": "ishinomaki",
+    "no": 2,
+    "name": "にしの"
+   },
+   {
+    "tid": "suwa",
+    "no": 2,
+    "name": "とよだ"
+   },
+   {
+    "tid": "hida",
+    "no": 8,
+    "name": "よしだ"
+   }
+  ]
+ },
+ {
+  "file": "face_19.png",
+  "cols": 3,
+  "rows": 3,
+  "players": [
+   {
+    "tid": "izumo",
+    "no": 7,
+    "name": "こが"
+   },
+   {
+    "tid": "beppu",
+    "no": 1,
+    "name": "よしい"
+   },
+   {
+    "tid": "uwajima",
+    "no": 8,
+    "name": "さいき"
+   },
+   {
+    "tid": "muroto",
+    "no": 7,
+    "name": "ふなき"
+   },
+   {
+    "tid": "onomichi",
+    "no": 8,
+    "name": "のだ"
+   }
+  ]
+ },
+ {
+  "file": "face_20.png",
+  "cols": 3,
+  "rows": 3,
+  "generic": 9
+ },
+ {
+  "file": "face_21.png",
+  "cols": 3,
+  "rows": 3,
+  "generic": 9
+ },
+ {
+  "file": "face_22.png",
+  "cols": 3,
+  "rows": 3,
+  "generic": 9
+ },
+ {
+  "file": "face_23.png",
+  "cols": 3,
+  "rows": 3,
+  "generic": 9
+ },
+ {
+  "file": "face_24.png",
+  "cols": 3,
+  "rows": 3,
+  "generic": 9
+ },
+ {
+  "file": "face_25.png",
+  "cols": 3,
+  "rows": 3,
+  "generic": 9
+ }
+]

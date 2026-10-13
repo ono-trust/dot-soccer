@@ -1,0 +1,1635 @@
+// ドットサッカー 育成・シーズン（特訓／全体練習／スキル枠／リーグ戦）
+// 画面（app.js）と試合エンジン（engine/engine.js）の間で、セーブデータを進める。
+(function (root) {
+  'use strict';
+  const D = root.DotSoccer;
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const KEYS = D.PARAM_KEYS;
+  const PNAME = Object.fromEntries(D.PARAMS.map((p) => [p.k, p.name]));
+
+  // ---------- 乱数（セーブデータに種を持たせて再現できるように） ----------
+  function rng(save) {
+    return () => { save.rs = (Math.imul(save.rs, 1664525) + 1013904223) >>> 0; let x = save.rs; x ^= x >>> 16; x = Math.imul(x, 0x45d9f3b) >>> 0; x ^= x >>> 16; return (x >>> 0) / 4294967296; };   // 下位ビットの偏りを混ぜて消す
+  }
+
+  // ---------- 通常メニュー ----------
+  // main：大きく上がる / sub：少し上がる / hid：裏パラ（動きの傾向）/ fat：疲れ
+  const MENUS = {
+    dash: { name: 'ダッシュ', main: ['speed', 'dash'], sub: ['stamina'], hid: { run_space: 3 }, fat: 15 },
+    run: { name: '持久走', main: ['stamina'], sub: ['mental'], hid: { overlap: 3 }, fat: 22 },
+    muscle: { name: '筋トレ', main: ['physical'], sub: ['jump'], hid: { press: 3 }, fat: 15 },
+    jump: { name: 'ジャンプ', main: ['jump'], sub: ['physical'], hid: { goal_wait: 2 }, fat: 15 },
+    shoot: { name: 'シュート', main: ['kick'], sub: ['technique'], hid: { goal_wait: 3 }, fat: 12 },
+    dribble: { name: 'ドリブル', main: ['dribble'], sub: ['technique', 'speed'], hid: { run_space: 2 }, fat: 12 },
+    pass: { name: 'パス回し', main: ['pass'], sub: ['vision'], hid: { support: 3 }, fat: 8 },
+    duel: { name: '1対1守備', main: ['defense'], sub: ['physical'], hid: { zone_man: 5, press: 2 }, fat: 14 },
+    line: { name: 'ライン練習', main: ['defense'], sub: ['vision'], hid: { zone_man: -5 }, fat: 8 },
+    mini: { name: 'ミニゲーム', main: [], sub: ['vision', 'technique', 'stamina'], all: 0.4, hid: { support: 1, overlap: 1 }, fat: 14 },
+    meeting: { name: 'ミーティング', main: ['mental'], sub: ['vision'], hid: {}, fat: -5 },
+    rest: { name: '休養', main: [], sub: [], hid: {}, fat: -35, cond: 1 },
+    // GK
+    gkCatch: { name: 'キャッチング', main: ['technique'], sub: ['mental'], hid: {}, fat: 10, gk: true },
+    gkSave: { name: 'セービング', main: ['jump', 'vision'], sub: ['dash'], hid: {}, fat: 14, gk: true },
+    gkHigh: { name: 'ハイボール', main: ['jump'], sub: ['physical', 'vision'], hid: {}, fat: 12, gk: true },
+    gkFeed: { name: 'フィード', main: ['kick'], sub: ['pass'], hid: {}, fat: 8, gk: true },
+  };
+  // ---------- スペシャルメニュー（能力・タイプ） ----------
+  const SPECIAL = {
+    hard: { name: '猛特訓', all: 1.2, fat: 30 },
+    power: { name: '筋力強化', up: { physical: 5, jump: 3 }, fat: 28 },
+    sprint: { name: 'スプリント強化', up: { speed: 4, dash: 4 }, fat: 26 },
+    power_shot: { name: 'シュート強化', up: { kick: 5, technique: 1 }, fat: 24 },
+    tech: { name: 'テクニック強化', up: { technique: 4, dribble: 2 }, fat: 22 },
+    defend: { name: '守備強化', up: { defense: 5, physical: 1 }, fat: 24 },
+    eye: { name: '戦術眼トレーニング', up: { vision: 4, mental: 1 }, fat: 18 },
+    mind: { name: '精神修行', up: { mental: 5 }, fat: 18 },
+    massage: { name: 'マッサージ', up: {}, fat: -60, cond: 1 },
+    // タイプ転向：裏パラを狙ったタイプへ大きく動かす
+    toStriker: { name: 'ストライカー養成', type: 'ストライカー', fat: 20, pos: 'FW' },
+    toAttacker: { name: 'アタッカー養成', type: 'アタッカー', fat: 20, pos: 'FW' },
+    toRegista: { name: 'レジスタ養成', type: 'レジスタ', fat: 20, pos: 'MF' },
+    toDynamo: { name: 'ダイナモ養成', type: 'ダイナモ', fat: 20, pos: 'MF' },
+    toMaker: { name: 'ゲームメイカー養成', type: 'ゲームメイカー', fat: 20, pos: 'MF' },
+    toSweeper: { name: 'スイーパー養成', type: 'スイーパー', fat: 20, pos: 'DF' },
+    toStopper: { name: 'ストッパー養成', type: 'ストッパー', fat: 20, pos: 'DF' },
+    toMarker: { name: 'マンマーカー養成', type: 'マンマーカー', fat: 20, pos: 'DF' },
+    // コンバート（ポジション変更）
+    toFW: { name: 'FWへコンバート', convert: 'FW', fat: 10 },
+    toMF: { name: 'MFへコンバート', convert: 'MF', fat: 10 },
+    toDF: { name: 'DFへコンバート', convert: 'DF', fat: 10 },
+  };
+  // ---------- スキルのスペシャルメニュー：覚えやすさに効く能力 ----------
+  const GROUP_PARAMS = { dribble: ['dribble', 'technique'], shot: ['kick', 'technique'], pass: ['pass', 'vision'], set: ['kick', 'mental'], def: ['defense', 'vision'], gk: ['vision', 'jump', 'technique'], offball: ['vision', 'dash'], mental: ['mental'] };
+  const SKILL_PARAMS = {
+    knuckle: ['kick', 'technique'], curve: ['kick', 'technique'], fk: ['kick', 'technique'], slide: ['defense', 'physical'],
+    speedDribble: ['speed', 'dribble'], cutIn: ['dribble', 'dash'], aerial: ['jump', 'physical'], volley: ['kick', 'technique'],
+    bicycle: ['jump', 'technique'], divingHeader: ['jump', 'dash'], longThrow: ['physical'], shoulder: ['physical', 'defense'],
+    pressMonster: ['stamina', 'defense'], recovery: ['stamina', 'speed'], overlap: ['stamina', 'dash'], behindRun: ['speed', 'vision'],
+    postPlay: ['physical', 'technique'], ironMan: ['stamina', 'physical'], lateGrit: ['stamina', 'mental'], captaincy: ['mental', 'vision'],
+  };
+  const skillParams = (k) => SKILL_PARAMS[k] || GROUP_PARAMS[(D.SKILLS[k] || {}).group] || ['technique'];
+  // 前提スキル（これを覚えていないと特訓できない）
+  const SKILL_REQ = { elastico: 'scissors', roulette: 'doubleTouch', bicycle: 'volley', loftedThrough: 'throughPass', pinpointCross: 'earlyCross', oneTwo: 'wallPass' };
+  const SKILL_LIST = Object.keys(D.SKILLS).filter((k) => k !== 'feint');
+  const isGKSkill = (k) => (D.SKILLS[k] || {}).group === 'gk';
+
+  function skillChance(team, p, k) {
+    const ps = skillParams(k);
+    const avg = ps.reduce((a, q) => a + p[q], 0) / ps.length;
+    let c = 0.1 + (avg - 50) * 0.008;
+    if ((D.SKILLS[k] || {}).group === 'mental') c -= 0.04;
+    if (team.players.some((m) => m !== p && (m.skills || []).includes(k))) c += 0.1;   // 先輩がいると覚えやすい
+    return clamp(c, 0.04, 0.65);
+  }
+  // スキル枠：能力の平均で増える
+  // スキル枠（最大8）：能力（育成ポイントの平均）だけで増える。試合に出さず特訓だけで育てても8枠まで届く
+  const SLOT_MAX = 8;   // Dに入ったら2枠、そこから能力の平均が上がるごとに+1、オールS満タンで8枠（2026-10-10：20枠は多すぎるので8枠に）
+  function slotInfo(p) {
+    ensurePts(p);
+    const avg = KEYS.reduce((a, k) => a + p.pts[k], 0) / KEYS.length;
+    const base = RANK[1][1], SLOT_STEP = (PMAX - base) / (SLOT_MAX - 2);
+    const ability = Math.min(SLOT_MAX, 2 + Math.floor(Math.max(0, avg - base) / SLOT_STEP + 1e-9));
+    const nextAvg = ability < SLOT_MAX ? Math.ceil(base + (ability - 1) * SLOT_STEP) : null;          // 次の枠に必要な平均ポイント
+    return { total: ability, ability, exp: 0, avg, nextAvg, nextGames: null };
+  }
+  function slots(p) { return slotInfo(p).total; }
+  function avgParam(p) { return KEYS.reduce((a, k) => a + p[k], 0) / KEYS.length; }
+
+  // 選べるメニュー（選手ごと）
+  function menusFor(team, p) {
+    const gk = p.position === 'GK';
+    const normal = Object.entries(MENUS).filter(([, m]) => !m.gk || gk).map(([k, m]) => ({ id: 'n:' + k, name: m.name }));
+    const special = Object.entries(SPECIAL).filter(([, m]) => !(gk && (m.type || m.convert)) && !(m.pos && m.pos !== p.position) && !(m.convert && m.convert === p.position)).map(([k, m]) => ({ id: 's:' + k, name: m.name }));
+    const skills = SKILL_LIST.filter((k) => (gk ? isGKSkill(k) : !isGKSkill(k)) && !(p.skills || []).includes(k) && (!SKILL_REQ[k] || (p.skills || []).includes(SKILL_REQ[k])))
+      .map((k) => ({ id: 'k:' + k, name: D.SKILLS[k].name + '特訓', pct: Math.round(skillChance(team, p, k) * 100) }));
+    return { normal, special, skills };
+  }
+
+  // ---------- 能力の伸び ----------
+  // 低い能力ほど伸びやすく、高くなるほど伸びにくい。疲れていると伸びが落ちる
+  function grow(p, k, base, r, out) {
+    const v = p[k];
+    let g = base * 0.5 * clamp((100 - v) / 50, 0.1, 1.1) * (0.75 + r() * 0.5);   // 1シーズンで主な能力が+8〜12くらい
+    g *= p.fatigue > 70 ? 0.5 : p.fatigue > 50 ? 0.8 : 1;
+    g *= 1 + (p.cond || 0) * 0.1;
+    const nv = clamp(v + g, 1, 99);
+    p[k] = Math.round(nv * 10) / 10;
+    if (g > 0.05) out.ups[k] = (out.ups[k] || 0) + g;
+  }
+  // タイプの変わりやすさ（hid：カードで動きのくせが動く量、spPull：タイプ養成SPで近づく割合）
+  const TYPE_TUNE = { hid: 0.45, spPull: 0.22 };   // 2枚組み合わせで平均10回ほど、タイプ養成SPは2〜3回でタイプが変わる
+  function moveHidden(p, hid, mul) {
+    for (const k in hid) p[k] = k === 'zone_man' ? clamp(p[k] + hid[k] * mul, -90, 95) : clamp(p[k] + hid[k] * mul, 0, 100);
+  }
+  // 裏パラから選手タイプを決める（ポジションごとに一番近いタイプ）
+  const TYPES_BY_POS = { DF: ['スイーパー', 'ストッパー', 'マンマーカー', 'ラインコントローラー', 'ビルドアップ型'], MF: ['レジスタ', 'ダイナモ', 'ゲームメイカー', 'パサー', 'ファンタジスタ', 'シャドー', 'アンカー'], FW: ['ストライカー', 'アタッカー', '偽9番', 'デコイラン'], GK: ['ゴールキーパー', 'スイーパーキーパー'] };
+  const HKEYS = ['zone_man', 'press', 'support', 'overlap', 'run_space', 'goal_wait'];
+  function protoOf(t) { return { ...D.HIDDEN0, ...(D.TYPE_HIDDEN[t] || {}) }; }
+  function decideType(p) {
+    const list = TYPES_BY_POS[p.position] || [];
+    if (p.position === 'GK') {   // GK：飛び出す癖（run_space）が強ければスイーパーキーパー
+      const dd = (t) => { const pr = protoOf(t); return ['run_space', 'goal_wait'].reduce((a, k) => a + (p[k] - pr[k]) ** 2, 0); };
+      return dd('スイーパーキーパー') < dd('ゴールキーパー') * 0.6 ? 'スイーパーキーパー' : 'ゴールキーパー';
+    }
+    let best = 'バランス', bd = 1e9;
+    for (const t of list) {
+      const pr = protoOf(t);
+      const d = HKEYS.reduce((a, k) => a + ((p[k] - pr[k]) / (k === 'zone_man' ? 2 : 1)) ** 2, 0);
+      if (d < bd) { bd = d; best = t; }
+    }
+    // どのタイプにも寄っていなければバランス
+    const b0 = HKEYS.reduce((a, k) => a + ((p[k] - D.HIDDEN0[k]) / (k === 'zone_man' ? 2 : 1)) ** 2, 0);
+    return b0 < bd * 0.8 ? 'バランス' : best;
+  }
+
+  // ---------- 1週間の練習 ----------
+  // plan: { team: 'base'|'phys'|'tactic'|'scrim'|'rest', each: { playerIndex: menuId } }
+  const TEAM_MENUS = {
+    base: { name: '基礎練習', all: 0.35, fat: 6 },
+    phys: { name: 'フィジカル練習', up: { stamina: 0.8, physical: 0.6, speed: 0.4 }, fat: 10 },
+    tactic: { name: '戦術練習', up: { vision: 0.8, defense: 0.4 }, fat: 4 },
+    scrim: { name: '紅白戦', up: { vision: 0.6, technique: 0.4, mental: 0.3 }, fat: 10 },
+    rest: { name: '全体休養', fat: -15 },
+  };
+  function train(save, plan) {
+    const r = rng(save), team = save.team, report = [];
+    const tm = TEAM_MENUS[plan.team] || TEAM_MENUS.base;
+    team.players.forEach((p, i) => {
+      const out = { i, name: p.name, menu: '', ups: {}, learned: null, failed: null, typeFrom: p.type, typeTo: null, injured: false, fatigueBefore: p.fatigue };
+      if (p.injury > 0) { p.injury--; out.menu = 'ケガで休み'; p.fatigue = clamp(p.fatigue - 25, 0, 100); report.push(out); return; }
+      // 全体練習
+      if (tm.all) for (const k of KEYS) grow(p, k, tm.all, r, out);
+      if (tm.up) for (const k in tm.up) grow(p, k, tm.up[k], r, out);
+      let fat = tm.fat;
+      // 個別の特訓
+      const id = (plan.each && plan.each[i]) || (p.position === 'GK' ? 'n:gkSave' : 'n:mini');
+      const [kind, key] = id.split(':');
+      if (kind === 'n' && MENUS[key]) {
+        const m = MENUS[key]; out.menu = m.name;
+        for (const k of m.main) grow(p, k, 2.6, r, out);
+        for (const k of m.sub) grow(p, k, 1.1, r, out);
+        if (m.all) for (const k of KEYS) grow(p, k, m.all, r, out);
+        moveHidden(p, m.hid, 1); fat += m.fat; if (m.cond) p.cond = clamp((p.cond || 0) + m.cond, -2, 2);
+      } else if (kind === 's' && SPECIAL[key]) {
+        const m = SPECIAL[key]; out.menu = m.name;
+        if (m.all) for (const k of KEYS) grow(p, k, m.all, r, out);
+        if (m.up) for (const k in m.up) grow(p, k, m.up[k], r, out);
+        if (m.type) { const pr = protoOf(m.type); for (const k of HKEYS) p[k] += (pr[k] - p[k]) * 0.35; }
+        if (m.convert) { out.convert = [p.position, m.convert]; p.position = m.convert; }
+        fat += m.fat; if (m.cond) p.cond = clamp((p.cond || 0) + m.cond, -2, 2);
+      } else if (kind === 'k' && D.SKILLS[key]) {
+        out.menu = D.SKILLS[key].name + '特訓';
+        const c = skillChance(team, p, key);
+        if (r() < c * (p.fatigue > 70 ? 0.6 : 1)) out.learned = key;
+        else { out.failed = key; for (const k of skillParams(key)) grow(p, k, 0.9, r, out); }
+        fat += 14;
+      }
+      p.fatigue = clamp(p.fatigue + fat - 26, 0, 100);   // 週の自然回復を差し引く
+      // 疲れすぎていると、ケガをすることがある
+      if (p.fatigue > 75 && r() < (p.fatigue - 70) * 0.006) { p.injury = 1 + Math.floor(r() * 3); out.injured = true; }
+      p.cond = clamp((p.cond || 0) + (r() < 0.3 ? (r() < 0.5 ? -1 : 1) : 0) * 0.5, -2, 2);
+      const nt = decideType(p); if (nt !== p.type) { out.typeTo = nt; p.type = nt; }
+      report.push(out);
+    });
+    return report;
+  }
+  // スキル習得：枠が空いていれば入る。いっぱいなら忘れるスキルを選んでもらう
+  function learnSkill(p, k, forget) {
+    p.skills = p.skills || [];
+    if (p.skills.includes(k)) return true;
+    if (p.skills.length < slots(p)) { p.skills.push(k); return true; }
+    if (forget && p.skills.includes(forget)) { p.skills = p.skills.filter((s) => s !== forget); p.skills.push(k); return true; }
+    return false;
+  }
+
+  // ---------- リーグ（7リーグ・66チーム）----------
+  // 地域2部（東・西 各6）→ 地域1部（東・西 各8）→ D3（12）→ D2（14）→ D1（12）
+  const LEAGUES = [
+    { id: 'regE2', name: '地域2部リーグ東', tier: 0, region: 'E', size: 6, base: [40, 46], skills: [0, 1] },
+    { id: 'regW2', name: '地域2部リーグ西', tier: 0, region: 'W', size: 6, base: [40, 46], skills: [0, 1] },
+    { id: 'regE1', name: '地域1部リーグ東', tier: 1, region: 'E', size: 8, base: [44, 51], skills: [0, 1] },
+    { id: 'regW1', name: '地域1部リーグ西', tier: 1, region: 'W', size: 8, base: [44, 51], skills: [0, 1] },
+    { id: 'd3', name: 'D3リーグ', tier: 2, size: 12, base: [50, 58], skills: [1, 2] },
+    { id: 'd2', name: 'D2リーグ', tier: 3, size: 14, base: [58, 67], skills: [2, 3] },
+    { id: 'd1', name: 'D1リーグ', tier: 4, size: 12, base: [67, 78], skills: [3, 5] },
+  ];
+  const LG = Object.fromEntries(LEAGUES.map((l) => [l.id, l]));
+  const TOWN_W = ['宿毛', '土佐', '四万十', '高松', '松山', '徳島', '今治', '宇和島', '室戸', '鳴門', '丸亀', '新居浜', '岡山', '倉敷', '広島', '福山', '下関', '小倉', '博多', '久留米', '佐賀', '長崎', '熊本', '別府', '宮崎', '薩摩', '那覇', '姫路', '堺', '奈良', '和歌山', '鳥取', '出雲', '尾道', '呉', '周南'];
+  const TOWN_E = ['函館', '旭川', '小樽', '青森', '盛岡', '石巻', '秋田', '山形', 'いわき', '会津', '水戸', '日立', '宇都宮', '高崎', '川越', '所沢', '船橋', '市原', '藤沢', '小田原', '甲府', '長岡', '上越', '松本', '富山', '金沢', '福井', '沼津', '浜松', '豊橋', '岐阜', '四日市', '伊勢', '飛騨', '諏訪', '佐渡'];
+  const SUFFIX = ['イレブン', 'ユナイテッド', 'レイズ', 'ブルーム', 'アクア', 'ヴォルテ', 'ウィンズ', 'スターズ', 'ドルフィン', 'シャイン'];
+  const SKILL_POOL = { FW: ['bodyFeint', 'scissors', 'cutIn', 'volley', 'nearPost', 'knuckle', 'speedDribble', 'behindRun', 'looseBall', 'powerMid', 'driveShot', 'lob'], MF: ['curve', 'throughPass', 'doubleTouch', 'controlShot', 'switchPlay', 'earlyCross', 'oneTouchPass', 'pressMonster', 'fk', 'noLook'], DF: ['slide', 'intercept', 'cover', 'aerial', 'shotBlock', 'manMark', 'longFeed', 'recovery', 'overlap'], GK: ['punching', 'superReflex', 'oneOnOne', 'coaching', 'lowThrow', 'rushOut'] };
+  const OPP_NAME_POOL = ['タカ', 'ゴウ', 'ミツ', 'サキ', 'ヨシ', 'ダイ', 'ケン', 'ショウ', 'ノブ', 'アキ', 'マサ', 'トモ', 'ヒロ', 'テツ', 'ジュン', 'ユキ', 'リョウ', 'カズ', 'ハヤト', 'ソウタ', 'レイ', 'ジン', 'タク', 'コウ', 'ナオ', 'ユウマ', 'ハル', 'リク', 'カイト', 'イツキ', 'ショウマ', 'ツバサ', 'アラタ', 'ケイタ', 'ダイチ', 'ユウト', 'マコト', 'シュン', 'タイガ', 'ゲン', 'ヒナタ', 'ソラ', 'ルイ', 'アオ', 'トウマ', 'キョウ', 'ラン', 'セイ', 'イオリ', 'ヤマト', 'ムサシ', 'コタロウ', 'ゴロウ', 'サブロウ', 'テツヤ', 'ミナト', 'カケル', 'ハジメ', 'ススム', 'ワタル', 'エイジ', 'ヨウ', 'ケンタ', 'リュウ', 'ガク', 'シン', 'トオル', 'マナブ', 'ヒカル', 'ノボル'];
+  const newStats = () => ({ P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, Pts: 0 });
+
+  // 世界（全リーグのチーム）を作る
+  // 全チームは teams.js（DOT_TEAMS）で固定：名前・略称・地域・最初のリーグ・イメージカラー。強さと戦い方はセーブごとに決まる
+  const TEAMS = root.DOT_TEAMS || [], TEAM_BY_ID = Object.fromEntries(TEAMS.map((t) => [t.id, t]));
+  const ROSTERS = root.DOT_ROSTERS || {};   // rosters.js：CPUチームの監督・方針・ユニフォーム・固定の25人
+  const teamEntry = (m, lg, r) => { const e = { id: m.id, name: m.name, short: m.short, region: m.region, preset: D.PRESET_NAMES[Math.floor(r() * D.PRESET_NAMES.length)], lvl: Math.round(lg.base[0] + r() * (lg.base[1] - lg.base[0])), seed: Math.floor(r() * 1e6) }; if (ROSTERS[m.id]) e.lvl = ROSTERS[m.id].lvl; return e; };
+  function makeWorld(save) {
+    const r = rng(save), leagues = {};
+    for (const lg of LEAGUES) leagues[lg.id] = TEAMS.filter((m) => m.lg === lg.id).map((m) => teamEntry(m, lg, r));
+    // 自分のチームは地域2部リーグ西から（地域2部西は自分を入れて6チーム）
+    save.world = { leagues, me: 'regW2', region: 'W', fixed: 1 };
+  }
+  // ランダムな名前だった頃のセーブ：同じリーグのチームを、固定のチームに名前ごと置きかえる（強さ・戦い方はそのまま）
+  function fixWorldNames(save) {
+    if (!save.world || save.world.fixed) return;
+    const used = new Set(), map = {};
+    for (const lg of LEAGUES) for (const t of save.world.leagues[lg.id] || []) {
+      const m = TEAMS.find((x) => !used.has(x.id) && x.lg === lg.id) || TEAMS.find((x) => !used.has(x.id));
+      if (!m) continue; used.add(m.id);
+      map[t.name] = m.name; Object.assign(t, { id: m.id, name: m.name, short: m.short, region: lg.region || m.region });
+    }
+    const w = save.world; delete save.world;
+    let js = JSON.stringify(save);
+    for (const old in map) js = js.split(JSON.stringify(old)).join(JSON.stringify(map[old]));
+    const nw = JSON.parse(js); for (const k in nw) save[k] = nw[k];
+    save.world = w; w.fixed = 1;
+  }
+  const myLgId = (save) => save.world.me;
+  function findTeam(save, name) {
+    if (name === save.team.name) return { name, short: save.team.short, me: true, region: save.world.region, lvl: teamLevel(save) };
+    for (const id in save.world.leagues) { const t = save.world.leagues[id].find((x) => x.name === name); if (t) return { ...t, lg: id }; }
+    return null;
+  }
+  // 相手チームのデータ（試合用）：プリセットの個性を残して、レベルに合わせる
+  // 固定の25人から、試合に出る18人（先発11人＋控え7人）を選ぶ。能力は rosters.js のまま（上がりも下がりもしない）
+  const STYLE_ID = { possession: 'possession', counter: 'counter', highpress: 'highpress', wing: 'wing', balance: 'balance' };
+  function rosterPlayer(q, k) {
+    const h = { ...D.HIDDEN0, ...(D.TYPE_HIDDEN[q.type] || {}) }, wob = (j) => ((q.no * 7 + j * 13 + k) % 9) - 4;
+    const p = { number: q.no, name: q.name, position: q.pos, type: q.type, role: q.role, age: q.age, skills: (q.skills || []).slice(), hair: q.looks[0], hairColor: q.looks[1], skin: q.looks[2],
+      zone_man: h.zone_man + wob(1), press: clamp(h.press + wob(2), 0, 100), support: clamp(h.support + wob(3), 0, 100), overlap: clamp(h.overlap + wob(4), 0, 100), run_space: clamp(h.run_space + wob(5), 0, 100), goal_wait: clamp(h.goal_wait + wob(6), 0, 100) };
+    for (const k2 of KEYS) p[k2] = q[k2];
+    if (q.top && D.UNIQ_BY_TOP && D.UNIQ_BY_TOP[q.top]) { p.uniq = D.UNIQ_BY_TOP[q.top]; p.uniqLv = 1; p.topHair = D.UNIQ[p.uniq].hair; if (D.UNIQ[p.uniq].skin != null) p.skin = D.UNIQ[p.uniq].skin; }   // 顔を入れ替えた選手は、肌も顔に合わせる   // 国内屈指：その選手だけの固有スキル
+    return p;
+  }
+  // CPUの選手の顔（faces/star）：専用の顔（チームID_背番号）か、チームの中で重ならないモブの顔（career-ui.js の顔と同じ決め方）
+  const MOBMAP = {};
+  function faceKeyOf(tid, q) {
+    const F = root.STAR_FACES; if (!F || !q || !tid) return null;
+    if (q.face && q.face in F) return q.face;   /* 移籍してきた選手は、元の顔のまま（版455） */
+    const own = (p) => !p.gen && (tid + '_' + p.no) in F;
+    if (own(q)) return tid + '_' + q.no;
+    if (!('mob_1' in F)) return null;
+    if (!MOBMAP[tid]) {
+      const ro = rosterAt(tid, 1), used = new Set(), map = {}, N = Object.keys(F).filter((k) => k.startsWith('mob_')).length;
+      for (const p of ro.players.slice().sort((a, b) => a.no - b.no)) {
+        if (own(p) || p.face) continue;
+        let h = 7; for (const ch of tid + '|' + p.no + '|' + p.name) h = (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0;
+        let i = h % N; for (let k = 0; k < N && used.has(i); k++) i = (i + 1) % N;
+        used.add(i); map[p.no] = 'mob_' + (i + 1);
+      }
+      MOBMAP[tid] = map;
+    }
+    return MOBMAP[tid][q.no] || null;
+  }
+  function rosterTeam(save, tm, ro) {
+    const st = STYLES.find((x) => x.id === STYLE_ID[ro.style]) || STYLES[0];
+    const ovr = (q) => KEYS.reduce((a, k) => a + q[k], 0) / KEYS.length;
+    const starters = ro.players.filter((q) => q.starter), rest = ro.players.filter((q) => !q.starter).sort((a, b) => ovr(b) - ovr(a));
+    const bench = [];
+    for (const [pos, n] of [['GK', 1], ['DF', 2], ['MF', 2], ['FW', 2]]) bench.push(...rest.filter((q) => q.pos === pos).slice(0, n));
+    const ps = [...starters, ...bench].map((q, k) => { const p = rosterPlayer(q, k); const fk = faceKeyOf(tm.id, q), hc = p.topHair || (fk && root.STAR_HAIR && root.STAR_HAIR[fk]); delete p.topHair; if (hc) p.hairColor = hc; if (fk) p.faceKey = fk; p.cpuTid = tm.id; p.cpuNo = q.no; return p; });   // 国内屈指はその選手だけの鮮やかな色   // 試合のドット絵の髪は、顔の絵と同じ色に
+    const t = { name: tm.name, short: tm.short, color: 'red', policies: [], autoSubs: true, kit: ro.kit, players: ps };
+    applyTactics(t, { ...st.t, formation: ro.formation });
+    t.players = fitLines(ps.slice(0, 11), ro.formation).concat(ps.slice(11));
+    { const dfs = t.players.map((p, k) => (k < 11 && p.position === 'DF' ? k : -1)).filter((k) => k >= 0);   // 5バック：スイーパーが真ん中（全体の底からカバーする役）
+      if (dfs.length >= 5) { const mid = dfs[Math.floor(dfs.length / 2)], sw = dfs.filter((k) => t.players[k].type === 'スイーパー').sort((a, b) => (t.players[b].defense + t.players[b].vision) - (t.players[a].defense + t.players[a].vision))[0];
+        if (sw != null && sw !== mid) [t.players[sw], t.players[mid]] = [t.players[mid], t.players[sw]]; } }
+    for (const [n1, n2] of ro.swap || []) {   // 指定した2人の持ち場を入れ替える（例：神戸のかまたを左ウイングへ）
+      const i = t.players.findIndex((p, k) => k < 11 && p.name === n1), j = t.players.findIndex((p, k) => k < 11 && p.name === n2);
+      if (i >= 0 && j >= 0) [t.players[i], t.players[j]] = [t.players[j], t.players[i]];
+    }
+    for (const nm of ro.inner || []) {   // 指定した選手を、真ん中のすぐ隣（CB）に置く（例：広島のひがし）
+      const dfs = t.players.map((p, k) => (k < 11 && p.position === 'DF' ? k : -1)).filter((k) => k >= 0), i = t.players.findIndex((p, k) => k < 11 && p.name === nm); if (i < 0 || dfs.length < 4) continue;
+      const m = Math.floor(dfs.length / 2), inner = dfs.length >= 5 ? [dfs[m + 1], dfs[m - 1]] : [dfs[m], dfs[m - 1]]; if (inner.includes(i)) continue;
+      const to = inner.find((k) => t.players[k].type !== 'スイーパー') ?? inner[0]; [t.players[i], t.players[to]] = [t.players[to], t.players[i]];
+    }
+    for (const nm of ro.center || []) {   // 指定した選手を、そのラインの真ん中に置く（例：神戸のおおかわはMFの真ん中）。人数が偶数のラインは、内側の2つのどちらか
+      const i = t.players.findIndex((p, k) => k < 11 && p.name === nm); if (i < 0) continue;
+      const lines = String(ro.formation).split('-').map(Number); let st0 = 1, li = -1;
+      for (let k = 0; k < lines.length; k++) { if (i >= st0 && i < st0 + lines[k]) { li = k; break; } st0 += lines[k]; }
+      if (li < 0) continue;
+      const n = lines[li], mids = n % 2 ? [st0 + (n - 1) / 2] : [st0 + n / 2 - 1, st0 + n / 2];
+      if (mids.includes(i)) continue;
+      const free = mids.filter((k) => !(ro.center || []).includes(t.players[k].name)); if (!free.length) continue;   // 先に真ん中へ置いた選手は動かさない
+      const to = free.find((k) => t.players[k].position === t.players[i].position) ?? free[0];   // 同じポジションの選手と入れ替える（偽9番などはそのまま）
+      [t.players[i], t.players[to]] = [t.players[to], t.players[i]];
+    }
+    if (ro.order && ro.order.length === 11) { const ix = ro.order.map((nm) => t.players.findIndex((p, k) => k < 11 && p.name === nm)); if (ix.every((i) => i >= 0) && new Set(ix).size === 11) t.players = ix.map((i) => t.players[i]).concat(t.players.slice(11)); }   // 並びの指定（例：広島の3-4-2-1。ウイングバックにDF、シャドーの2人をFWのすぐ後ろへ）
+    t.style = st.name; t.coach = ro.coach;
+    return t;
+  }
+
+  // ---------- CPU選手の年齢・成長・引退（決まった流れなので、誰が遊んでも同じ年に同じことが起きる）----------
+  // 1年目は rosters.js のまま。27歳までは毎年少しずつ成長し、27歳で完成（それ以降は上がりも下がりもしない）。
+  // 33〜36歳で引退。空いた枠には、同じ素質（ポジション・タイプ・完成形の能力・スキル）の18〜19歳の新人が、新しい名前と顔で入る
+  const NEW_JP = 'あいかわ あいざわ あおき あおやま あかい あかぎ あきやま あさい あさの あさひ あずま あだち あべ あまの あらい あらき あらた ありま いいだ いがらし いけだ いけの いしい いしかわ いしだ いしばし いしはら いずみ いそべ いだ いちかわ いちの いとう いなば いのうえ いまい いまむら いりえ いわさき いわた いわもと うえだ うえの うえむら うしお うすい うちだ うの うめだ うめはら うらた えがわ えぐち えだ えのもと えんどう おいかわ おおいし おおうち おおかわ おおくぼ おおさわ おおしま おおた おおつか おおの おおはし おおや おか おかざき おかだ おがた おかの おかべ おかもと おぎの おくだ おくむら おぐら おざき おざわ おだ おちあい おの おのでら かい かがわ かきた かくた かさい かじ かしわぎ かたおか かとう かない かなざわ かねこ かのう かまた かみお かみや かめい かやの かわい かわかみ かわぐち かわしま かわの かわばた かわむら かんだ きくち きしだ きしもと きただ きたの きたむら きど きのした きむら きよた くが くさの くどう くの くぼ くぼた くまがい くもい くらた くりた くりはら くろかわ くろさき くろだ こいけ こうの こが こじま こだま ことう こばやし こまつ こみや こやま こんどう さいき さいとう さえき さかい さかぐち さかもと さがら さくま さくらい ささき ささの さとう さなだ さの さわだ さわむら しいな しおた しおの しげた しの しのだ しばた しま しまだ しみず しもだ しらいし しらかわ しんどう すぎた すぎの すぎもと すずき すだ すどう すなが すみた せき せきね せの せら そうま そえだ そね そのだ たいら たか たかぎ たかしま たかだ たかの たかはし たかやま たき たきざわ たくま たけうち たけだ たけなか たけの たけむら たじま たちばな たなか たにぐち たにの たむら たるい ちば ちかだ つかだ つかもと つじ つじむら つだ つちや つつみ つのだ つぼい てらだ てらにし とおやま とがし とくなが とだ となみ とみた ともだ とよだ ないとう ながい なかがわ ながさわ なかじま なかた ながの なかむら なかやま なぐも なつめ なみき なりた なんぶ にいの にしい にしかわ にしだ にしの にしむら にった ぬまた ねぎし のぐち のざき のだ のなか のむら はがわ はしだ はしもと はせ はた はたの はっとり はなだ はまだ はまの はやかわ はやし はやの はら はらだ ひうら ひがし ひぐち ひさの ひの ひらい ひらた ひらの ひろせ ひろた ふかい ふかさわ ふくだ ふくち ふじい ふじおか ふじた ふじの ふじわら ふせ ふなき ふるかわ ふるた ほうじょう ほしの ほそだ ほった ほんだ まえだ まきの まさき ますだ まちだ まつい まつお まつだ まつの まつもと まなべ まるやま みうら みかみ みずの みずはら みぞぐち みたに みなみ みね みやうち みやざき みやた みやの みやもと むかい むらい むらおか むらた もちづき もとき もとやま もりおか もりた もりの もりや やぎ やすだ やなぎ やなせ やの やまうち やまおか やまぎし やまぐち やまさき やました やまだ やまの やまべ やまもと ゆあさ ゆうき ゆき よこい よこた よこやま よしい よしかわ よしだ よしの よしむら よねだ よもぎ わかばやし わかまつ わだ わたなべ わたぬき あきもと いくた いせ うるま えなみ おきた おとわ かざま かすが かみじょう きりたに くすのき こいずみ こうさか さいじょう さかき しまむら すがわら そらい たかつき つきしま ときた なぎさ はるな ひびの ふゆき みかど みずき やましろ ゆずき れんの'.split(' ');
+  const NEW_FR = 'アルベルト ブルーノ カルロス ディエゴ エミリオ ファビオ ガブリエル ウーゴ イバン ハビエル ケビン ルーカス マルコ ニコ オスカル パブロ ラファエル セルジオ ティアゴ ウォルター ビクトル アドリアン ベルント クラウス デニス エリック フェリペ ゴメス ハンス イゴール ヨナス カルロ レアンドロ マテオ ネイマ ペドロ キケ ロベルト シモン トマス ウーリ バレンテ ビルツ ザビエル アンドレ ボリス セサル ダニエル エンツォ フランコ ジャン ヘンリー イサーク ジュリオ カイオ ロレンツォ ミゲル ノア オットー パトリス クインシー ルベン ステファン テオ ウーゴ ベニート ワグナー ジエゴ ヤン ゼノ アレックス ベルナト クリス ドミンゴ エドゥ フリオ ギジェルモ ホルヘ イシドロ ホアキン カリム ルイス マキシ ナウエル オリバー ピエール ラウル サンティ トニ ウマル バスコ ウェズリー シャビ ユーリ ザック アラン ブラス チコ ダビド エルナン ファン ジルベルト ハイメ イニゴ ジョエル クルト レオ モイセス ネストル オビ ポール ラミロ サウル ティモ ヴィニ ウィレム ヨアン'.split(' ');
+  const GROW = 1.3, PEAK_AGE = 27;
+  const hsh = (str) => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); return (h ^ (h >>> 15)) >>> 0; };
+  const deficit = (age) => Math.max(0, PEAK_AGE - age) * GROW;
+  const isJP = (n) => /^[ぁ-ゖー]+$/.test(n);
+  const LIFE = {}, RCACHE = {};
+  function lifeOf(id) {
+    if (LIFE[id]) return LIFE[id];
+    const ro = ROSTERS[id];
+    return (LIFE[id] = { upto: 1, fr: ro.players.filter((q) => !isJP(q.name)).length / ro.players.length, slots: ro.players.map((q, i) => {
+      const peak = {}; for (const k of KEYS) peak[k] = q[k] + deficit(q.age);
+      return { q, peak, gens: [{ g: 0, from: 1, age0: q.age, ra: Math.max(q.age, 33 + hsh(id + '|' + i + '|0|r') % 4), name: q.name, looks: q.looks }] };
+    }) });
+  }
+  function extendLife(id, season) {
+    const L = lifeOf(id);
+    while (L.upto < season) {
+      const s = ++L.upto, active = new Set(L.slots.map((sl) => sl.gens[sl.gens.length - 1].name));
+      L.slots.forEach((sl, i) => {
+        const cur = sl.gens[sl.gens.length - 1];
+        if (cur.from + (cur.ra - cur.age0) >= s) return;   // まだ現役
+        const g = cur.g + 1, key = id + '|' + i + '|' + g, pool = (hsh(key + '|f') % 1000) / 1000 < L.fr ? NEW_FR : NEW_JP;
+        let name, k = 0;
+        do { name = pool[hsh(key + '|n' + k) % pool.length]; k++; } while ((active.has(name) || name === cur.name) && k < 300);
+        active.delete(cur.name); active.add(name);
+        const h = hsh(key + '|l');
+        sl.gens.push({ g, from: s, age0: 18 + hsh(key + '|a') % 2, ra: 33 + hsh(key + '|r') % 4, name, looks: [h % 6, (h >>> 4) % 5, (h >>> 8) % 10 < 8 ? (h >>> 12) % 2 : 2] });
+      });
+    }
+    return L;
+  }
+  const rOvr = (q) => KEYS.reduce((a, k) => a + q[k], 0) / KEYS.length;
+  // そのシーズンのチームの25人
+  // ガチャ移籍にするので、CPUの選手は年をとらない・引退しない（誰が遊んでも、いつでも同じ顔ぶれ）。LIFE_ON を true にすると成長・引退が動く
+  const LIFE_ON = false;
+  function rosterAt(id, season) {
+    const ro = ROSTERS[id]; if (!ro) return null;
+    season = LIFE_ON ? Math.max(1, (season | 0) || 1) : 1;
+    const ck = id + '@' + season; if (RCACHE[ck]) return RCACHE[ck];
+    const L = extendLife(id, season);
+    const players = L.slots.map((sl) => {
+      let gi = sl.gens.length - 1; while (gi > 0 && sl.gens[gi].from > season) gi--;
+      const gen = sl.gens[gi], age = gen.age0 + (season - gen.from), q = sl.q;
+      const p = { ...q, name: gen.name, looks: gen.looks, age, gen: gen.g, skills: q.skills.slice() };
+      for (const k of KEYS) p[k] = clamp(Math.round(sl.peak[k] - deficit(age)), 20, 99);
+      if (gen.g > 0) {
+        delete p.top; delete p.face;   // 引退した選手の後に入る新人は、移籍してきた選手の顔を引き継がない
+        p.skills = q.skills.slice(0, clamp(Math.round(q.skills.length * (age - 17) / 8), 0, q.skills.length));   // スキルは育つにつれて身につく
+        if (age < 23) p.role = '';
+      }
+      p.totsu = totsuOf(id, p);   // 能力はそのまま。☆の上限より上の能力を持っている選手は、その分だけ凸している（☆3でSがあれば1凸）
+      return p;
+    });
+    if (season > 1) {   // スタメン：ポジションごとに、今いちばん力のある選手（今のスタメンを少しだけ優先）
+      for (const pos of ['GK', 'DF', 'MF', 'FW']) {
+        const g = players.filter((p) => p.pos === pos), n = g.filter((p) => p.starter).length;
+        g.sort((a, b) => (rOvr(b) + (b.starter ? 3 : 0)) - (rOvr(a) + (a.starter ? 3 : 0))).forEach((p, k) => { p.starter = k < n; });
+      }
+    }
+    return (RCACHE[ck] = { ...ro, season, players });
+  }
+  // そのシーズンのチームの強さ（1年目＝rosters.js の強さ。スタメンの平均の上がり下がりの分だけ変わる）
+  const stOvr = (r) => { const st = r.players.filter((p) => p.starter); return st.reduce((a, p) => a + rOvr(p), 0) / (st.length || 1); };
+  function lvlAt(id, season) { const ro = ROSTERS[id]; if (!ro) return null; return Math.round(ro.lvl + stOvr(rosterAt(id, season)) - stOvr(rosterAt(id, 1))); }
+  // シーズンの変わり目に引退した選手（エース・国内屈指だった選手だけ）
+  function retiredAt(save, season) {
+    if (!LIFE_ON) return [];
+    const out = [], hold = save.titles || {};
+    for (const id in ROSTERS) {
+      const a = rosterAt(id, season - 1), b = rosterAt(id, season);
+      a.players.forEach((p, i) => {
+        if (b.players[i].gen === p.gen) return;
+        const tt = Object.keys(hold).find((k) => hold[k].id === id && hold[k].name === p.name);
+        if (p.role === 'ace' || tt) out.push({ name: p.name, team: (TEAM_BY_ID[id] || {}).name || id, age: p.age, title: tt || '', next: b.players[i].name });
+      });
+    }
+    return out;
+  }
+  function rosterOfTeam(id, season) { return rosterAt(id, season); }
+  function opponentTeam(save, op) {
+    const tm = op.preset ? op : findTeam(save, op.name);
+    if (tm && ROSTERS[tm.id]) return rosterTeam(save, tm, rosterAt(tm.id, save.season));
+    const lg = LG[tm.lg] || LG[myLgId(save)] || LEAGUES[0];
+    const t = D.presetTeam(tm.preset);
+    let s = tm.seed >>> 0; const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+    t.players.forEach((p) => {
+      D.fillParams(p, 0);
+      for (const k of KEYS) p[k] = clamp(Math.round(tm.lvl + (p[k] - 50) * 0.8 + (r() - 0.5) * 6), 25, 95);
+      const pool = SKILL_POOL[p.position] || [];
+      const n = lg.skills[0] + Math.floor(r() * (lg.skills[1] - lg.skills[0] + 1));
+      const sk = new Set(p.skills || []);
+      for (let j = 0; j < n && pool.length; j++) sk.add(pool[Math.floor(r() * pool.length)]);
+      p.skills = [...sk];
+    });
+    t.name = tm.name; t.short = tm.short; t.color = 'red';
+    // 選手の名前と見た目はチームごとに違う（チームの種から決める）
+    { let s2 = (tm.seed * 2654435761) >>> 0; const r2 = () => { s2 = (Math.imul(s2, 1664525) + 1013904223) >>> 0; let x = s2 ^ (s2 >>> 16); x = Math.imul(x, 0x45d9f3b) >>> 0; return ((x ^ (x >>> 16)) >>> 0) / 4294967296; };
+      const used = new Set();
+      t.players.forEach((p) => { let n; do { n = OPP_NAME_POOL[Math.floor(r2() * OPP_NAME_POOL.length)]; } while (used.has(n)); used.add(n); p.name = n; p.hair = Math.floor(r2() * 4); p.hairColor = Math.floor(r2() * 4); p.skin = Math.floor(r2() * 3); }); }
+    const sts = PRESET_STYLE[tm.preset] || ['balance'], sid = sts[tm.seed % sts.length], st = STYLES.find((x) => x.id === sid) || STYLES[0];
+    const forms = STYLE_FORMS[sid] || [st.formation], formation = forms[(tm.seed >> 3) % forms.length];
+    applyTactics(t, { ...st.t, formation });
+    t.players = fitLines(t.players, formation);
+    t.style = st.name;
+    return t;
+  }
+
+  // ---------- 1年のカレンダー（1シーズン＝1年：3月1週〜翌2月4週の48週。1週に試合は1つまで）----------
+  const SEASON_WEEKS = 48;
+  const CAMPS = [{ from: 21, to: 24, name: '夏合宿' }, { from: 45, to: 48, name: '春季キャンプ' }];   // 8月と2月（オフ）は合宿
+  const CAMP_FROM = 21, CAMP_TO = 24;
+  // 国内カップ（8回戦。決勝は12月3週）。D1・D2のチームは3回戦から登場（天皇杯のように）
+  // 国内カップ：出場決定戦（地域2部の4チーム）→ 64チームのトーナメント（1回戦〜決勝）。決勝は12月3週
+  const CUP_WEEKS = [6, 11, 15, 19, 27, 31, 39];
+  const CUP_LABELS = ['出場決定戦', '1回戦', '2回戦', '3回戦', '準々決勝', '準決勝', '決勝'];
+  const CUP_LATE = ['d1', 'd2', 'd3', 'regE1', 'regW1'], CUP_LATE_ROUND = 1;   // 出場決定戦に出るのは地域2部だけ
+  const LEAGUE_FROM = 2, LEAGUE_TO = 40;           // リーグ戦は3月2週〜12月4週
+  const POST_WEEKS = [41, 42, 43];                 // 1月1週〜3週：昇格トーナメント・入れ替え戦・地域2部カップ
+  function leagueWeeks(R, id) {
+    const avail = [], cupW = CUP_LATE.includes(id) ? CUP_WEEKS.slice(CUP_LATE_ROUND) : CUP_WEEKS;   // 出ないカップの週（出場決定戦）はリーグに使える
+    for (let w = LEAGUE_FROM; w <= LEAGUE_TO; w++) if ((w < CAMP_FROM || w > CAMP_TO) && !cupW.includes(w)) avail.push(w);
+    if (R <= 1) return [avail[0]];
+    return Array.from({ length: R }, (_, k) => avail[Math.round((k * (avail.length - 1)) / (R - 1))]);
+  }
+  // 2回総当たりの日程
+  function makeSchedule(n) {
+    const arr = [...Array(n).keys()], rounds = [];
+    for (let r = 0; r < n - 1; r++) {
+      const pairs = [];
+      for (let k = 0; k < n / 2; k++) { const a = arr[k], b = arr[n - 1 - k]; pairs.push(r % 2 ? [b, a] : [a, b]); }
+      rounds.push(pairs);
+      arr.splice(1, 0, arr.pop());
+    }
+    return [...rounds, ...rounds.map((ps) => ps.map(([a, b]) => [b, a]))];
+  }
+  // 自分のリーグの今シーズン
+  function newLeague(save) {
+    const id = myLgId(save), lg = LG[id], r = rng(save);
+    const teams = [{ name: save.team.name, me: true, stats: newStats() }, ...save.world.leagues[id].map((t) => ({ name: t.name, stats: newStats() }))];
+    for (let i = teams.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [teams[i], teams[j]] = [teams[j], teams[i]]; }
+    const rounds = makeSchedule(teams.length);
+    save.league = { id, name: lg.name, tier: lg.tier, teams, rounds, weeks: leagueWeeks(rounds.length, id), round: 0, results: [] };
+    newOthers(save);
+  }
+  // ---------- 自分のいないリーグも、毎週同じように試合を進める（サッカー協会で順位表・ゴール・アシストを見られるように）----------
+  function newOthers(save) {
+    const r = rng(save), lgs = { season: save.season };
+    for (const lg of LEAGUES) {
+      if (lg.id === myLgId(save)) continue;
+      const teams = (save.world.leagues[lg.id] || []).map((t) => ({ name: t.name, stats: newStats() }));
+      for (let i = teams.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [teams[i], teams[j]] = [teams[j], teams[i]]; }
+      const rounds = makeSchedule(teams.length);
+      lgs[lg.id] = { id: lg.id, name: lg.name, teams, rounds, weeks: leagueWeeks(rounds.length, lg.id), round: 0, results: [] };
+    }
+    save.lgs = lgs;
+    save.gstats = { season: save.season, by: {} };   // 得点・アシスト：by[大会][チーム名][選手名] = [得点, アシスト]
+  }
+  function advanceOthers(save, week) {
+    if (!save.lgs) return;
+    const r = rng(save);
+    for (const id in save.lgs) {
+      const lg = save.lgs[id]; if (!lg || !lg.rounds) continue;
+      while (lg.round < lg.rounds.length && lg.weeks[lg.round] <= week) {
+        const res = [];
+        for (const [a, b] of lg.rounds[lg.round]) {
+          const A = lg.teams[a].name, B = lg.teams[b].name, pin = watchedOf(save, id, lg.round, a, b); let sc = quickScore(r, lvlOf(save, A), lvlOf(save, B));
+          if (pin) { sc = pin.s.slice(); pinGoals(save, id, A, B, pin); } else { addGoals(save, id, A, sc[0], r); addGoals(save, id, B, sc[1], r); }
+          record(lg, a, b, sc[0], sc[1]); res.push({ a, b, s: sc, w: pin ? 1 : 0 });
+        }
+        lg.results.push(res); lg.round++;
+      }
+    }
+  }
+  // ---------- D1観戦：次の節のD1の試合を、試合の画面で見られる。見た試合の結果は、そのまま記録に残る ----------
+  const watchKey = (save, id, round, a, b) => `${save.season}|${id}|${round}|${a}|${b}`;
+  function watchedOf(save, id, round, a, b) { return save.watched && save.watched[watchKey(save, id, round, a, b)] || null; }
+  function pinGoals(save, id, A, B, pin) {
+    for (const g of pin.goals || []) { const team = g[0] === 0 ? A : B; tallyOf(save, id, team, g[1])[0]++; if (g[2]) tallyOf(save, id, team, g[2])[1]++; }
+  }
+  function d1Round(save) {
+    const mine = save.league && save.league.id === 'd1', lg = mine ? save.league : save.lgs && save.lgs.d1;
+    if (!lg || !lg.rounds || lg.round >= lg.rounds.length) return null;
+    const me = mine ? meIdx(save) : -1;
+    const list = lg.rounds[lg.round].filter(([a, b]) => a !== me && b !== me).map(([a, b]) => ({ a, b, A: lg.teams[a].name, B: lg.teams[b].name, done: watchedOf(save, 'd1', lg.round, a, b) }));
+    return { id: 'd1', round: lg.round, week: lg.weeks[lg.round], list, last: (lg.results[lg.round - 1] || []).filter((x) => x.a !== me && x.b !== me).map((x) => ({ A: lg.teams[x.a].name, B: lg.teams[x.b].name, s: x.s, w: x.w })) };
+  }
+  function pinWatch(save, id, round, a, b, score, events) {
+    save.watched = save.watched || {};
+    for (const k of Object.keys(save.watched)) if (!k.startsWith(save.season + '|')) delete save.watched[k];   // 前のシーズンの分は消す
+    save.watched[watchKey(save, id, round, a, b)] = { s: score.slice(), goals: (events || []).filter((e) => e.type === 'goal' && e.player !== 'オウンゴール').map((e) => [e.team, e.player, e.assist || ''].slice(0, e.assist ? 3 : 2)) };
+  }
+  // 古いセーブ：今の週までの試合をまとめて進めておく
+  function ensureOthers(save) {
+    if (save.lgs && save.lgs.season === save.season && save.gstats) return;
+    newOthers(save);
+    advanceOthers(save, save.week - 1);
+  }
+  // 得点・アシスト
+  const rosterCache = new Map();
+  function rosterOf(save, name) {
+    if (name === save.team.name) return save.team.players.slice(0, 11).map((p) => ({ name: p.name, pos: p.position }));
+    if (!rosterCache.has(name)) { try { const t = opponentTeam(save, findTeam(save, name)); rosterCache.set(name, t.players.slice(0, 11).map((p) => ({ name: p.name, pos: p.position }))); } catch (e) { rosterCache.set(name, []); } }
+    return rosterCache.get(name);
+  }
+  function tallyOf(save, comp, team, player) {
+    const g = save.gstats || (save.gstats = { season: save.season, by: {} });
+    const c = (g.by[comp] = g.by[comp] || {}), t = (c[team] = c[team] || {});
+    return (t[player] = t[player] || [0, 0]);
+  }
+  const G_W = { FW: 6, MF: 3, DF: 1, GK: 0 }, A_W = { FW: 3, MF: 5, DF: 2, GK: 0.2 };
+  function pickW(r, list, W, not) { const c = list.filter((p) => p.name !== not); const tot = c.reduce((a, p) => a + (W[p.pos] ?? 1), 0); let u = r() * tot; for (const p of c) { u -= W[p.pos] ?? 1; if (u <= 0) return p; } return c[c.length - 1]; }
+  function addGoals(save, comp, team, n, r) {
+    if (!n) return;
+    const ro = rosterOf(save, team); if (!ro.length) return;
+    for (let k = 0; k < n; k++) {
+      const sc = pickW(r, ro, G_W); if (!sc) continue;
+      tallyOf(save, comp, team, sc.name)[0]++;
+      if (r() < 0.7) { const as = pickW(r, ro, A_W, sc.name); if (as) tallyOf(save, comp, team, as.name)[1]++; }
+    }
+  }
+  // 自分の試合：本当に試合で決めた選手で数える（相手チームの得点も）
+  function recordGoals(save, fx, events) {
+    if (!fx) return;
+    const comp = fx.kind === 'league' ? myLgId(save) : fx.kind === 'cup' ? 'cup' : 'post', opp = fx.opp && fx.opp.name;
+    for (const e of events || []) {
+      if (e.type !== 'goal' || e.player === 'オウンゴール') continue;
+      const team = e.team === 0 ? save.team.name : opp; if (!team) continue;
+      tallyOf(save, comp, team, e.player)[0]++;
+      if (e.assist) tallyOf(save, comp, team, e.assist)[1]++;
+    }
+  }
+  function goalRank(save, comp) {
+    const out = [], by = (save.gstats && save.gstats.by[comp]) || {};
+    for (const team in by) for (const pl in by[team]) { const [g, a] = by[team][pl]; out.push({ team, player: pl, g, a, me: team === save.team.name }); }
+    return out;
+  }
+  // ひとつ前の節が終わった時点の順位（順位表の矢印）
+  function prevOrder(save, id) {
+    const lg = id === myLgId(save) ? save.league : save.lgs && save.lgs[id];
+    if (!lg || !lg.results || lg.results.length < 2) return [];
+    const tmp = { teams: lg.teams.map((t) => ({ name: t.name, stats: newStats() })) };
+    lg.results.slice(0, -1).forEach((res) => res.forEach((x) => record(tmp, x.a, x.b, x.s[0], x.s[1])));
+    return tmp.teams.sort((x, y) => y.stats.Pts - x.stats.Pts || (y.stats.GF - y.stats.GA) - (x.stats.GF - x.stats.GA) || y.stats.GF - x.stats.GF).map((t) => t.name);
+  }
+  function leagueTable(save, id) {
+    const lg = id === myLgId(save) ? save.league : save.lgs && save.lgs[id];
+    if (!lg) return null;
+    return { id, name: (LG[id] || {}).name, round: lg.round, rounds: lg.rounds.length, weeks: lg.weeks, rows: lg.teams.map((t) => ({ ...t, me: t.name === save.team.name })).sort((x, y) => y.stats.Pts - x.stats.Pts || (y.stats.GF - y.stats.GA) - (x.stats.GF - x.stats.GA) || y.stats.GF - x.stats.GF) };
+  }
+  function newCareer(teamName) {
+    const team = D.beginningTeam();
+    if (teamName) { team.name = teamName; team.short = teamName.replace(/FC$/, ''); }
+    for (const p of team.players) { D.fillParams(p, 0); p.fatigue = 10; p.cond = 0; p.injury = 0; p.skills = p.skills || []; p.games = 0; }
+    // カルチョビットAと同じく、最初はみんな「バランス」。特訓で動きのくせ（裏パラ）が変わって、タイプが決まっていく
+    for (const p of team.players) if (p.position !== 'GK') { p.type = 'バランス'; for (const k of HKEYS) p[k] = D.HIDDEN0[k]; }
+    const save = { version: 1, ptsVer: 3, rs: 20261005, season: 1, week: 1, team, history: [], cards: {}, cardsVer: 0, spFound: [] };
+    makeWorld(save); newLeague(save); newCup(save);
+    migrate(save);
+    return save;
+  }
+  const meIdx = (save) => save.league.teams.findIndex((t) => t.me);
+  function record(lg, a, b, ga, gb) {
+    const A = lg.teams[a].stats, B = lg.teams[b].stats;
+    A.P++; B.P++; A.GF += ga; A.GA += gb; B.GF += gb; B.GA += ga;
+    if (ga > gb) { A.W++; B.L++; A.Pts += 3; } else if (ga < gb) { B.W++; A.L++; B.Pts += 3; } else { A.D++; B.D++; A.Pts++; B.Pts++; }
+  }
+  // 自分以外の試合：チームの強さから点数を決める（すぐに終わる）
+  function quickScore(r, la, lb) {
+    const pois = (m) => { let k = 0, p = Math.exp(-m), s = p, u = r(); while (u > s && k < 9) { k++; p *= m / k; s += p; } return k; };
+    const d = (la - lb) / 12;
+    return [pois(clamp(1.3 + d * 0.9, 0.2, 5)), pois(clamp(1.3 - d * 0.9, 0.2, 5))];
+  }
+  // トーナメント：引き分けはPK戦（メンタル＝強さで少しだけ有利）
+  function koWinner(r, la, lb, s) { if (s[0] !== s[1]) return s[0] > s[1] ? 0 : 1; return r() < 0.5 + (la - lb) * 0.01 ? 0 : 1; }
+  function teamLevel(save) { const ps = save.team.players.slice(0, 11); return ps.reduce((a, p) => a + avgParam(p), 0) / ps.length; }
+  const lvlOf = (save, name) => (name === save.team.name ? teamLevel(save) : (findTeam(save, name) || { lvl: 50 }).lvl);
+
+  // 試合に出た選手：判断力が伸びる・疲れる・ケガ
+  function afterPlayed(save, playedIdx, r, practice) {
+    save.team.players.forEach((p, i) => {
+      if (playedIdx.includes(i)) {
+        if (!practice) p.games = (p.games || 0) + 1;
+        addPts(p, 'vision', practice ? 0.3 : 0.8 + r() * 0.6); if (!practice) addPts(p, 'mental', 0.3 + r() * 0.4);   // 試合経験：ほんの少し（伸びの中心は特訓）
+        p.fatigue = clamp(p.fatigue + (practice ? 8 : 12), 0, 100);
+        if (!(p.injury > 0) && r() < (practice ? 0.003 : 0.006) + Math.max(0, p.fatigue - 60) * 0.003) injure(save, p, r, 'match');
+      } else p.fatigue = clamp(p.fatigue - 10, 0, 100);
+    });
+  }
+  // 公式戦のあと：出場停止（レッドカード→次の公式戦）と、サポーターの支持率
+  function afterOfficial(save, events, myScore, res) {
+    const ps = save.team.players, served = [], reds = [];
+    for (const p of ps) if (p.suspend > 0) { p.suspend--; served.push(p.name); }   // 今日の試合で出場停止が明けた
+    for (const e of events || []) if (e.type === 'card' && e.team === 0 && e.color === 'red') { const q = ps.find((x) => x.name === e.player); if (q) { q.suspend = 1; reds.push(q.name); } }
+    const d = myScore[0] - myScore[1];
+    let dl = d > 0 ? 5 + Math.min(3, d - 1) : d === 0 ? 0 : -5 - Math.min(3, -d - 1);
+    if (res && res.champion) dl += 15; else if (res && res.win === false && (res.kind === 'cup' || res.kind === 'post')) dl -= 3;
+    const before = save.support ?? 60;
+    save.support = clamp(before + dl, 0, 100);
+    return { reds, served, support: save.support, delta: save.support - before };
+  }
+  // 公式戦の記録（シーズンごとの 出場P・得点G・アシストA・警告Y・退場R）
+  function recordStats(save, events, playedIdx) {
+    const ps = save.team.players, key = String(save.season), club = save.team.short || save.team.name;
+    const st = (p) => { p.rec = p.rec || {}; return (p.rec[key] = p.rec[key] || { club, lg: LG[myLgId(save)] ? LG[myLgId(save)].name : '', P: 0, G: 0, A: 0, Y: 0, R: 0 }); };
+    playedIdx.forEach((i) => { if (ps[i]) st(ps[i]).P++; });
+    for (const e of events || []) {
+      if (e.team !== 0) continue;
+      if (e.type === 'goal') { const sc = ps.find((q) => q.name === e.player); if (sc) st(sc).G++; const as = e.assist && ps.find((q) => q.name === e.assist); if (as) st(as).A++; }
+      if (e.type === 'card') { const q = ps.find((x) => x.name === e.player); if (q) st(q)[e.color === 'red' ? 'R' : 'Y']++; }
+    }
+  }
+  // リーグ戦の結果
+  function finishRound(save, myScore, playedIdx) {
+    const lg = save.league, r = rng(save), me = meIdx(save);
+    const res = [];
+    for (const [a, b] of lg.rounds[lg.round]) {
+      let s;
+      if (a === me || b === me) s = a === me ? myScore : [myScore[1], myScore[0]];
+      else { s = quickScore(r, lvlOf(save, lg.teams[a].name), lvlOf(save, lg.teams[b].name)); const pin = watchedOf(save, lg.id, lg.round, a, b); if (pin) { s = pin.s.slice(); pinGoals(save, lg.id, lg.teams[a].name, lg.teams[b].name, pin); } else { addGoals(save, lg.id, lg.teams[a].name, s[0], r); addGoals(save, lg.id, lg.teams[b].name, s[1], r); } }
+      record(lg, a, b, s[0], s[1]); res.push({ a, b, s });
+    }
+    lg.results.push(res); lg.round++;
+    afterPlayed(save, playedIdx, r, false);
+    return res;
+  }
+  // ハーフタイムの「途中経過」：このあと finishRound で出る結果を、乱数を進めずに先に計算する（前半の点数は、その中から前半に入った分）
+  function peekRound(save) {
+    const lg = save.league; if (!lg || !lg.rounds || !lg.rounds[lg.round]) return null;
+    const me = meIdx(save), tmp = { rs: save.rs }, r = rng(tmp), out = [];
+    for (const [a, b] of lg.rounds[lg.round]) {
+      if (a === me || b === me) { out.push({ a, b, me: true }); continue; }
+      let s = quickScore(r, lvlOf(save, lg.teams[a].name), lvlOf(save, lg.teams[b].name));
+      const pin = watchedOf(save, lg.id, lg.round, a, b); if (pin) s = pin.s.slice();
+      let h = 0x9e3779b9 ^ (lg.round * 131 + a * 17 + b * 7); const hr = () => { h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0; return (h % 1000) / 1000; };
+      // それぞれのゴールが入った分（前半 1〜45分／後半 46〜90分）
+      const mins = [[], []]; for (let k = 0; k < 2; k++) for (let g = 0; g < s[k]; g++) mins[k].push(hr() < 0.47 ? 1 + Math.floor(hr() * 45) : 46 + Math.floor(hr() * 45));
+      const half = mins.map((l) => l.filter((m) => m <= 45).length);
+      out.push({ a, b, s, half, mins });
+    }
+    return out;
+  }
+  function standings(save) {
+    return save.league.teams.map((t, i) => ({ ...t, i })).sort((x, y) => y.stats.Pts - x.stats.Pts || (y.stats.GF - y.stats.GA) - (x.stats.GF - x.stats.GA) || y.stats.GF - x.stats.GF);
+  }
+  // 自分がいないリーグ：1シーズン分をまとめて計算して順位を出す
+  function simLeague(save, id, r) {
+    const names = save.world.leagues[id].map((t) => t.name);
+    const lg = { teams: names.map((name) => ({ name, stats: newStats() })) };
+    for (const rd of makeSchedule(names.length)) for (const [a, b] of rd) { const s = quickScore(r, lvlOf(save, names[a]), lvlOf(save, names[b])); record(lg, a, b, s[0], s[1]); }
+    return lg.teams.sort((x, y) => y.stats.Pts - x.stats.Pts || (y.stats.GF - y.stats.GA) - (x.stats.GF - x.stats.GA)).map((t) => t.name);
+  }
+
+  // ---------- 国内カップ：全66チームのトーナメント（組み合わせはシーズンの初めに決まって、最後まで変わらない）----------
+  //  出場決定戦：地域2部のうち4チームが2試合 → 勝った2チームが64チームのトーナメントへ
+  //  トーナメント：64 → 32 → 16 → 8（準々決勝）→ 4（準決勝）→ 決勝。D1は早く当たらないように散らして置く
+  function newCup(save) {
+    const r = rng(save), all = [];
+    for (const id in save.world.leagues) for (const t of save.world.leagues[id]) all.push({ name: t.name, lg: id });
+    all.push({ name: save.team.name, lg: myLgId(save) });
+    const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    const reg2 = shuffle(all.filter((t) => /^reg.2$/.test(t.lg)));
+    const pre = reg2.slice(0, 4).map((t) => t.name), slots = Array(64).fill(null);
+    // D1 → D2 の順に、ばらばらの場所へ
+    const place = (list) => { const n = list.length; shuffle(list).forEach((t, k) => { let i = Math.floor((k * 64) / n); while (slots[i] !== null) i = (i + 1) % 64; slots[i] = t.name; }); };
+    place(all.filter((t) => t.lg === 'd1')); place(all.filter((t) => t.lg === 'd2'));
+    const free = () => { const f = slots.map((v, i) => (v === null ? i : -1)).filter((i) => i >= 0); return f[Math.floor(r() * f.length)]; };
+    const preSlots = [free()]; slots[preSlots[0]] = '#pre0'; preSlots.push(free()); slots[preSlots[1]] = '#pre1';
+    const rest = shuffle(all.filter((t) => t.lg !== 'd1' && t.lg !== 'd2' && !pre.includes(t.name)));
+    for (const t of rest) slots[free()] = t.name;
+    save.cup = { season: save.season, ver: 3, round: 0, bracket: slots.slice(), slots, pre: [[pre[0], pre[1]], [pre[2], pre[3]]], preSlots, log: [], hist: [], champion: null, alive: all.map((t) => t.name), waiting: [], bye: null };
+    save.cup.pairs = save.cup.pre.map((x) => x.slice());
+  }
+  // カップ戦（CPU同士）：力の差がはっきり出る。準決勝はほぼD1、ときどきD2のジャイアントキリング
+  function cupScore(r, la, lb) {
+    const pois = (m) => { let k = 0, p = Math.exp(-m), s = p, u = r(); while (u > s && k < 9) { k++; p *= m / k; s += p; } return k; };
+    const d = (la - lb) / 3.6;
+    return [pois(clamp(1.3 + d * 0.9, 0.12, 6)), pois(clamp(1.3 - d * 0.9, 0.12, 6))];
+  }
+  const cupRoundLabel = (cup) => CUP_LABELS[cup.round] || `${cup.round}回戦`;
+  const cupIn = (cup, name) => !cup.champion && (cup.round === 0 ? cup.alive.includes(name) : cup.slots.includes(name));
+  // カップの1回戦分を決着させる（自分の試合の結果があれば使う）
+  function resolveCupRound(save, my) {
+    const cup = save.cup, r = rng(save), me = save.team.name;
+    const hist = { label: cupRoundLabel(cup), week: CUP_WEEKS[cup.round], round: cup.round, games: [] };
+    const play = (a, b) => {
+      let w, s = null, pk = false;
+      if (my && (a === me || b === me)) { w = my.win ? me : (a === me ? b : a); if (my.s) s = a === me ? my.s.slice() : [my.s[1], my.s[0]]; pk = !!my.pk; }
+      else { const la = lvlOf(save, a), lb = lvlOf(save, b); s = cupScore(r, la, lb); w = koWinner(r, la, lb, s) ? b : a; pk = s[0] === s[1]; addGoals(save, 'cup', a, s[0], r); addGoals(save, 'cup', b, s[1], r); }
+      hist.games.push({ a, b, s, w, pk });
+      return w;
+    };
+    if (cup.round === 0) {
+      cup.pre.forEach(([a, b], k) => { const w = play(a, b); cup.slots[cup.preSlots[k]] = w; cup.bracket[cup.preSlots[k]] = w; });
+    } else {
+      const next = [];
+      for (let k = 0; k < cup.slots.length; k += 2) next.push(play(cup.slots[k], cup.slots[k + 1]));
+      cup.slots = next;
+    }
+    cup.hist.push(hist);
+    cup.round++;
+    cup.alive = cup.slots.slice();
+    if (cup.slots.length === 1) { cup.champion = cup.slots[0]; cup.pairs = []; }
+    else { cup.pairs = []; for (let k = 0; k < cup.slots.length; k += 2) cup.pairs.push([cup.slots[k], cup.slots[k + 1]]); }
+  }
+
+  // ---------- シーズン終盤（12月3週〜1月1週）：昇格トーナメント・入れ替え戦・地域2部カップ ----------
+  // ・地域2部カップ：東西の地域2部の1位・2位（ただのカップ戦）
+  // ・D3昇格トーナメント：東西の地域1部の1位・2位。決勝に進んだ2チーム（優勝・準優勝）がD3へ
+  // ・D3/D2入れ替え戦：D3の2位 vs D2の13位
+  // ・D1昇格リーグ：D2の1位・2位とD1の11位・12位の総当たり。上位2チームがD1へ
+  function setupPost(save) {
+    const r = rng(save), fin = {};
+    for (const lg of LEAGUES) { const ot = save.lgs && save.lgs[lg.id]; fin[lg.id] = lg.id === myLgId(save) ? standings(save).map((t) => t.name) : ot && ot.round >= ot.rounds.length ? leagueTable(save, lg.id).rows.map((t) => t.name) : simLeague(save, lg.id, r); }
+    const post = { fin, events: [], matches: [] };
+    const ko = (comp, label, a, b, wk, next) => post.matches.push({ comp, label, a, b, week: wk, ko: true, next });
+    // 地域2部カップ・D3昇格トーナメント（準決勝 → 決勝）
+    for (const [comp, e, w] of [['地域2部カップ', 'regE2', 'regW2'], ['D3昇格トーナメント', 'regE1', 'regW1']]) {
+      ko(comp, '準決勝', fin[e][0], fin[w][1], POST_WEEKS[0], comp + ':F'); ko(comp, '準決勝', fin[w][0], fin[e][1], POST_WEEKS[0], comp + ':F');
+    }
+    ko('D3/D2入れ替え戦', '入れ替え戦', fin.d3[1], fin.d2[12], POST_WEEKS[0], null);
+    const pl = [fin.d2[0], fin.d2[1], fin.d1[10], fin.d1[11]];
+    post.playoff = pl.map((name) => ({ name, stats: newStats() }));
+    [[[0, 3], [1, 2]], [[0, 2], [3, 1]], [[0, 1], [2, 3]]].forEach((rd, k) => rd.forEach(([a, b]) => post.matches.push({ comp: 'D1昇格リーグ', label: `第${k + 1}戦`, a: pl[a], b: pl[b], week: POST_WEEKS[k], rr: true })));
+    save.post = post;
+  }
+  // 終盤の試合を1つ決着させる
+  function settlePost(save, m, s) {
+    const post = save.post, r = rng(save);
+    m.s = s; m.done = true;
+    if (m.a !== save.team.name && m.b !== save.team.name) { addGoals(save, 'post', m.a, s[0], r); addGoals(save, 'post', m.b, s[1], r); }
+    if (m.rr) { const lg = { teams: post.playoff }; record(lg, post.playoff.findIndex((t) => t.name === m.a), post.playoff.findIndex((t) => t.name === m.b), s[0], s[1]); return; }
+    m.w = koWinner(r, lvlOf(save, m.a), lvlOf(save, m.b), s) ? m.b : m.a;
+    if (m.next) {   // 準決勝の勝者は決勝へ（決勝は12月4週）
+      const fin = post.matches.find((x) => x.key === m.next);
+      if (fin) fin.b = m.w; else post.matches.push({ comp: m.comp, label: '決勝', key: m.next, a: m.w, b: null, week: POST_WEEKS[1], ko: true, next: null });
+    }
+  }
+  function postMatchesAt(save, week) { return save.post ? save.post.matches.filter((m) => m.week === week && !m.done && m.a && m.b) : []; }
+
+  // ---------- 次の自分の公式戦（リーグ・カップ・シーズン終盤）----------
+  function nextFixture(save) {
+    const me = save.team.name, list = [];
+    const lg = save.league;
+    if (lg.round < lg.rounds.length) {
+      const pr = lg.rounds[lg.round].find(([a, b]) => lg.teams[a].me || lg.teams[b].me);
+      if (pr) { const home = lg.teams[pr[0]].me; list.push({ kind: 'league', comp: lg.name, label: `第${lg.round + 1}節`, round: lg.round + 1, week: lg.weeks[lg.round], home, opp: findTeam(save, lg.teams[home ? pr[1] : pr[0]].name) }); }
+    }
+    const cup = save.cup;
+    if (cup && cupIn(cup, me) && cup.round < CUP_WEEKS.length) {
+      const pr = cup.pairs.find(([a, b]) => a === me || b === me);
+      if (pr) list.push({ kind: 'cup', comp: '国内カップ', label: cupRoundLabel(cup), week: CUP_WEEKS[cup.round], home: pr[0] === me, opp: findTeam(save, pr[0] === me ? pr[1] : pr[0]) });
+    }
+    if (save.post) for (const m of save.post.matches) if (!m.done && m.a && m.b && (m.a === me || m.b === me)) list.push({ kind: 'post', comp: m.comp, label: m.label, week: m.week, home: m.a === me, opp: findTeam(save, m.a === me ? m.b : m.a), m });
+    if (!list.length) return null;
+    list.sort((x, y) => x.week - y.week);
+    const fx = list[0]; fx.weeksLeft = Math.max(0, fx.week - save.week);
+    return fx;
+  }
+  // 公式戦の結果を反映
+  function playFixture(save, fx, myScore, playedIdx) {
+    const r = rng(save), win = myScore[0] > myScore[1] ? true : myScore[0] < myScore[1] ? false : null;
+    const out = { kind: fx.kind, comp: fx.comp, label: fx.label };
+    if (fx.kind === 'league') { finishRound(save, myScore, playedIdx); return out; }
+    afterPlayed(save, playedIdx, r, false);
+    if (fx.kind === 'cup') {
+      let w = win; if (w === null) { w = koWinner(r, teamLevel(save), fx.opp.lvl, [0, 0]) === 0; out.pk = true; }
+      out.win = w; save.cup.log.push({ label: fx.label, opp: fx.opp.name, s: myScore, win: w, pk: out.pk, week: fx.week });
+      resolveCupRound(save, { win: w, s: myScore, pk: out.pk });
+      if (w) out.coins = save.cup.champion === save.team.name ? 60 : 8 + save.cup.round * 3;
+      out.champion = save.cup.champion === save.team.name;
+      return out;
+    }
+    const m = fx.m, s = m.a === save.team.name ? myScore : [myScore[1], myScore[0]];
+    settlePost(save, m, s);
+    if (m.ko) { out.win = m.w === save.team.name; out.pk = myScore[0] === myScore[1]; if (out.win) out.coins = m.label === '決勝' ? 40 : 15; }
+    else if (win) out.coins = 10;
+    return out;
+  }
+  // 練習試合（公式戦のない週だけ。カードは2〜4枚）
+  // チームのエンブレム（旗・ユニフォームに使う）：チームごとに色・形・模様・マークが決まる
+  const EMB_COLS = [['#1f4fbf', '#e23b2b'], ['#0f7a3a', '#ffd23a'], ['#6a1fb0', '#ffffff'], ['#d9541e', '#1a1a1a'], ['#1a8fd0', '#ffffff'], ['#c41e3a', '#ffd23a'], ['#222222', '#e8e8e8'], ['#2f9e44', '#ffffff'], ['#f2b51c', '#1f3f8f'], ['#d94a7a', '#2a2a6a'], ['#0e5e6e', '#f2c94c'], ['#8b1e2e', '#f0e0b0'], ['#3a6fd8', '#ffd23a'], ['#5a2a8a', '#ffb020'], ['#e86a1a', '#ffffff'], ['#14467a', '#7fd0ff']];
+  const EMB_ICONS = ['ball', 'star', 'wave', 'crown', 'bolt', 'wing'];
+  function teamLook(save, name) {
+    if (!name || name === save.team.name) { const e = ensureClub(save).emb; return { ...e, ch: e.ch || (save.team.short || save.team.name || 'H')[0], me: true }; }
+    const t = findTeam(save, name) || { seed: [...name].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0, short: name };
+    let x = (t.seed * 2654435761 + 12345) >>> 0; const r = () => { x = (Math.imul(x, 1664525) + 1013904223) >>> 0; return ((x ^ (x >>> 15)) >>> 0) / 4294967296; };
+    const [c1, c2] = EMB_COLS[Math.floor(r() * EMB_COLS.length)];
+    const m = TEAM_BY_ID[t.id] || TEAMS.find((x) => x.name === name);
+    const sh = Math.floor(r() * 3), pat = Math.floor(r() * 4), ic = EMB_ICONS[Math.floor(r() * EMB_ICONS.length)];
+    if (m) return { c1: m.c1, c2: m.c2, shape: sh, pat, icon: m.icon || ic, ch: (m.short || name)[0], id: m.id };   // 固定チーム：イメージカラーで
+    return { c1, c2, shape: sh, pat, icon: ic, ch: (t.short || name)[0] };
+  }
+  // ---------- 国内屈指（タイプごとに国内でいちばんの選手）----------
+  //  最初は rosters.js の11人。シーズンが終わるたびに、自分の選手がそのタイプの「大事な能力」の合計で上回っていたら、称号が移る
+  //  （CPUの選手は能力が変わらないので、自分の選手が育つほど国内屈指になれる。自分の選手が衰えたら、元の選手に戻ることもある）
+  const TOP_KEYS = {   // そのタイプに大事な能力（国内屈指の選手がSの能力）
+    'ストライカー': 'SSAASSASSCSS', 'アタッカー': 'ASSASSABBCAS', 'ゲームメイカー': 'ASSSBAACCCSS', 'パサー': 'SSASAAABBBSA', 'レジスタ': 'ASASBBABBASS',
+    'ダイナモ': 'AAAAASSABAAS', 'スイーパー': 'CABAAAASSSSS', 'ストッパー': 'CBCBAAASSSAS', 'マンマーカー': 'CABBSSSAASAA', 'ラインコントローラー': 'CABSAAAASSSS', 'ゴールキーパー': 'BBCABSAASASS',
+    '偽9番': 'ASASBBABCCSS', 'デコイラン': 'BAABSSSABCAS', 'ファンタジスタ': 'ASSSAABCCCSA', 'シャドー': 'SAABSSABACAS', 'アンカー': 'BACABASSASSS', 'ビルドアップ型': 'AABSBBAAASSS', 'スイーパーキーパー': 'ABCASSAASASS',
+  };
+  const K12 = ['kick', 'technique', 'dribble', 'pass', 'speed', 'dash', 'stamina', 'physical', 'jump', 'defense', 'vision', 'mental'];
+  const topScore = (type, p) => [...(TOP_KEYS[type] || '')].reduce((a, ch, j) => a + (ch === 'S' ? (p[K12[j]] || 0) : ch === 'A' ? (p[K12[j]] || 0) * 0.3 : 0), 0);
+  function ensureTitles(save) {
+    const t = save.titles || (save.titles = {});
+    // 国内屈指がまだ記録されていないタイプ（あとから増えたタイプも）は、最初の持ち主を入れる
+    for (const id in ROSTERS) for (const q of ROSTERS[id].players) if (q.top && !t[q.top]) t[q.top] = { id, name: q.name, orig: { id, name: q.name } };
+    return t;
+  }
+  function titleOf(save, teamId, name) { const t = ensureTitles(save); for (const k in t) if (t[k].id === teamId && t[k].name === name) return k; return null; }
+  function evalTitles(save) {
+    // 国内屈指：最初の持ち主（CPUの選手は能力が変わらない）と、自分の同じタイプの選手を比べる。今の持ち主は少しだけ有利
+    const t = ensureTitles(save), out = [];
+    for (const type in t) {
+      const cur = t[type], o = cur.orig, oq = ROSTERS[o.id] && ROSTERS[o.id].players.find((q) => q.name === o.name);
+      let best = { id: o.id, name: o.name, sc: oq ? topScore(type, oq) * (cur.id === o.id ? 1.02 : 1) : 0 };
+      for (const p of save.team.players) if (p.type === type) { const sc = topScore(type, p) * (cur.id === 'me' && cur.name === p.name ? 1.02 : 1); if (sc > best.sc) best = { id: 'me', name: p.name, sc }; }
+      if (best.id !== cur.id || best.name !== cur.name) {
+        out.push({ type, name: best.name, team: best.id === 'me' ? save.team.name : (TEAM_BY_ID[best.id] || {}).name, mine: best.id === 'me', lost: cur.id === 'me' ? cur.name : null });
+        t[type] = { id: best.id, name: best.name, orig: o };
+      }
+    }
+    return out;
+  }
+
+
+  // ---------- 自分のクラブ：名前・ユニフォーム・エンブレム（クラブ設定で変えられる）----------
+  const KIT_DEFAULT = { pat: 'solid', shirt: '#2f6fd6', sub: '#ffffff', shorts: '#ffffff', socks: '#2f6fd6' };
+  const EMB_DEFAULT = { shape: 0, pat: 1, icon: 'ball', c1: '#1f5fd0', c2: '#ffd23a', c3: '#ffffff', ch: '' };
+  function ensureClub(save) {
+    if (!save.club) save.club = { kit: { ...KIT_DEFAULT }, emb: { ...EMB_DEFAULT } };
+    save.club.kit = { ...KIT_DEFAULT, ...save.club.kit }; save.club.emb = { ...EMB_DEFAULT, ...save.club.emb };
+    if (!save.club.kit2) { const k = save.club.kit; save.club.kit2 = { pat: 'solid', shirt: '#f4f4f0', sub: k.shirt, shorts: k.shirt, socks: '#f4f4f0' }; }   // アウェーのユニフォーム（はじめは白）
+    return save.club;
+  }
+  // クラブ名を変える：セーブの中の「自分のチーム名」をすべて置きかえる（順位表・カップ・記録）
+  function renameClub(save, name, short) {
+    name = String(name || '').trim().slice(0, 12); short = String(short || '').trim().slice(0, 6);
+    if (!name) return false;
+    if (TEAMS.some((t) => t.name === name)) return false;   // ほかのチームと同じ名前はだめ
+    const old = save.team.name;
+    if (name !== old) {
+      const club = save.club, world = save.world; delete save.club; delete save.world;
+      let js = JSON.stringify(save); js = js.split(JSON.stringify(old)).join(JSON.stringify(name));
+      const nw = JSON.parse(js); for (const k in nw) save[k] = nw[k];
+      save.club = club; save.world = world;
+      if (save.history) for (const h of save.history) if (h.club === old) h.club = name;
+    }
+    save.team.name = name; save.team.short = short || name.replace(/FC$|SC$/, '').slice(0, 6);
+    return true;
+  }
+  // 試合のユニフォーム：相手と色がかぶったら、相手は2着目（サブの色か白）
+  const colDist = (a, b) => { const x = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16)), y = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16)); return Math.hypot(x[0] - y[0], (x[1] - y[1]) * 1.2, x[2] - y[2]); };
+  function kitsFor(save, oppName, sel) {
+    const cl = ensureClub(save); let mine = { ...(sel === 'away' ? cl.kit2 : cl.kit) };
+    if (!sel || sel === 'auto') { const t0 = findTeam(save, oppName), r0 = t0 && ROSTERS[t0.id]; if (r0 && colDist(mine.shirt, r0.kit.shirt) < 120 && colDist(cl.kit2.shirt, r0.kit.shirt) >= 120) mine = { ...cl.kit2 }; }   // おまかせ：相手と色がかぶったらアウェー
+    const t = findTeam(save, oppName), ro = t && ROSTERS[t.id];
+    let opp = ro ? { ...ro.kit } : { pat: 'solid', shirt: '#e2453a', sub: '#ffffff', shorts: '#ffffff', socks: '#e2453a' };
+    if (colDist(mine.shirt, opp.shirt) < 120) {
+      const alt = colDist(mine.shirt, opp.sub) >= 120 ? opp.sub : colDist(mine.shirt, '#f4f4f0') >= 120 ? '#f4f4f0' : '#1a1a1a';
+      opp = { pat: 'solid', shirt: alt, sub: opp.shirt, shorts: alt === '#f4f4f0' ? opp.shirt : '#f4f4f0', socks: alt };
+    }
+    return [mine, opp];
+  }
+  // ほかのチーム同士（D1観戦）のユニフォーム：アウェイの色がかぶったら替える
+  function kitsPair(save, A, B) {
+    const k = (n) => { const t = findTeam(save, n), ro = t && ROSTERS[t.id]; return ro ? { ...ro.kit } : { pat: 'solid', shirt: '#e2453a', sub: '#ffffff', shorts: '#ffffff', socks: '#e2453a' }; };
+    const a = k(A); let b = k(B);
+    if (colDist(a.shirt, b.shirt) < 120) { const alt = colDist(a.shirt, b.sub) >= 120 ? b.sub : colDist(a.shirt, '#f4f4f0') >= 120 ? '#f4f4f0' : '#1a1a1a'; b = { pat: 'solid', shirt: alt, sub: b.shirt, shorts: alt === '#f4f4f0' ? b.shirt : '#f4f4f0', socks: alt }; }
+    return [a, b];
+  }
+  // 練習試合の申し込み一覧（週ごとに決まる）：実力の近いチームが中心。ときどき、日程の空いた格上が受けてくれる
+  function practiceOptions(save) {
+    const key = wkKey(save);
+    if (save.practiceOpts && save.practiceOpts.key === key) return save.practiceOpts.list;
+    let s0 = (save.season * 977 + save.week * 131 + 7) >>> 0;
+    const r = () => { s0 = (Math.imul(s0, 1664525) + 1013904223) >>> 0; let x = s0 ^ (s0 >>> 16); x = Math.imul(x, 0x45d9f3b) >>> 0; return ((x ^ (x >>> 16)) >>> 0) / 4294967296; };
+    const me = teamLevel(save), myLg = myLgId(save), myTier = LG[myLg].tier;
+    const all = [];
+    for (const lg of LEAGUES) for (const t of save.world.leagues[lg.id] || []) all.push({ ...t, lg: lg.id, tier: lg.tier });
+    const nf = nextFixture(save), busy = new Set(nf && nf.week <= save.week && nf.opp ? [nf.opp.name] : []);
+    // 近い実力（同じリーグ＋前後のリーグで、強さの差が小さい順）
+    const region = save.world.region;
+    const near = all.filter((t) => !busy.has(t.name) && Math.abs(t.tier - myTier) <= 1 && t.lvl <= me + 7 && !(t.tier <= 1 && t.region && t.region !== region))
+      .map((t) => ({ t, d: Math.abs(t.lvl - me) + (t.lg === myLg ? -5 : 0) + r() * 5 })).sort((a, b) => a.d - b.d).slice(0, 5).map((x) => x.t);
+    const list = near.slice();
+    // 格上：そのリーグが今週お休みのときだけ、ときどき
+    if (r() < 0.5) {
+      const strong = all.filter((t) => t.tier > myTier && t.lvl >= me + 8 && !list.includes(t) && !leagueWeeks(2 * (LG[t.lg].size - 1), t.lg).includes(save.week));
+      if (strong.length) list.push(strong[Math.floor(r() * strong.length)]);
+    }
+    // 順位：自分のリーグは今の順位、ほかは載せない
+    const st = standings(save);
+    const out = list.map((t) => ({ name: t.name, short: t.short, lg: t.lg, rank: t.lg === myLg ? st.findIndex((x) => x.name === t.name) + 1 : 0, strong: t.lvl >= me + 8 }));
+    save.practiceOpts = { key, list: out };
+    return out;
+  }
+  function practiceOpponent(save) {
+    const pool = save.world.leagues[myLgId(save)], r = rng(save);
+    return { ...pool[Math.floor(r() * pool.length)], lg: myLgId(save) };
+  }
+  function playPractice(save, myScore, playedIdx) {
+    const r = rng(save); afterPlayed(save, playedIdx, r, true);
+    const got = [], n = myScore[0] > myScore[1] ? 3 + Math.floor(r() * 2) : 2 + Math.floor(r() * 2);
+    const main = CARD_POOL.filter((c) => CARDS[c].cat !== 'sup'), sup = CARD_POOL.filter((c) => CARDS[c].cat === 'sup');
+    for (let k = 0; k < n; k++) got.push(r() < 0.25 ? sup[Math.floor(r() * sup.length)] : main[Math.floor(r() * main.length)]);
+    for (const c of got) save.cards[c] = Math.min(CARD_MAX, (save.cards[c] || 0) + 1);
+    got.coins = 0; save.practicedAt = wkKey(save);
+    return got;
+  }
+  // 週の終わり：自分の関わらない試合（カップ・終盤）を決着させる
+  function settleWeek(save) {
+    const w = save.week, out = [];
+    ensureOthers(save); advanceOthers(save, w);
+    const ci = CUP_WEEKS.indexOf(w);
+    if (save.cup && !save.cup.champion && ci === save.cup.round) {
+      const wasIn = cupIn(save.cup, save.team.name);
+      resolveCupRound(save, null);
+      if (wasIn && !cupIn(save.cup, save.team.name)) out.push('cupOut');
+    }
+    if (w === LEAGUE_TO && !save.post) setupPost(save);
+    for (const m of postMatchesAt(save, w)) { const s = quickScore(rng(save), lvlOf(save, m.a), lvlOf(save, m.b)); settlePost(save, m, s); }
+    return out;
+  }
+
+  // シーズン終了（2月4週のあと）：昇格・降格して、次のシーズンを作る
+  function endSeason(save) {
+    if (!save.post) setupPost(save);
+    for (const m of save.post.matches) if (!m.done && m.a && m.b) settlePost(save, m, quickScore(rng(save), lvlOf(save, m.a), lvlOf(save, m.b)));
+    const r = rng(save), W = save.world.leagues, fin = save.post.fin, me = save.team.name;
+    const pos = fin[myLgId(save)].indexOf(me) + 1, fromId = myLgId(save);
+    // 全チームの所属（自分も含む名前のリスト）
+    const lists = {}; for (const id in fin) lists[id] = fin[id].slice();
+    const move = (name, from, to) => { lists[from] = lists[from].filter((n) => n !== name); lists[to].push(name); };
+    // 地域2部 ⇄ 地域1部（東西それぞれ）
+    for (const [two, one] of [['regE2', 'regE1'], ['regW2', 'regW1']]) { const up = fin[two][0], down = fin[one][fin[one].length - 1]; move(up, two, one); move(down, one, two); }
+    // D3昇格トーナメント：決勝の2チームがD3へ。D3の下位2チームは地域1部へ
+    const finl = save.post.matches.find((m) => m.comp === 'D3昇格トーナメント' && m.label === '決勝');
+    const promo = finl ? [finl.a, finl.b] : [fin.regE1[0], fin.regW1[0]];
+    for (const n of promo) move(n, lists.regE1.includes(n) ? 'regE1' : 'regW1', 'd3');
+    for (const n of fin.d3.slice(-2)) { const t = findTeam(save, n); move(n, 'd3', (t && t.region) === 'E' ? 'regE1' : 'regW1'); }
+    // D3→D2：1位は自動昇格、2位はD2の13位と入れ替え戦。D2の最下位は自動降格
+    move(fin.d3[0], 'd3', 'd2'); move(fin.d2[13], 'd2', 'd3');
+    const ex = save.post.matches.find((m) => m.comp === 'D3/D2入れ替え戦');
+    if (ex && ex.w === fin.d3[1]) { move(fin.d3[1], 'd3', 'd2'); move(fin.d2[12], 'd2', 'd3'); }
+    // D1昇格リーグ：上位2チームがD1、下位2チームがD2
+    const pl = save.post.playoff.slice().sort((x, y) => y.stats.Pts - x.stats.Pts || (y.stats.GF - y.stats.GA) - (x.stats.GF - x.stats.GA));
+    pl.forEach((t, k) => { const cur = lists.d1.includes(t.name) ? 'd1' : 'd2', to = k < 2 ? 'd1' : 'd2'; if (cur !== to) move(t.name, cur, to); });
+    // 地域1部の東西を8チームずつにそろえる（あふれた方から移す）
+    for (let guard = 0; guard < 6 && lists.regE1.length !== lists.regW1.length; guard++) {
+      const [big, small] = lists.regE1.length > lists.regW1.length ? ['regE1', 'regW1'] : ['regW1', 'regE1'];
+      const n = lists[big].filter((x) => x !== me).pop(); move(n, big, small);
+    }
+    // 新しい世界：AIチームは少しずつ強さが変わる
+    const all = {}; for (const id in W) for (const t of W[id]) all[t.name] = t;
+    const nw = {}; let myNew = fromId;
+    for (const id in lists) {
+      nw[id] = [];
+      for (const n of lists[id]) {
+        if (n === me) { myNew = id; continue; }
+        const t = all[n]; if (!ROSTERS[t.id]) t.lvl = clamp(t.lvl + Math.floor(r() * 4) - 1, 30, 92); if (LG[id].region) t.region = LG[id].region; nw[id].push(t);
+      }
+    }
+    save.world.leagues = nw; save.world.me = myNew; if (LG[myNew].region) save.world.region = LG[myNew].region;
+    const up = LG[myNew].tier > LG[fromId].tier, down = LG[myNew].tier < LG[fromId].tier;
+    const msg = up ? `${pos}位！${LG[myNew].name}へ昇格！` : down ? `${pos}位…${LG[myNew].name}へ降格` : LG[fromId].tier === 4 && pos === 1 ? 'D1リーグ優勝！！' : `${pos}位。${LG[fromId].name}に残留`;
+    save.history.push({ season: save.season, league: LG[fromId].name, pos, msg, cup: save.cup && save.cup.champion === me ? '国内カップ優勝' : '' });
+    save.season++; save.week = 1; save.post = null;
+    for (const id in save.world.leagues) for (const t of save.world.leagues[id]) if (ROSTERS[t.id]) t.lvl = lvlAt(t.id, save.season);   // 選手の成長・引退で強さが変わる
+    for (const p of save.team.players) { p.fatigue = 0; p.injury = 0; }
+    newLeague(save); newCup(save);
+    return msg;
+  }
+
+  // ---------- 戦術：フォーメーションとチーム戦術 ----------
+  const FORMATIONS = ['4-4-2', '4-3-3', '4-2-3-1', '4-1-4-1', '4-5-1', '4-4-1-1', '3-5-2', '3-4-3', '3-4-2-1', '5-3-2', '5-4-1'];
+  // 戦術の項目：key, 名前, 選択肢（値と名前）, 説明
+  const TACTIC_ITEMS = [
+    { key: 'line', name: 'ラインの高さ', opts: [[1, '深く'], [2, 'やや深く'], [3, 'ふつう'], [4, 'やや高く'], [5, '高く']], desc: '高いほど前でボールを奪えるが、裏を取られやすい' },
+    { key: 'width', name: '横の幅', opts: [[1, '狭く'], [2, 'やや狭く'], [3, 'ふつう'], [4, 'やや広く'], [5, '広く']], desc: '広いとピッチを大きく使える。狭いと中央が固い' },
+    { key: 'compact', name: '縦の間隔', opts: [[1, '広く'], [2, 'ふつう'], [3, 'コンパクト']], desc: 'コンパクトだと守りが固いが、走る量が増える' },
+    { key: 'attitude', name: '攻撃の姿勢', opts: [['defensive', '守備的'], ['balanced', 'バランス'], ['attacking', '攻撃的']], desc: '攻撃的だとシュートが増え、守備的だと奪ってからの速攻が増える' },
+    { key: 'press', name: 'プレス', opts: [[-1, '控えめ'], [0, 'ふつう'], [1, '前から']], desc: '前からだとボールを奪いやすいが、疲れやすい' },
+    { key: 'pass', name: 'パスの方針', opts: [[-1, 'つなぐ'], [0, 'バランス'], [1, '縦に速く']], desc: 'つなぐと確実、縦に速くだとスルーパスや速攻が増える' },
+    { key: 'side', name: '攻める場所', opts: [[-1, '中央'], [0, 'バランス'], [1, 'サイド']], desc: 'サイドだとクロスが増える。中央だと短いパスで崩す' },
+  ];
+  // サッカーを知らなくても選べる「戦い方」：選ぶと全部の項目がそろう
+  const STYLES = [
+    { id: 'balance', name: 'バランス', desc: '攻守のバランスがよい、基本の戦い方', formation: '4-4-2', t: { line: 3, width: 3, compact: 2, attitude: 'balanced', press: 0, pass: 0, side: 0 } },
+    { id: 'counter', name: '堅守速攻', desc: '深く守って、奪ったら一気に前へ', formation: '4-5-1', t: { line: 2, width: 2, compact: 3, attitude: 'defensive', press: -1, pass: 1, side: 0 } },
+    { id: 'possession', name: 'ポゼッション', desc: 'パスをつないでボールを持ち続ける', formation: '4-3-3', t: { line: 4, width: 4, compact: 2, attitude: 'balanced', press: 0, pass: -1, side: -1 } },
+    { id: 'highpress', name: 'ハイプレス', desc: '前からどんどん奪いに行く（疲れやすい）', formation: '4-4-2', t: { line: 5, width: 3, compact: 3, attitude: 'attacking', press: 1, pass: 1, side: 0 } },
+    { id: 'wing', name: 'サイド攻撃', desc: 'サイドを広く使って、クロスで勝負', formation: '4-3-3', t: { line: 3, width: 5, compact: 2, attitude: 'balanced', press: 0, pass: 0, side: 1 } },
+  ];
+  // マス目：縦10マス（行0〜2 DF・3〜6 MF・7〜9 FW）×横15マス。代表的なフォーメーションは最初の形の見本
+  const GRID_R = 10, GRID_C = 15;
+  const zoneOf = (r) => (r <= 2 ? 'DF' : r <= 6 ? 'MF' : 'FW');
+  function cellsFor(formation) {
+    const lines = String(formation).split('-').map(Number), rows = lines.length === 3 ? [1, 4, 8] : lines.length === 4 ? [1, 3, 5, 8] : [1, 3, 4, 6, 8];
+    const out = [null];
+    lines.forEach((n, li) => { const sp = n > 1 ? Math.min(4, 12 / (n - 1)) : 0; for (let k = 0; k < n; k++) out.push({ r: rows[li], c: Math.round(7 + (k - (n - 1) / 2) * sp) }); });
+    return out;
+  }
+  // 今の並びを「4-4-2」のような呼び名にする（ゾーンごとの人数）
+  function formationLabel(cells) { const n = { DF: 0, MF: 0, FW: 0 }; for (let i = 1; i < 11; i++) if (cells[i]) n[zoneOf(cells[i].r)]++; return `${n.DF}-${n.MF}-${n.FW}`; }
+  function defaultTactics() { const st = STYLES[0]; return { style: st.id, formation: '4-4-2', cells: cellsFor('4-4-2'), roles: {}, ...st.t }; }
+  function ensureTactics(save) {
+    if (!save.tactics) save.tactics = defaultTactics();
+    const t = save.tactics;
+    if (!t.cells) t.cells = cellsFor(t.formation || '4-4-2');
+    if (!t.roles) t.roles = {};
+    if (!t.situ) t.situ = { ...SITU_DEFAULT };
+    delete t.adj;
+    return t;
+  }
+  // 状況別の作戦：残り時間になったら、点差に合わせて動きを変える（試合中に自動で切りかわる）
+  const SITU_DEFAULT = { from: 70, lead: 'keep', draw: 'keep', behind: 'attack' };
+  const SITU_ACTS = [
+    ['keep', 'そのまま', 'いつもの戦い方を続ける'],
+    ['defend', '守りを固める', '無理に攻めず、ボールを持たせない守備で失点を防ぐ'],
+    ['attack', '攻めに出る', '縦へ急ぎ、前からプレスをかける（疲れやすい）'],
+    ['allout', '総攻撃', 'DFも上がって全員で点を取りにいく（裏を取られやすく、とても疲れる）'],
+  ];
+  const SITU_ROWS = [['lead', '勝っている時'], ['draw', '引き分けの時'], ['behind', '負けている時']];
+  const SITU_FROM = [[60, '残り30分から'], [70, '残り20分から'], [80, '残り10分から']];
+  // フォーメーションの各ポジションが DF・MF・FW のどれか（GK→1列目→…→最前列）
+  function slotRoles(formation) {
+    if (Array.isArray(formation)) return ['GK', ...formation.slice(1, 11).map((c) => zoneOf(c.r))];   // マス目の配置
+    const lines = String(formation).split('-').map(Number);
+    const out = ['GK'];
+    lines.forEach((n, li) => { for (let k = 0; k < n; k++) out.push(li === 0 ? 'DF' : li === lines.length - 1 ? 'FW' : 'MF'); });
+    return out;
+  }
+  // チーム戦術を試合用のチームに書き込む
+  function applyTactics(t, tac) {
+    t.formation = tac.formation; t.line_height = tac.line; t.zone_width = tac.width; t.compact = tac.compact;
+    t.attitude = tac.attitude; t.press = tac.press; t.pass_style = tac.pass; t.attack_side = tac.side;
+    if (tac.cells) t.cells = tac.cells.slice(0, 11);
+    if (tac.situ) t.situ = { ...tac.situ };
+    return t;
+  }
+  // 相手チームの戦い方：チームの個性（プリセット）に合わせて
+  const PRESET_STYLE = { 'バランス型': ['balance', 'balance', 'wing'], '堅守型': ['counter', 'counter', 'balance'], 'パス型': ['possession', 'possession', 'balance'], 'プレス型': ['highpress', 'highpress', 'balance'], '走力型': ['wing', 'counter', 'wing'], '裏抜け型': ['counter', 'highpress', 'balance'] };
+  const STYLE_FORMS = { balance: ['4-4-2', '4-2-3-1', '4-4-1-1'], counter: ['4-5-1', '5-3-2', '4-1-4-1', '5-4-1'], possession: ['4-3-3', '4-2-3-1', '3-4-3'], highpress: ['4-4-2', '4-3-3', '3-4-2-1'], wing: ['4-3-3', '3-5-2', '4-4-2'] };
+  // 選手をフォーメーションの列に合わせて並べる（DFの列にはDF、という順で埋める）
+  function fitLines(players, formation) {
+    const roles = slotRoles(formation), pool = players.slice(), out = [];
+    for (const role of roles) {
+      let k = pool.findIndex((p) => p.position === role);
+      if (k < 0) k = pool.findIndex((p) => p.position !== 'GK');
+      if (k < 0) k = 0;
+      out.push(pool.splice(k, 1)[0]);
+    }
+    return [...out, ...pool];
+  }
+  // 試合用の自チーム（ケガ人は控えと入れ替える）
+  const BENCH_N = 7;   // ベンチ入りの控え（カルチョビットAと同じ7人）
+  function matchTeam(save) {
+    const t = JSON.parse(JSON.stringify(save.team));
+    const ps = t.players;
+    for (let i = 0; i < 11; i++) {
+      if (ps[i].injury > 0 || ps[i].suspend > 0) {   // ケガ・出場停止の選手は、控えと入れ替える
+        const ok = (q, k) => k >= 11 && !(q.injury > 0) && !(q.suspend > 0) && (q.position === 'GK') === (ps[i].position === 'GK');
+        let j = ps.findIndex((q, k) => k < 11 + BENCH_N && ok(q, k)); if (j < 0) j = ps.findIndex(ok);   // まずベンチ入りの選手から
+        if (j > 0) [ps[i], ps[j]] = [ps[j], ps[i]];
+      }
+    }
+    // 疲れている選手は能力が少し落ちる
+    for (const p of ps) { p.startCur = 100 - (p.fatigue || 0) * 0.5; const f = p.fatigue > 70 ? 0.92 : p.fatigue > 50 ? 0.96 : 1; for (const k of KEYS) p[k] = Math.round(p[k] * f * (1 + (p.cond || 0) * 0.015)); }
+    // 凸の効果：サポートパッシブ（☆2は3凸で付与、☆3は2凸で付与・3凸で強化、☆4は1凸で付与・2凸で強化・3凸で範囲拡大、☆5は2凸で付与・3凸で強化）と、固有スキルの覚醒（☆5の1凸から）
+    for (const p of ps) { const st = ensureStar(p), tz = p.totsu || 0; p.passive = st === 2 ? (tz >= 3 ? 1 : 0) : st === 3 ? (tz >= 3 ? 2 : tz >= 2 ? 1 : 0) : st === 4 ? Math.min(3, tz) : st >= 5 ? (tz >= 3 ? 2 : tz >= 2 ? 1 : 0) : 0; if (p.uniq) p.uniqLv = st >= 5 && tz >= 1 ? 2 : 1; }
+    const tac = ensureTactics(save);
+    applyTactics(t, tac);
+    t.roles = {};
+    for (const k of ['captain', 'pk', 'fk', 'ck']) { const n = tac.roles[k]; const i = n ? ps.slice(0, 11).findIndex((q) => q.name === n) : -1; if (i >= 0) t.roles[k] = i; }
+    t.players = ps.slice(0, 11 + BENCH_N);   // ベンチ入り（控え7人）まで。ベンチ外の選手は試合に出られない
+    return { team: t, played: ps.slice(0, 11).map((p) => save.team.players.findIndex((q) => q.name === p.name)) };
+  }
+
+
+  // ================= 育成ポイント（内部の数値）とランク =================
+  // 能力は内部で「育成ポイント」を持ち、ランクごとに必要なポイントが増えていく（上ほど伸びにくい）
+  //   E 0〜49 / D 50〜149 / C 150〜389 / B 390〜659 / A 660〜989 / S 990〜（最大1280）
+  //   E・Dはすぐ上がり、Cから伸び悩み、B→A、A→Sの順に長くなる。毎週特訓して1年でオールC＋ちらほらB、4年でS・A・Bだけ
+  // 試合エンジンへは 1〜99 の数値に直して渡す（E〜Sの境目がエンジン側の境目とぴったり合うように）
+  const RANK = [['E', 0, 50], ['D', 50, 150], ['C', 150, 390], ['B', 390, 660], ['A', 660, 990], ['S', 990, 1280]];
+  const RANK_V2 = [['E', 0, 50], ['D', 50, 150], ['C', 150, 390], ['B', 390, 630], ['A', 630, 910], ['S', 910, 1180]];
+  const RANK_OLD = [['E', 0, 100], ['D', 100, 250], ['C', 250, 450], ['B', 450, 700], ['A', 700, 1000], ['S', 1000, 1300]];
+  const ENG = [30, 45, 55, 64, 74, 84, 99];
+  const PMAX = RANK[RANK.length - 1][2];
+  function toEng(pt) { pt = clamp(pt, 0, PMAX); for (let i = 0; i < RANK.length; i++) { const [, a, b] = RANK[i]; if (pt < b || i === RANK.length - 1) return Math.round((ENG[i] + (ENG[i + 1] - ENG[i]) * clamp((pt - a) / (b - a), 0, 1)) * 10) / 10; } return 99; }
+  function toPts(v) { v = clamp(v, ENG[0], 99); for (let i = 0; i < RANK.length; i++) { if (v < ENG[i + 1] || i === RANK.length - 1) { const [, a, b] = RANK[i]; return Math.round(a + (b - a) * clamp((v - ENG[i]) / (ENG[i + 1] - ENG[i]), 0, 1)); } } return PMAX; }
+  function rankInfo(pt) { const r = RANK.find(([, a, b]) => pt >= a && pt < b) || RANK[5]; return { g: r[0], lo: r[1], hi: r[2], pct: clamp((pt - r[1]) / (r[2] - r[1]), 0, 1), next: r[2] }; }
+  function ensurePts(p) { if (!p.pts) p.pts = Object.fromEntries(KEYS.map((k) => [k, toPts(p[k])])); }
+  // ---------- ☆（レア度）：育てられるランクの上限を決める ----------
+  // ☆1＝オールCまで ☆2＝Bまで ☆3＝Aまで ☆4・☆5＝Sまで。凸（覚醒）1回ごとに上限が1段上がる（Sまで）
+  // CPU：国内屈指＝☆5、エース・中心選手＝☆4、そのほかは最初のリーグで D1/D2＝☆3、D3/地域1部＝☆2、地域2部＝☆1
+  // 自分のチームの最初の選手：☆1と☆2がまざる（Bの能力をもう持っている選手が☆2）
+  const GRADES = ['E', 'D', 'C', 'B', 'A', 'S'];
+  function ensureStar(p) {
+    if (p.star >= 1 && p.star <= 5) return p.star;
+    ensurePts(p);
+    p.star = Math.max(...KEYS.map((k) => p.pts[k] || 0)) >= RANK[3][1] ? 2 : 1;   // もうBの能力がある選手は☆2、それ以外は☆1
+    p.totsu = p.totsu || 0;
+    return p.star;
+  }
+  function starOf(tid, q) {
+    if (q.top) return 5;
+    if (q.role === 'ace' || q.role === 'core') return 4;
+    const lg = (TEAM_BY_ID[tid] || {}).lg || '';
+    return lg === 'd1' || lg === 'd2' ? 3 : lg === 'd3' || /1$/.test(lg) ? 2 : 1;
+  }
+  // CPUの選手の凸：いちばん高い能力のランクに届くのに必要な数だけ（☆3＝Aまでなので、Sがあれば1凸）
+  function totsuOf(tid, q) { const mx = Math.max(...KEYS.map((k) => q[k] || 0)); let gi = 0; for (let i = 1; i < ENG.length - 1; i++) if (mx >= ENG[i]) gi = i; return Math.max(0, Math.min(3, gi - capIdx(starOf(tid, q), 0))); }
+  const capIdx = (star, totsu) => Math.min(5, star + 1 + (totsu || 0));   // GRADES の番号（2＝C … 5＝S）
+  const capGrade = (p) => GRADES[capIdx(ensureStar(p), p.totsu)];
+  const capPts = (p) => { const i = capIdx(ensureStar(p), p.totsu); return i >= 5 ? PMAX : RANK[i][2] - 0.1; };
+  function addPts(p, k, g) {
+    ensurePts(p); let v = p.pts[k] + g;
+    if (g > 0) v = Math.min(v, Math.max(p.pts[k], capPts(p)));   // 上限より上には伸びない（もともと上にいる分は下げない）
+    p.pts[k] = clamp(Math.round(v * 10) / 10, 0, PMAX); p[k] = toEng(p.pts[k]);
+  }
+
+  // ================= トレーニングカード（試合で手に入れ、選手に最大3枚かけ合わせて特訓） =================
+  // up：上がる育成ポイント / hid：裏パラ / fat：疲れ（0〜100の疲労ゲージにはこの1/4がたまる）
+  // 数値は本家の表（キック・スピード・スタミナ・テクニック・フィジカル・ジャンプ・メンタル）をもとに、
+  // このゲームで増やした5つ（瞬発力・ドリブル・パス・ディフェンス・判断）を内容に合わせて足したもの
+  const CARDS = {
+    // TACTICAL
+    video: { name: 'ビデオ研究', cat: 'tact', up: { kick: 1, mental: 1, vision: 2 }, hid: { support: 1 }, fat: 10 },
+    manMark: { name: 'マンツーマン', cat: 'tact', up: { stamina: 2, physical: 2, defense: 2 }, hid: { zone_man: 5 }, fat: 40 },
+    press: { name: 'プレス', cat: 'tact', up: { speed: 2, technique: 1, defense: 2 }, hid: { press: 5 }, fat: 40 },
+    counter: { name: 'カウンター', cat: 'tact', up: { speed: 2, stamina: 1, technique: 1, dash: 1, vision: 1 }, hid: { run_space: 4 }, fat: 40 },
+    mini: { name: 'ミニゲーム', cat: 'tact', up: { kick: 1, technique: 1, jump: 2, pass: 1, vision: 1 }, hid: { support: 2, overlap: 1 }, fat: 60 },
+    line: { name: 'ラインコントロール', cat: 'tact', up: { stamina: 2, mental: 2, defense: 2, vision: 1 }, hid: { zone_man: -5 }, fat: 20 },
+    setplay: { name: 'セットプレー', cat: 'tact', up: { kick: 1, mental: 2, vision: 1 }, hid: { goal_wait: 2 }, fat: 20 },
+    // TECHNICAL
+    dribble: { name: 'ドリブル', cat: 'tech', up: { speed: 3, stamina: 2, technique: 2, dribble: 3 }, hid: { run_space: 3 }, fat: 100 },
+    placeKick: { name: 'プレースキック', cat: 'tech', up: { kick: 4, mental: 2, pass: 1 }, hid: {}, fat: 80 },
+    shoot: { name: 'シュート', cat: 'tech', up: { kick: 4, technique: 1 }, hid: { goal_wait: 4 }, fat: 100 },
+    pass: { name: 'パス', cat: 'tech', up: { speed: 3, technique: 3, pass: 3, vision: 1 }, hid: { support: 4 }, fat: 100 },
+    lifting: { name: 'リフティング', cat: 'tech', up: { technique: 4, dribble: 2 }, hid: {}, fat: 100 },
+    sliding: { name: 'スライディング', cat: 'tech', up: { kick: 1, technique: 2, physical: 3, defense: 3 }, hid: { press: 3 }, fat: 100 },
+    heading: { name: 'ヘディング', cat: 'tech', up: { kick: 2, jump: 7 }, hid: { goal_wait: 3 }, fat: 100 },
+    // PHYSICAL
+    running: { name: 'ランニング', cat: 'phys', up: { speed: 3, stamina: 6, mental: 1 }, hid: { overlap: 4 }, fat: 90 },
+    weight: { name: 'ウエイト', cat: 'phys', up: { kick: 2, technique: 1, physical: 4 }, hid: { press: 2 }, fat: 100 },
+    kickTr: { name: 'キック', cat: 'phys', up: { kick: 2, technique: 1, physical: 4 }, hid: {}, fat: 100 },
+    dash: { name: 'ダッシュ', cat: 'phys', up: { kick: 1, speed: 6, jump: 3, dash: 3 }, hid: { run_space: 3 }, fat: 100 },
+    agility: { name: 'アジリティ', cat: 'phys', up: { speed: 3, technique: 1, jump: 4, dash: 3 }, hid: {}, fat: 100 },
+    aerobics: { name: 'エアロビクス', cat: 'phys', up: { stamina: 4, technique: 2, physical: 2 }, hid: {}, fat: 100 },
+    stretch: { name: 'ストレッチ', cat: 'phys', up: { speed: 4, physical: 4, jump: 2 }, hid: {}, fat: 100 },
+    // SUPPORT
+    aroma: { name: 'アロマテラピー', cat: 'sup', up: {}, rand: { kick: 5, speed: 10, stamina: 10, technique: 4, physical: 10, jump: 10, mental: 2 }, fat: 0 },
+    zazen: { name: '座禅', cat: 'sup', up: { stamina: 1, mental: 6 }, fat: 10 },
+    signing: { name: 'サイン会', cat: 'sup', up: { kick: 1, mental: 5 }, cond: 1, fat: 10 },
+    pk: { name: 'PK練習', cat: 'sup', up: { kick: 2, mental: 4 }, fat: 40 },
+    aikido: { name: '合気道', cat: 'sup', up: { technique: 1, mental: 4 }, fat: 20 },
+    image: { name: 'イメージトレーニング', cat: 'sup', up: { technique: 1, jump: 2, mental: 2, vision: 1 }, fat: 40 },
+    meeting: { name: 'ミーティング', cat: 'sup', up: { stamina: 1, mental: 4, vision: 1 }, fat: 10 },
+    onsen: { name: '温泉', cat: 'sup', up: { physical: 3, mental: 2 }, fat: -60 },
+    camp: { name: 'ミニキャンプ', cat: 'sup', up: { speed: 2, stamina: 2, mental: 2 }, fat: 40 },
+    gameNight: { name: 'サッカーゲーム', cat: 'sup', up: { technique: 1, mental: 2 }, cond: 1, fat: 20 },
+    karaoke: { name: 'カラオケ', cat: 'sup', up: { technique: 1, mental: 3 }, cond: 1, fat: 10 },
+  };
+  const CAT_NAME = { tact: 'TACTICAL', tech: 'TECHNICAL', phys: 'PHYSICAL', sup: 'SUPPORT' };
+  // スペシャルメニュー：カード3枚の組み合わせ（順番は関係なし）
+  //  skill：覚えるスキル / type：裏パラをそのタイプへ / up：大きく上がる育成ポイント
+  const SP = [
+    // シュート
+    ['ナックルシュート', 'shoot placeKick lifting', { skill: 'knuckle', up: { kick: 15, technique: 9 } }],
+    ['パワーシュート', 'shoot kickTr weight', { skill: 'powerMid', up: { kick: 16, physical: 10 } }],
+    ['コントロールショット', 'shoot lifting image', { skill: 'controlShot', up: { kick: 11, technique: 13 } }],
+    ['ニア上ぶち抜き', 'shoot kickTr dash', { skill: 'nearPost', up: { kick: 18, speed: 7, dash: 4 } }],
+    ['ボレーシュート', 'shoot heading lifting', { skill: 'volley', up: { kick: 10, technique: 8, jump: 6 } }],
+    ['バイシクル', 'heading lifting stretch', { skill: 'bicycle', up: { technique: 12, physical: 2, jump: 15 } }],
+    ['ダイビングヘッド', 'heading dash stretch', { skill: 'divingHeader', up: { speed: 5, dash: 12, jump: 20 } }],
+    ['ループシュート', 'shoot image video', { skill: 'lob', up: { kick: 10, vision: 10 } }],
+    ['トゥーキック', 'shoot agility kickTr', { skill: 'toeKick', up: { kick: 16, dash: 10 } }],
+    ['ドライブシュート', 'shoot kickTr lifting', { skill: 'driveShot', up: { kick: 18, technique: 10 } }],
+    ['超ロングシュート', 'kickTr placeKick weight', { skill: 'superLong', up: { kick: 20, physical: 6 } }],
+    ['ダイレクトシュート', 'shoot agility image', { skill: 'direct', up: { kick: 14, technique: 11 } }],
+    // ドリブル
+    ['シザース', 'dribble lifting agility', { skill: 'scissors', up: { technique: 11, dribble: 17, speed: 3 } }],
+    ['ダブルタッチ', 'dribble lifting stretch', { skill: 'doubleTouch', up: { technique: 12, dribble: 14, speed: 4 } }],
+    ['エラシコ', 'dribble lifting aikido', { skill: 'elastico', up: { technique: 14, dribble: 10 } }],
+    ['マルセイユルーレット', 'dribble stretch agility', { skill: 'roulette', up: { technique: 8, dribble: 13, speed: 4, physical: 8, jump: 3 } }],
+    ['ボディフェイント', 'dribble agility image', { skill: 'bodyFeint', up: { technique: 3, dribble: 13, speed: 4, dash: 11 } }],
+    ['股抜き', 'dribble lifting mini', { skill: 'nutmeg', up: { technique: 14, dribble: 11 } }],
+    ['高速ドリブル', 'dribble dash running', { skill: 'speedDribble', up: { dribble: 12, speed: 15, dash: 7, stamina: 4 } }],
+    ['カットイン', 'dribble agility shoot', { skill: 'cutIn', up: { kick: 10, technique: 2, dribble: 15, speed: 3 } }],
+    ['ヒールリフト', 'dribble lifting heading', { skill: 'heelLift', up: { technique: 12, dribble: 8, jump: 9 } }],
+    ['キックフェイント', 'dribble shoot image', { skill: 'kickFeint', up: { kick: 11, technique: 3, dribble: 10 } }],
+    // キック・パス
+    ['カーブキック', 'placeKick lifting kickTr', { skill: 'curve', up: { kick: 13, technique: 10 } }],
+    ['FKマイスター', 'placeKick setplay shoot', { skill: 'fk', up: { kick: 15, technique: 5, pass: 4 } }],
+    ['CKマイスター', 'placeKick setplay heading', { skill: 'ckMaster', up: { kick: 16, pass: 7 } }],
+    ['アーリークロス', 'pass placeKick dash', { skill: 'earlyCross', up: { kick: 3, pass: 18, speed: 10, dash: 4 } }],
+    ['ピンポイントクロス', 'pass placeKick image', { skill: 'pinpointCross', up: { kick: 8, technique: 3, pass: 15 } }],
+    ['スルーパス', 'pass video counter', { skill: 'throughPass', up: { technique: 3, pass: 11, vision: 10 } }],
+    ['浮き球スルーパス', 'pass placeKick counter', { skill: 'loftedThrough', up: { kick: 10, technique: 3, pass: 13 } }],
+    ['ノールックパス', 'pass video image', { skill: 'noLook', up: { technique: 2, pass: 7, vision: 14 } }],
+    ['ワンタッチパス', 'pass mini agility', { skill: 'oneTouchPass', up: { technique: 9, dribble: 4, pass: 15, speed: 3 } }],
+    ['ヒールパス', 'pass lifting dribble', { skill: 'heelPass', up: { technique: 12, dribble: 7, pass: 8, speed: 3 } }],
+    ['ロングフィード', 'pass kickTr video', { skill: 'longFeed', up: { kick: 10, technique: 3, pass: 11 } }],
+    ['サイドチェンジ', 'pass kickTr counter', { skill: 'switchPlay', up: { technique: 4, pass: 12, vision: 10 } }],
+    ['壁パス', 'pass mini dash', { skill: 'wallPass', up: { pass: 17, speed: 11, dash: 5 } }],
+    ['ワンツーの名手', 'pass mini counter', { skill: 'oneTwo', up: { technique: 3, pass: 13, vision: 9 } }],
+    ['ロングスロー', 'weight stretch setplay', { skill: 'longThrow', up: { pass: 4, physical: 20 } }],
+    ['PKの名手', 'pk zazen shoot', { skill: 'pkMaster', up: { kick: 9, mental: 13 } }],
+    // 守備
+    ['スライディング', 'sliding dash agility', { skill: 'slide', up: { speed: 6, dash: 13, defense: 19 } }],
+    ['インターセプト', 'line video agility', { skill: 'intercept', up: { dash: 2, defense: 10, vision: 11, mental: 2 } }],
+    ['マンマーク', 'manMark running dash', { skill: 'manMark', up: { speed: 5, stamina: 12, defense: 16 } }],
+    ['カバーリング', 'line manMark running', { skill: 'cover', up: { defense: 14, vision: 9, mental: 3 } }],
+    ['ショルダーチャージ', 'manMark weight aikido', { skill: 'shoulder', up: { physical: 16, defense: 6 } }],
+    ['空中戦の鬼', 'heading weight stretch', { skill: 'aerial', up: { physical: 12, jump: 18 } }],
+    ['シュートブロック', 'sliding aikido zazen', { skill: 'shotBlock', up: { defense: 13, mental: 11 } }],
+    ['プレスの鬼', 'press running aerobics', { skill: 'pressMonster', up: { speed: 2, stamina: 16, defense: 8 } }],
+    ['帰陣ダッシュ', 'running dash line', { skill: 'recovery', up: { speed: 13, dash: 7, stamina: 15 } }],
+    // オフザボール
+    ['裏への抜け出し', 'counter dash video', { skill: 'behindRun', up: { speed: 10, dash: 6, vision: 10 } }],
+    ['ポストプレー', 'weight lifting aikido', { skill: 'postPlay', up: { technique: 9, physical: 12 } }],
+    ['ニアに飛び込む', 'heading agility counter', { skill: 'nearRun', up: { speed: 3, dash: 13, jump: 14 } }],
+    ['ファーで待つ', 'heading image setplay', { skill: 'farWait', up: { jump: 11, vision: 9, mental: 2 } }],
+    ['オーバーラップ', 'running aerobics counter', { skill: 'overlap', up: { speed: 9, stamina: 19 } }],
+    ['こぼれ球の嗅覚', 'agility video shoot', { skill: 'looseBall', up: { speed: 3, dash: 10, vision: 10 } }],
+    // メンタル・特性
+    ['キャプテンシー', 'meeting zazen signing', { skill: 'captaincy', up: { vision: 5, mental: 17 } }],
+    ['大舞台に強い', 'signing image pk', { skill: 'bigStage', up: { vision: 5, mental: 16 } }],
+    ['終盤の粘り', 'running aerobics zazen', { skill: 'lateGrit', up: { stamina: 17, mental: 12 } }],
+    ['勝負強さ', 'pk image karaoke', { skill: 'clutch', up: { kick: 4, vision: 4, mental: 12 } }],
+    ['ムードメーカー', 'karaoke gameNight signing', { skill: 'moodMaker', up: { mental: 18 } }],
+    ['闘志', 'aikido press sliding', { skill: 'fighting', up: { defense: 10, mental: 12 } }],
+    ['冷静', 'zazen image meeting', { skill: 'calm', up: { vision: 5, mental: 17 } }],
+    ['鉄人', 'running weight aerobics', { skill: 'ironMan', up: { stamina: 18, physical: 11 } }],
+    // GK
+    ['超反応', 'heading stretch agility', { skill: 'superReflex', gk: true, up: { speed: 3, dash: 13, jump: 19 } }],
+    ['パンチング', 'heading weight aikido', { skill: 'punching', gk: true, up: { physical: 12, jump: 12 } }],
+    ['飛び出し', 'dash counter line', { skill: 'rushOut', gk: true, up: { speed: 12, dash: 7, vision: 11 } }],
+    ['PKストッパー', 'pk image zazen', { skill: 'pkStopper', gk: true, up: { jump: 6, vision: 4, mental: 12 } }],
+    ['1対1の鬼', 'manMark aikido image', { skill: 'oneOnOne', gk: true, up: { physical: 8, vision: 8, mental: 4 } }],
+    ['低弾道スロー', 'pass weight setplay', { skill: 'lowThrow', gk: true, up: { technique: 2, pass: 12, physical: 10 } }],
+    ['低弾道パントキック', 'placeKick kickTr counter', { skill: 'lowPunt', gk: true, up: { kick: 18, vision: 5 } }],
+    ['コーチング', 'meeting line video', { skill: 'coaching', gk: true, up: { vision: 13, mental: 9 } }],
+    ['鉄壁', 'stretch image line', { gk: true, up: { technique: 9, physical: 3, jump: 13, vision: 9, mental: 3 } }],
+    // 能力・タイプ
+    ['野人', 'running dash aerobics', { up: { speed: 16, dash: 8, stamina: 20, mental: -2 } }],
+    ['肉体改造', 'weight dash stretch', { up: { kick: 6, speed: 10, dash: 5, physical: 10, jump: 11 } }],
+    ['総合トレーニング', 'camp running mini', { all: 4 }],
+    ['ストライカー養成', 'shoot heading kickTr', { type: 'ストライカー', up: { kick: 14, jump: 10 } }],
+    ['アタッカー養成', 'dribble dash agility', { type: 'アタッカー', up: { dribble: 15, speed: 15, dash: 9 } }],
+    ['レジスタ養成', 'pass video lifting', { type: 'レジスタ', up: { technique: 4, pass: 11, vision: 8 } }],
+    ['ダイナモ養成', 'running press mini', { type: 'ダイナモ', up: { speed: 4, dash: 6, stamina: 14 } }],
+    ['ゲームメイカー養成', 'pass image mini', { type: 'ゲームメイカー', up: { technique: 3, pass: 10, vision: 12 } }],
+    ['スイーパー養成', 'line video zazen', { type: 'スイーパー', up: { defense: 8, vision: 9, mental: 5 } }],
+    ['ストッパー養成', 'manMark sliding weight', { type: 'ストッパー', up: { physical: 12, defense: 13 } }],
+    ['マンマーカー養成', 'manMark dash agility', { type: 'マンマーカー', up: { speed: 12, dash: 8, defense: 15 } }],
+    ['ラインコントローラー養成', 'line press video', { type: 'ラインコントローラー', up: { defense: 11, vision: 9, mental: 2 } }],
+    ['パサー養成', 'pass placeKick video', { type: 'パサー', up: { kick: 7, pass: 12, vision: 5 } }],
+    // 下がる能力もあるメニュー
+    ['オーバートレーニング', 'sliding running weight', { up: { kick: -2, stamina: -5, physical: 24, mental: -2 }, fat: 145 }],
+    ['のんびり休日', 'karaoke gameNight onsen', { up: { technique: 7, physical: -4, mental: 10 }, fat: -60 }],
+    // ---- 能力をのばすメニュー（3枚） ----
+    ['鋼の肉体', 'weight kickTr stretch', { up: { kick: 6, physical: 20, jump: 4 } }],
+    ['スプリンター', 'dash agility running', { up: { speed: 20, dash: 16, stamina: 4 } }],
+    ['跳躍力強化', 'heading aerobics stretch', { up: { stamina: 3, physical: 11, jump: 20 } }],
+    ['精密機械', 'lifting placeKick image', { up: { kick: 7, technique: 13, pass: 4 } }],
+    ['キープ力', 'lifting weight dribble', { up: { technique: 7, dribble: 12, physical: 10 } }],
+    ['ゲームの支配者', 'pass mini video', { up: { technique: 3, pass: 11, vision: 11 } }],
+    ['不屈の精神', 'zazen aikido karaoke', { up: { mental: 20 } }],
+    ['鉄の肺', 'running aerobics camp', { up: { speed: 10, stamina: 20 } }],
+    ['攻守の要', 'press pass running', { up: { pass: 8, speed: 4, stamina: 12, defense: 7 } }],
+    ['ハードワーク', 'press running dash', { up: { speed: 10, dash: 4, stamina: 14, defense: 7 } }],
+    ['鬼プレス', 'press weight camp', { up: { speed: 3, stamina: 7, physical: 7, defense: 7 } }],
+    ['カウンター特訓', 'counter dash dribble', { up: { dribble: 11, speed: 13, dash: 7, vision: 5 } }],
+    ['ポゼッション', 'pass mini lifting', { up: { technique: 13, pass: 10, vision: 5 } }],
+    ['サイドアタック', 'dribble running agility', { up: { dribble: 13, speed: 11, stamina: 15 } }],
+    ['空中戦強化', 'heading weight kickTr', { up: { physical: 13, jump: 16 } }],
+    ['パワーヘッド', 'heading shoot weight', { up: { kick: 11, physical: 5, jump: 10 } }],
+    ['ミドルレンジ', 'shoot kickTr image', { up: { kick: 15, technique: 2, vision: 6 } }],
+    ['ゴールハンター', 'shoot dash image', { up: { kick: 13, speed: 8, dash: 4, vision: 5 } }],
+    ['決定力', 'shoot zazen image', { up: { kick: 9, vision: 3, mental: 11 } }],
+    ['クロス精度', 'placeKick pass mini', { up: { kick: 10, technique: 3, pass: 16 } }],
+    ['視野の広さ', 'video image meeting', { up: { vision: 14, mental: 8 } }],
+    ['戦術眼', 'video line mini', { up: { defense: 6, vision: 13, mental: 2 } }],
+    ['読みの鋭さ', 'video line sliding', { up: { defense: 14, vision: 11 } }],
+    ['対人の強さ', 'manMark sliding aikido', { up: { physical: 10, defense: 15 } }],
+    ['ラインの統率', 'line meeting signing', { up: { vision: 8, mental: 16 } }],
+    ['ボディバランス', 'lifting stretch aikido', { up: { technique: 11, physical: 11, mental: 4 } }],
+    ['体幹トレーニング', 'stretch aerobics weight', { up: { speed: 2, stamina: 9, physical: 20 } }],
+    ['柔軟性', 'stretch aikido onsen', { up: { physical: 13, jump: 7 }, fat: 20 }],
+    ['リカバリー', 'onsen karaoke zazen', { up: { physical: 3, mental: 9 }, fat: -80 }],
+    ['チーム愛', 'signing meeting gameNight', { up: { vision: 4, mental: 15 } }],
+    ['ファンサービス', 'signing karaoke video', { up: { kick: 3, vision: 4, mental: 11 } }],
+    ['オフの過ごし方', 'gameNight onsen meeting', { up: { vision: 4, mental: 13 }, fat: -40 }],
+    ['イメージ戦略', 'image video setplay', { up: { kick: 4, vision: 11, mental: 3 } }],
+    ['セットプレー職人', 'setplay placeKick kickTr', { up: { kick: 19, pass: 4 } }],
+    ['PK職人', 'pk placeKick zazen', { up: { kick: 12, mental: 13 } }],
+    ['ロングボール', 'kickTr placeKick pass', { up: { kick: 15, technique: 3, pass: 12 } }],
+    ['テクニシャン', 'lifting dribble video', { up: { technique: 12, dribble: 10, vision: 3 } }],
+    ['走力強化', 'running dash stretch', { up: { speed: 15, dash: 7, stamina: 16, physical: 2 } }],
+    ['瞬発力強化', 'agility dash stretch', { up: { speed: 10, dash: 20, jump: 6 } }],
+    ['フィジカルモンスター', 'weight aerobics kickTr', { up: { kick: 4, stamina: 7, physical: 17 } }],
+    ['根性論', 'running zazen weight', { up: { stamina: 11, physical: 8, mental: 11 } }],
+    ['アロマ集中', 'aroma zazen image', { up: { vision: 6, mental: 14 }, fat: 0 }],
+    ['温泉療養', 'onsen aroma karaoke', { up: { physical: 5, mental: 7 }, fat: -100 }],
+    // ---- 集中トレーニング ----
+    ['炎天下ダッシュ', 'camp running dash', { all: 2, up: { speed: 9, stamina: 8 } }],
+    ['雪中トレーニング', 'camp aerobics stretch', { all: 2, up: { stamina: 6, physical: 5 } }],
+    ['鉄人トレーニング', 'camp weight sliding', { all: 2, up: { physical: 6, defense: 5 } }],
+    ['ボールマスター', 'camp lifting dribble', { all: 2, up: { technique: 6, dribble: 5 } }],
+    ['作戦会議', 'camp video line', { all: 2, up: { defense: 5, vision: 6 } }],
+    ['シュート千本', 'camp shoot kickTr', { all: 2, up: { kick: 11 } }],
+    // ---- クセのあるメニュー（下がる能力も） ----
+    ['天才肌', 'lifting gameNight image', { up: { technique: 13, stamina: -2, mental: 6 } }],
+    ['気分屋', 'karaoke gameNight aroma', { up: { technique: 8, stamina: -4, mental: 10 } }],
+    ['野生の勘', 'agility video karaoke', { up: { speed: 2, dash: 12, vision: 10, mental: -2 } }],
+    ['演技派', 'aikido signing karaoke', { up: { technique: 6, defense: -4, mental: 13 } }],
+    ['ラフプレー', 'sliding press weight', { up: { physical: 10, defense: 16, mental: -5 } }],
+    // ---- GK専用 ----
+    ['守護神の構え', 'heading image zazen', { gk: true, up: { jump: 12, vision: 7, mental: 9 } }],
+    ['ゴールの守護神', 'line setplay heading', { gk: true, up: { jump: 13, vision: 9, mental: 3 } }],
+    ['キャッチング強化', 'lifting image meeting', { gk: true, up: { technique: 14, vision: 6, mental: 3 } }],
+    ['セービング特訓', 'agility stretch image', { gk: true, up: { speed: 4, dash: 13, physical: 2, jump: 15 } }],
+    // ---- タイプ ----
+    ['オールラウンダー養成', 'mini running lifting', { type: 'バランス', all: 3 }],
+    // ---- 2枚で発動するメニュー（ちょうど2枚セットした時だけ） ----
+    ['基礎体力', 'running stretch', { up: { speed: 3, stamina: 12, physical: 8 } }],
+    ['トラップ練習', 'lifting pass', { up: { technique: 14, pass: 6 } }],
+    ['1対1', 'manMark dribble', { up: { dribble: 10, defense: 10 } }],
+    ['ゴール前の練習', 'shoot heading', { up: { kick: 9, jump: 9 } }],
+    ['メンタルケア', 'zazen karaoke', { up: { mental: 14 } }],
+    ['戦術ミーティング', 'meeting video', { up: { vision: 10, mental: 3 } }],
+    ['ハイボール', 'heading line', { gk: true, up: { jump: 15, vision: 5 } }],
+    ['フィード練習', 'placeKick pass', { up: { kick: 10, pass: 11 } }],
+    ['スピード練習', 'dash agility', { up: { speed: 16, dash: 12 } }],
+    ['体づくり', 'weight aerobics', { up: { stamina: 7, physical: 12 } }],
+    // ---- 追加タイプの養成（2026-10-08。番号がずれないよう、いちばん後ろに足す） ----
+    ['偽9番養成', 'pass image dribble', { type: '偽9番', up: { technique: 6, pass: 9, vision: 9 } }],
+    ['デコイラン養成', 'running agility counter', { type: 'デコイラン', up: { speed: 10, dash: 12, stamina: 8 } }],
+    ['ファンタジスタ養成', 'dribble lifting image', { type: 'ファンタジスタ', up: { technique: 8, dribble: 14, vision: 6 } }],
+    ['シャドー養成', 'shoot running counter', { type: 'シャドー', up: { kick: 10, dash: 8, technique: 4 } }],
+    ['アンカー養成', 'press sliding meeting', { type: 'アンカー', up: { defense: 12, vision: 6, physical: 6 } }],
+    ['ビルドアップ型養成', 'pass line counter', { type: 'ビルドアップ型', up: { pass: 12, vision: 8, defense: 4 } }],
+    ['スイーパーキーパー養成', 'dash line kickTr', { type: 'スイーパーキーパー', gk: true, up: { dash: 10, kick: 6, vision: 6 } }],
+  ].map(([name, rec, o], id) => { const tot = Object.values(o.up || {}).reduce((a, v) => a + Math.max(0, v), 0) + (o.all || 0) * 12;
+    return { id, name, key: rec.split(' ').sort().join('+'), cards: rec.split(' '), fat: Math.min(150, Math.round(40 + tot * 3)), ...o }; });
+  const SP_BY_KEY = Object.fromEntries(SP.map((m) => [m.key, m]));
+  function findSpecial(cards, p) {
+    if (cards.length < 2) return null;
+    const m = SP_BY_KEY[cards.slice().sort().join('+')];
+    if (!m || (m.gk && p.position !== 'GK')) return null;
+    return m;
+  }
+  // ---------- ポテンシャル（本家と同じ考え方）----------
+  // カルチョビットAと同じく「成長度」。引退はなく、選手はずっとチームに残る（愛着・NFTとしての価値）。
+  // 0〜10のゲージ。加入してから上がり続け、MAX(10)で一定期間とどまり、そのあと少しずつ下がる（最低1、能力は下がらない）。
+  // 早熟：早くMAXになり、早く下がる / 晩成：ゆっくり上がって、長く続く。高いほど特訓が効く。
+  // 6以上だと試合に出なくても能力が上がることがある（高いほどよく上がる）。ケガで下がる。
+  const POT_TYPES = {
+    // 1年（48週）で動くのは矢印1〜2本ぶん。MAXは何年も続く（本家のペース）
+    early: { name: '早熟', rise: 2.0 / 48, hold: 72, fall: 1.5 / 48 },
+    normal: { name: '普通', rise: 1.5 / 48, hold: 96, fall: 1.0 / 48 },
+    late: { name: '晩成', rise: 1.0 / 48, hold: 144, fall: 0.75 / 48 },
+  };
+  function ensurePot(p, r) {
+    if (p.pot) return p.pot;
+    const rnd = r || Math.random;
+    const u = rnd(), type = u < 0.28 ? 'early' : u < 0.75 ? 'normal' : 'late';
+    const v0 = rnd() < 0.05 ? 10 : 3 + Math.round(rnd() * 50) / 10;          // まれに最初からMAXの選手（早く下がる）
+    p.pot = { v: v0, type, phase: v0 >= 10 ? 'peak' : 'up', hold: v0 >= 10 ? Math.round(POT_TYPES[type].hold * 0.5) : 0 };
+    return p.pot;
+  }
+  const POT_MIN = 1;   // 下がっても1は残る（成長が止まりきらない）
+  const potV = (p) => (p.pot ? p.pot.v : 5);
+  const potMul = (p) => 0.45 + 0.11 * potV(p);          // 0→0.45倍、5→1倍、10→1.55倍
+  function potTick(p, r) {
+    const P = ensurePot(p, r), T = POT_TYPES[P.type];
+    if (P.phase === 'up') { P.v += T.rise * (0.8 + 0.4 * r()); if (P.v >= 10) { P.v = 10; P.phase = 'peak'; P.hold = T.hold; } }
+    else if (P.phase === 'peak') { if (--P.hold <= 0) P.phase = 'down'; }
+    else P.v = Math.max(POT_MIN, P.v - T.fall * (0.8 + 0.4 * r()));
+    P.v = Math.round(P.v * 1000) / 1000;
+  }
+  const INJURIES = [
+    { name: '打撲', w: [2, 2], p: 0.35 }, { name: '捻挫', w: [3, 3], p: 0.30 }, { name: '肉離れ', w: [4, 6], p: 0.21 },
+    { name: '靭帯損傷', w: [8, 8], p: 0.09 }, { name: '骨折', w: [10, 12], p: 0.05 },
+  ];
+  // ケガをさせる：種類と期間を決めて、ニュース（コーチからの報告）に積む
+  function injure(save, p, r, where) {
+    let u = r(), it = INJURIES[INJURIES.length - 1];
+    for (const x of INJURIES) { if (u < x.p) { it = x; break; } u -= x.p; }
+    const weeks = it.w[0] + Math.floor(r() * (it.w[1] - it.w[0] + 1));
+    p.injury = weeks; potHurt(p, r);
+    if (weeks >= 8) { for (let k = 0; k < 3; k++) addPts(p, KEYS[Math.floor(r() * KEYS.length)], -(4 + Math.floor(r() * 6))); potHurt(p, r); }   // 長いケガは能力も少し落ちる
+    const n = { name: p.name, number: p.number, kind: it.name, weeks, where };
+    save.news = save.news || []; save.news.push(n);
+    return n;
+  }
+  function potHurt(p, r) { const P = ensurePot(p, r); P.v = Math.max(POT_MIN, Math.round((P.v - (0.4 + r() * 0.8)) * 100) / 100); }
+  const condMul = (p) => (p.fatigue > 75 ? 0.6 : p.fatigue > 55 ? 0.85 : 1) * (1 + (p.cond || 0) * 0.1) * potMul(p);
+  // セットしたカードで、どの能力が何ポイント上がるか（予想）
+  function previewCards(p, cards, mult) {
+    ensurePts(p);
+    const ups = {}, sp = findSpecial(cards, p), m = condMul(p), g = mult || 1;
+    const add = (k, v) => { ups[k] = (ups[k] || 0) + v * (v > 0 ? m * g : m); };
+    if (sp) {
+      // スペシャル：カードの伸びの代わりに、そのメニューならではの大きな伸び（下がる能力があるメニューも）
+      if (sp.up) for (const k in sp.up) add(k, sp.up[k] * (sp.up[k] > 0 ? 1 : 1 / m));
+      if (sp.all) for (const k of KEYS) add(k, sp.all);
+    } else {
+      for (const c of cards) { const cd = CARDS[c]; for (const k in cd.up) add(k, cd.up[k]); if (cd.all) for (const k of KEYS) add(k, cd.all); }
+    }
+    return { ups, sp };
+  }
+  // 1週間：全体練習＋カード特訓
+  const TEAM_PTS = {
+    base: { name: '基礎練習', all: 1, fat: 6 },
+    phys: { name: 'フィジカル練習', up: { stamina: 4, physical: 3, speed: 2 }, fat: 10 },
+    tactic: { name: '戦術練習', up: { vision: 4, defense: 2 }, fat: 4 },
+    scrim: { name: '紅白戦', up: { vision: 3, technique: 2, mental: 2 }, fat: 10 },
+    rest: { name: '全体休養', fat: -15 },
+  };
+  const SKILL_RATE = 0.20;   // スペシャルメニューでスキルを覚える確率（基本）
+  // 失敗するたびに、その選手・そのスキルは+10%ずつ覚えやすくなる（覚えたら元に戻る）
+  const skillRate = (p, k) => Math.min(1, SKILL_RATE + 0.10 * ((p.skTry || {})[k] || 0));
+  const wkKey = (save) => save.season + '-' + save.week;
+  // ---------- 合宿：リーグ前半が終わったら4週間の中断期間 ----------
+  // 試合はなし。特訓は週2回まで・カードの効果1.5倍・全体練習は少し強め
+  const CAMP = { weeks: 4, trains: 2, mult: 1.5, team: 0.8 };
+  function campState(save) {
+    const c = CAMPS.find((x) => save.week >= x.from && save.week <= x.to);
+    if (!c) return null;
+    return { name: c.name, week: save.week - c.from + 1, weeks: c.to - c.from + 1, trains: CAMP.trains, mult: CAMP.mult, team: CAMP.team };
+  }
+  const trainLimit = (save) => (campState(save) ? CAMP.trains : 1);
+  const trainMult = (save) => (campState(save) ? CAMP.mult : 1);
+  const trainsDone = (save, p) => (p.trainedAt === wkKey(save) ? (p.trainN || 1) : 0);
+  const trainedThisWeek = (save, p) => trainsDone(save, p) >= trainLimit(save);
+  // カード特訓：1人ずつ、その場で終わらせる（本家方式）
+  function trainOne(save, i, cardsIn) {
+    const r = rng(save), p = save.team.players[i];
+    save.spFound = save.spFound || [];
+    ensurePts(p);
+    const before = { ...p.pts };
+    const out = { i, name: p.name, cards: [], ups: {}, sp: null, learned: null, typeFrom: p.type, typeTo: null, injured: false, before };
+    if (p.injury > 0 || trainedThisWeek(save, p)) return null;
+    const add = (k, g) => { if (!g) return; addPts(p, k, g); out.ups[k] = (out.ups[k] || 0) + g; };
+    const cards = (cardsIn || []).filter((c) => CARDS[c] && (save.cards[c] || 0) > 0).slice(0, 3);
+    if (!cards.length) return null;
+    for (const c of cards) save.cards[c]--;
+    out.cards = cards;
+    p.trainHist = [...(p.trainHist || []), ...cards].slice(-4);   // 特訓履歴（最近の4枚）
+    let fat = 0;
+    const pv = previewCards(p, cards, trainMult(save));
+    for (const k in pv.ups) add(k, Math.round(pv.ups[k]));
+    for (const c of cards) { const cd = CARDS[c]; if (cd.hid) moveHidden(p, cd.hid, (pv.sp ? 2 : 1) * TYPE_TUNE.hid);
+      if (cd.rand) for (const k in cd.rand) add(k, Math.floor(r() * (cd.rand[k] + 1)));
+      if (!pv.sp) fat += (cd.fat || 0) / 12; if (cd.cond) p.cond = clamp((p.cond || 0) + cd.cond, -2, 2); }
+    if (pv.sp) { out.sp = pv.sp.id; fat += (pv.sp.fat ?? 100) / 6;
+      if (!save.spFound.includes(pv.sp.id)) { save.spFound.push(pv.sp.id); out.spNew = true; }
+      if (pv.sp.type) { const pr = protoOf(pv.sp.type); for (const k of HKEYS) p[k] += (pr[k] - p[k]) * TYPE_TUNE.spPull; }
+      if (pv.sp.skill && !(p.skills || []).includes(pv.sp.skill)) { const k = pv.sp.skill; out.rate = skillRate(p, k); if (r() < out.rate) { out.learned = k; if (p.skTry) delete p.skTry[k]; } else { out.skillMiss = k; p.skTry = p.skTry || {}; p.skTry[k] = (p.skTry[k] || 0) + 1; out.nextRate = skillRate(p, k); } } }
+    p.fatigue = clamp(p.fatigue + fat, 0, 100);
+    if (p.fatigue > 75 && r() < (p.fatigue - 70) * 0.006) { out.injured = injure(save, p, r, 'train'); save.news.pop(); }
+    const nt = decideType(p); if (nt !== p.type) { out.typeTo = nt; p.type = nt; }
+    p.trainN = trainsDone(save, p) + 1; p.trainedAt = wkKey(save);
+    if (save.plan && save.plan.cards) delete save.plan.cards[i];
+    return out;
+  }
+  // 週送り：全体練習は自動（全員の全能力が少しずつ上がる）＋疲労回復・ケガの経過
+  const TEAM_AUTO = { all: 0.3, fat: 6 };   // 全体練習だけでは、半年で数ポイント（ランクはほぼ動かない）
+  function weekTick(save, teamAll) {
+    if (save.tickedAt === wkKey(save)) return [];
+    save.tickedAt = wkKey(save);
+    const r = rng(save), report = [];
+    save.team.players.forEach((p, i) => {
+      ensurePts(p);
+      const out = { i, name: p.name, typeFrom: p.type, typeTo: null };
+      if (p.injury > 0) { p.injury--; p.fatigue = clamp(p.fatigue - 25, 0, 100); out.rest = true; }
+      else { for (const k of KEYS) addPts(p, k, teamAll || TEAM_AUTO.all); p.fatigue = clamp(p.fatigue + TEAM_AUTO.fat - 30, 0, 100); }
+      if (!(p.injury > 0) && p.fatigue > 70 && r() < (p.fatigue - 65) * 0.004) injure(save, p, r, 'practice');
+      potTick(p, r);
+      // ポテンシャルが高いと、試合に出なくても少し伸びる
+      // 6で10%、8で20%、10で30%の確率で、どれか1つが少しだけ
+      if (potV(p) >= 6 && !(p.injury > 0) && r() < 0.1 + (potV(p) - 6) * 0.05) { addPts(p, KEYS[Math.floor(r() * KEYS.length)], 1); out.natural = true; }
+      p.cond = clamp((p.cond || 0) + (r() < 0.3 ? (r() < 0.5 ? -1 : 1) : 0) * 0.5, -2, 2);
+      const nt = decideType(p); if (nt !== p.type) { out.typeTo = nt; p.type = nt; }
+      report.push(out);
+    });
+    if (save.plan) save.plan.cards = {};
+    return report;
+  }
+  // 1週間を終える：全体練習（合宿中は強化）→ 週を進める → 年が明けたらシーズン終了（昇格・降格）
+  function endWeek(save) {
+    const cs = campState(save);
+    const rep = weekTick(save, cs ? CAMP.team : 0);
+    const settled = settleWeek(save);
+    const out = { rep, camp: cs, campDone: !!(cs && cs.week >= cs.weeks), news: (save.news || []).splice(0), cupOut: settled.includes('cupOut') };
+    save.week++;
+    out.campStart = CAMPS.some((c) => c.from === save.week);
+    const lg = save.league;
+    out.leagueDone = lg.round >= lg.rounds.length && !lg.doneShown;
+    if (out.leagueDone) { lg.doneShown = true; out.pos = standings(save).findIndex((t) => t.me) + 1; }
+    if (save.week > SEASON_WEEKS) { const pos = standings(save).findIndex((t) => t.me) + 1, from = lg.name, msg = endSeason(save), retired = retiredAt(save, save.season), titles = evalTitles(save); out.season = { msg, pos, from, to: save.league.name, titles, retired }; }
+    return out;
+  }
+  function campAdvance(save) { const o = endWeek(save); return { week: o.camp ? o.camp.week : 0, weeks: CAMP.weeks, done: o.campDone, rep: o.rep }; }
+  // 旧API（テスト互換）：全員分のカードを特訓してから週送り
+  function trainCards(save, plan) {
+    const rep = [];
+    save.team.players.forEach((p, i) => { const o = trainOne(save, i, plan.cards && plan.cards[i]); if (o) rep.push(o); });
+    weekTick(save);
+    plan.cards = {};
+    return rep;
+  }
+  // 試合のあとにもらえるカード：勝つと多い。ゴール・アシスト・無失点に応じた種類も
+  const CARD_POOL = Object.keys(CARDS);
+  function rewardCards(save, myScore, events) {
+    const r = rng(save), got = [];
+    // 1試合でもらえるのは3〜10枚（勝ち6〜9・引き分け4〜6・負け3〜5、活躍のぶんを足して最大10）
+    const res = myScore[0] > myScore[1] ? 'W' : myScore[0] === myScore[1] ? 'D' : 'L';
+    const n = res === 'W' ? 6 + Math.floor(r() * 4) : res === 'D' ? 4 + Math.floor(r() * 3) : 3 + Math.floor(r() * 3);
+    // 試合中に「見つかった課題」のカードは必ずもらえる（ハーフタイムの「見つかった課題」に並んでいたもの）
+    const ISSUE_CARD = { video: 'video', setplay: 'setplay', running: 'running', man_marking: 'manMark', press: 'press', pass: 'pass', dash: 'dash', shoot: 'shoot', line_control: 'line' };
+    for (const e of events || []) if (e.type === 'issue' && e.team === 0 && ISSUE_CARD[e.key] && CARDS[ISSUE_CARD[e.key]] && got.length < 6) got.push(ISSUE_CARD[e.key]);
+    const issueN = got.length;
+    const mine = (events || []).filter((e) => e.type === 'goal' && e.team === 0);
+    for (const g of mine.slice(0, 2)) { got.push('shoot'); if (g.assist && got.length < 4) got.push('pass'); }
+    if (myScore[1] === 0) got.push(r() < 0.5 ? 'sliding' : 'line');
+    const main = CARD_POOL.filter((c) => CARDS[c].cat !== 'sup'), sup = CARD_POOL.filter((c) => CARDS[c].cat === 'sup');
+    while (got.length < Math.min(10, n + Math.min(2, got.length))) got.push(r() < 0.25 ? sup[Math.floor(r() * sup.length)] : main[Math.floor(r() * main.length)]);
+    got.length = Math.min(got.length, 10);
+    save.cards = save.cards || {};
+    for (const c of got) save.cards[c] = Math.min(CARD_MAX, (save.cards[c] || 0) + 1);
+    got.issueN = issueN;   // 課題のカードの枚数（残りは試合のごほうび）
+    got.coins = 0;   // リーグ戦ではコインはもらえない（コインはカップ戦の賞金と購入で）
+    return got;
+  }
+  // ---------- ショップ（ゲーム内コイン） ----------
+  const PRICE = { card: 20, sup: 20, pack5: 90, pack12: 200 };   // コインは基本、課金で手に入る
+  function coinsFor(myScore, events) {
+    const goals = (events || []).filter((e) => e.type === 'goal' && e.team === 0).length;
+    return (myScore[0] > myScore[1] ? 5 : myScore[0] === myScore[1] ? 3 : 1) + Math.min(goals, 3);   // 試合ではほんの少しだけ
+  }
+  function buyCard(save, c) {
+    const pr = CARDS[c].cat === 'sup' ? PRICE.sup : PRICE.card;
+    if ((save.coins || 0) < pr) return false;
+    save.coins -= pr; save.cards[c] = Math.min(CARD_MAX, (save.cards[c] || 0) + 1); return true;
+  }
+  function buyPack(save, n) {
+    const pr = n >= 12 ? PRICE.pack12 : PRICE.pack5;
+    if ((save.coins || 0) < pr) return null;
+    save.coins -= pr;
+    const r = rng(save), got = [];
+    for (let k = 0; k < n; k++) { const c = CARD_POOL[Math.floor(r() * CARD_POOL.length)]; got.push(c); save.cards[c] = Math.min(CARD_MAX, (save.cards[c] || 0) + 1); }
+    return got;
+  }
+  const CARD_MAX = 99;
+  const TEST_MAX_CARDS = true;   // テスト中：全カードを最大枚数で持つ
+  function starterCards() { const o = {}; for (const c of CARD_POOL) o[c] = TEST_MAX_CARDS ? CARD_MAX : CARDS[c].cat === 'sup' ? 1 : 3; return o; }
+  // 暦の変更（リーグ12月4週まで・カップ8回戦）に合わせて、今のシーズンを組み直す
+  function migrateCal2(save) {
+    const lg = save.league, nw = leagueWeeks(lg.rounds.length, lg.id);
+    // 終わった節はそのまま、残りの節は今の週以降の空き週へ
+    const rest = nw.filter((w) => w >= save.week);
+    for (let k = lg.round; k < lg.rounds.length; k++) lg.weeks[k] = rest[k - lg.round] ?? Math.min(LEAGUE_TO, save.week + (k - lg.round));
+    newCup(save);
+    while (save.cup.round < CUP_WEEKS.length && CUP_WEEKS[save.cup.round] < save.week && !save.cup.champion) resolveCupRound(save, null);
+    if (save.post && save.week <= LEAGUE_TO) save.post = null;
+  }
+  // 古いセーブを新しい育成ポイントとカードへ
+  function migrate(save) {
+    // ランクの幅を変えた（E→Dを短く）：今までの育成ポイントを、同じランクの同じ位置に移しかえる
+    if (save.ptsVer !== 3) {
+      const FROM = save.ptsVer === 2 ? RANK_V2 : RANK_OLD;
+      for (const p of (save.team && save.team.players) || []) if (p.pts) for (const k of KEYS) {
+        const v = p.pts[k], f = FROM.findIndex(([, a0, b0]) => v < b0), i = f < 0 ? 5 : f, [, a, b] = FROM[i], [, a2, b2] = RANK[i];
+        p.pts[k] = Math.round((a2 + (b2 - a2) * clamp((v - a) / (b - a), 0, 1)) * 10) / 10; p[k] = toEng(p.pts[k]);
+      }
+      save.ptsVer = 3;
+    }
+    if (!save.nameVer) { const NM = {'あおい': 'たちかわ', 'レン': 'ひむろ', 'カイ': 'きりはら', 'ソラ': 'あまみや', 'ナギ': 'なぎさわ', 'リク': 'はやせ', 'ユウ': 'おがわ', 'トワ': 'ときわ', 'ハル': 'はるかわ', 'シン': 'いぶき', 'レオ': 'つつい', 'ケイ': 'あさぎり', 'ルイ': 'みなせ', 'ミナ': 'あやせ', 'コウ': 'ゆうざき', 'ジン': 'ひいらぎ'}; for (const p of (save.team && save.team.players) || []) if (NM[p.name]) p.name = NM[p.name]; save.nameVer = 1; }   // 版456：最初の選手の名前を、カタカナからひらがなの苗字に
+    for (const p of (save.team && save.team.players) || []) ensureStar(p);   // ☆（レア度）
+    // 利き足（右6割・左4割）。まだ決まっていない選手に付ける
+    { const r = rng(save); for (const p of (save.team && save.team.players) || []) if (p.foot !== 'L' && p.foot !== 'R') p.foot = r() < 0.6 ? 'R' : 'L'; }
+    // 7リーグ制より前のセーブ：世界を作り直して、地域2部リーグ西の開幕から
+    if (!save.world) { makeWorld(save); newLeague(save); newCup(save); save.week = 1; save.post = null; save.migratedWorld = true; }
+    fixWorldNames(save);
+    if (save.world) for (const id in save.world.leagues) for (const t of save.world.leagues[id]) if (ROSTERS[t.id]) t.lvl = lvlAt(t.id, save.season);   // 固定選手の強さに合わせる
+    if (save.league) ensureOthers(save);
+    if (save.cup && save.cup.ver !== 2 && save.cup.ver !== 3) migrateCal2(save);
+    if (save.cup && save.cup.ver === 2) {   // 毎回組み合わせを決め直す方式 → 最初から最後まで決まっているトーナメントへ（今の週までの試合は進めておく）
+      const log = save.cup.log || []; newCup(save); save.cup.log = log;
+      while (save.cup.round < CUP_WEEKS.length && CUP_WEEKS[save.cup.round] < save.week && !save.cup.champion) resolveCupRound(save, null);
+      save.cupRemade = true;
+    }
+    const r0 = rng(save);
+    if (save.potVer !== 2) { for (const p of save.team.players) delete p.pot; save.potVer = 2; }   // ポテンシャルの進み方を本家のペースに直したので、付け直す
+    for (const p of save.team.players) { ensurePts(p); ensurePot(p, r0); }
+    if (save.cardsVer !== 4) { save.cards = starterCards(); save.cardsVer = 4; if (save.plan) save.plan.cards = {}; }
+    if (save.coins == null || save.coinsVer !== 2) { save.coins = 0; save.coinsVer = 2; }
+    if (TEST_MAX_CARDS) for (const c of CARD_POOL) save.cards[c] = CARD_MAX;
+  }
+  root.__resolveCup = (s) => resolveCupRound(s, null);
+  const cpuTeam = (id) => (ROSTERS[id] && TEAM_BY_ID[id] ? rosterTeam(null, TEAM_BY_ID[id], rosterAt(id, 1)) : null);   // 確認ページ用：CPUチームをそのまま試合に出す
+  root.DotCareer = { BENCH_N, kitsPair, d1Round, pinWatch, faceKeyOf, cpuTeam, ensureStar, starOf, totsuOf, capGrade, capPts, capIdx, GRADES, rosterAt, lvlAt, retiredAt, titleOf, ensureTitles, evalTitles, CUP_LABELS, cupIn, ensureClub, renameClub, kitsFor, KIT_DEFAULT, EMB_DEFAULT, TEAMS, TEAM_BY_ID, ROSTERS, rosterOfTeam, leagueTable, prevOrder, goalRank, recordGoals, CUP_WEEKS_ALL: CUP_WEEKS, leagueWeeksOf: leagueWeeks, POST_WEEKS, CARDS, CAT_NAME, SP, findSpecial, previewCards, trainCards, trainOne, weekTick, GRID_R, GRID_C, zoneOf, cellsFor, formationLabel, FORMATIONS, TACTIC_ITEMS, STYLES, SITU_DEFAULT, SITU_ACTS, SITU_ROWS, SITU_FROM, ensureTactics, slotRoles, applyTactics, skillRate, endWeek, SEASON_WEEKS, INJURIES, TYPE_TUNE, POT_TYPES, ensurePot, potMul, trainedThisWeek, trainsDone, trainLimit, trainMult, campState, campAdvance, CAMP, slotInfo, SLOT_MAX, SKILL_RATE, rewardCards, newLeague, newCup, playFixture, peekRound, afterOfficial, playPractice, practiceOpponent, practiceOptions, teamLook, recordStats, teamLevel, findTeam, CUP_WEEKS, CAMPS, LG, rankInfo, PMAX, PRICE, buyCard, buyPack, toEng, toPts, migrate, ensurePts, TEAM_MENUS: TEAM_PTS, MENUS, SPECIAL, LEAGUES, PNAME, newCareer, menusFor, train, learnSkill, slots, skillChance, nextFixture, finishRound, standings, endSeason, opponentTeam, matchTeam, avgParam, decideType };
+})(typeof window !== 'undefined' ? window : globalThis);

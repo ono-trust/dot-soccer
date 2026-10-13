@@ -1,0 +1,16 @@
+import { chromium } from '/opt/npm-tools/node_modules/playwright/index.mjs';
+import fs from 'fs';
+const out = process.argv[2]; const opp = process.argv[3] || 'バランス型'; const secs = +(process.argv[4]||12); const spd = process.argv[5]||'1'; const seek=+(process.argv[6]||0);
+fs.mkdirSync(out,{recursive:true});
+const b = await chromium.launch();
+const ctx = await b.newContext({ viewport: { width: 1280, height: 800 }, recordVideo: { dir: out, size: { width: 1280, height: 800 } } });
+const pg = await ctx.newPage();
+const errs=[]; pg.on('pageerror', e => errs.push(e.message));
+await pg.goto('file://' + process.cwd() + '/index.html');
+await pg.selectOption('#opponent', opp);
+await pg.click('#start');
+if (seek) await pg.evaluate((t)=>window.__demo.seek(t), seek);
+if (spd!=='1') await pg.click(`[data-speed="${spd}"]`);
+await pg.waitForTimeout(secs*1000);
+console.log('errors', errs);
+await ctx.close(); await b.close();
