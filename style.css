@@ -2564,3 +2564,6 @@ html.short .sq-tabs button{font-size:13px;letter-spacing:-.5px}
 .cs-wrap .cs-have small{font-size:15px !important}
 .cs-wrap .cs-have em{font-size:26px;text-align:right}
 .cs-wrap .cs-have em.n6{font-size:22px !important}.cs-wrap .cs-have em.n7{font-size:19px !important}
+/* 版579：コインの数字も＋も、どちらを押してもコイン購入へ（数字の長さに合わせて押せる範囲も広がる） */
+.sh3-coin[data-go="coin"]{pointer-events:auto !important;cursor:pointer;padding:10px 14px 10px 64px;margin:-10px 0 0 -64px;border-radius:999px}
+.sh3-coin[data-go="coin"]:active{background:rgba(255,210,58,.25)}
