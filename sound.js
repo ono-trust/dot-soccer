@@ -7,15 +7,39 @@
   function ctx() {
     if (AC) return AC;
     const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
-    AC = new C(); master = AC.createGain(); master.gain.value = pref.vol; master.connect(AC.destination);
+    try { AC = new C({ latencyHint: 'interactive' }); } catch (_) { AC = new C(); }
+    AC.onstatechange = () => { if (AC && AC.state === 'interrupted') needRebuild = true; };   // 版560：電話・画面収録などで音が止められた
+    master = AC.createGain(); master.gain.value = pref.vol; master.connect(AC.destination);
     sfxG = AC.createGain(); sfxG.gain.value = pref.sfx ? 1 : 0; sfxG.connect(master);
     bgmG = AC.createGain(); bgmG.gain.value = pref.bgm ? 0.55 : 0; bgmG.connect(master);
+    clockA = null; setTimeout(prerenderAll, 0);
     return AC;
   }
+  // 版560：音の作り直し。アプリを一瞬閉じて戻った時・画面収録を始めた時などに、音が遅れたり雑音になったりするので、音の仕組みごと作り直す
+  let needRebuild = false, crowdModeNow = null, clockA = null, driftBad = 0;
+  function rebuild() {
+    needRebuild = false; if (!AC) return;
+    const song = want, cm = crowdModeNow, old = AC;
+    crowdParts.forEach((p) => { try { p.stop(); } catch (_) {} }); crowdParts = []; crowdGain = null; crowdHp = null; crowdMix = null; crowdModeNow = null;
+    clearInterval(timer); timer = null; cur = null;
+    AC = null; noiseBuf = null; lastAt = {}; PRE = {};
+    try { old.close(); } catch (_) {}
+    const a = ctx(); if (!a) return; try { a.resume(); } catch (_) {}
+    if (cm) crowd(cm);
+    if (song) { want = song; if (a.state === 'running') bgm(song); else a.onstatechange = ((f) => () => { if (f) f(); if (a.state === 'running' && want && !cur) bgm(want); })(a.onstatechange); }
+  }
+  // 音の時計が実際の時間とずれていく時（音の処理が追いつかない・速さが合わない）も作り直す
+  setInterval(() => {
+    if (!AC || AC.state !== 'running' || document.hidden) { clockA = null; return; }
+    const now = performance.now() / 1000, at = AC.currentTime;
+    if (clockA) { const dp = now - clockA[0], da = at - clockA[1]; if (dp > 1.5) { const r = da / dp; driftBad = Math.abs(r - 1) > 0.04 ? driftBad + 1 : 0; if (driftBad >= 2) { driftBad = 0; rebuild(); return; } } }
+    clockA = [now, at];
+  }, 2000);
   // iPhoneは、画面にさわった時でないと音が出せない：最初のタッチで音を使えるようにする
-  const unlock = () => { const a = ctx(); if (!a) return; if (a.state === 'suspended') a.resume(); if (want && !cur) bgm(want); };
+  const unlock = () => { if (needRebuild) rebuild(); const a = ctx(); if (!a) return; if (a.state !== 'running') a.resume(); if (want && !cur) bgm(want); };
   ['pointerdown', 'touchstart', 'keydown'].forEach((e) => addEventListener(e, unlock, { passive: true }));
-  document.addEventListener('visibilitychange', () => { if (!AC) return; if (document.hidden) AC.suspend(); else AC.resume(); });
+  document.addEventListener('visibilitychange', () => { if (!AC) return; if (document.hidden) { try { AC.suspend(); } catch (_) {} needRebuild = true; } else rebuild(); });   // 版560：戻ってきたら作り直す（一瞬閉じると音がずれていた）
+  addEventListener('pageshow', (e) => { if (e.persisted && AC) rebuild(); });
 
   // ---- 音の部品 ----
   function tone(f, d, type = 'square', vol = 0.2, t0 = 0, slide = null, out = null) {
@@ -81,6 +105,14 @@
   const N = (s) => { const m = /^([A-G])(#?)(\d)$/.exec(s); if (!m) return 0; const k = { C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2 }[m[1]] + (m[2] ? 1 : 0) + (+m[3] - 4) * 12; return 440 * Math.pow(2, k / 12); };
 
   // ---- 効果音 ----
+  function cheerLive() {
+      // 「ワーッ」：高めの声（ア）を28人分。雑音は少しだけ（息の音）
+      crowdVoices(6.4, 0.45, 0.05, { n: 28, lo: 170, hi: 430, att: 0.7, rel: 1.3, spread: 0.5, endBend: -0.06, vowel: [[800, 4, 1], [1250, 5, 0.7], [2600, 6, 0.25]] });
+      [[900, 5, 0.05], [1500, 5, 0.035]].forEach(([fq, q, v], k) => noiseHold(6.2, v, fq, q, k * 0.05, 0.8, 1.2));
+      [[1.3, 500, 2400], [2.9, 450, 2200], [4.1, 600, 2500]].forEach(([t, a, b]) => fanWhistle(t, a, b, 0.22, 0.04));
+  }
+  function oohLive() { crowdVoices(2.2, 0.8, 0, { n: 22, lo: 110, hi: 260, att: 0.3, rel: 0.9, spread: 0.25, endBend: -0.12, vowel: [[480, 4, 1], [850, 5, 0.6], [2400, 6, 0.12]] }); fanWhistle(0.8, 420, 1900, 0.18, 0.07); }
+
   const SFX = {
     // 版558：本家のタップ音は「カチッ」と短く高い音（5300Hzあたり、0.015秒）
     tap() { noise(0.018, 0.22, 'bandpass', 5300, 0, null, 0.001); tone(5300, 0.012, 'sine', 0.05); },
@@ -101,10 +133,7 @@
     whistle3() { whistle(0.19); whistle(0.19, 0.52); whistle(1.48, 1.03); },
     // 版558：本家のゴール：1秒で観客が「ワーッ」と明るく大きくなり（高めの声が+10dB）、5秒ほど続いて1秒で戻る。低い地鳴りはない。指笛がまじる
     cheer() {
-      // 「ワーッ」：高めの声（ア）を28人分。雑音は少しだけ（息の音）
-      crowdVoices(6.4, 0.45, 0.05, { n: 28, lo: 170, hi: 430, att: 0.7, rel: 1.3, spread: 0.5, endBend: -0.06, vowel: [[800, 4, 1], [1250, 5, 0.7], [2600, 6, 0.25]] });
-      [[900, 5, 0.05], [1500, 5, 0.035]].forEach(([fq, q, v], k) => noiseHold(6.2, v, fq, q, k * 0.05, 0.8, 1.2));
-      [[1.3, 500, 2400], [2.9, 450, 2200], [4.1, 600, 2500]].forEach(([t, a, b]) => fanWhistle(t, a, b, 0.22, 0.04));
+      if (PRE.cheer) playBuf(PRE.cheer, 0.6); else cheerLive();
       if (crowdGain && AC) { const t = AC.currentTime; try { crowdGain.gain.cancelScheduledValues(t); crowdGain.gain.setValueAtTime(crowdGain.gain.value, t); crowdGain.gain.linearRampToValueAtTime(1.3, t + 0.8); crowdGain.gain.setValueAtTime(1.3, t + 5.4); crowdGain.gain.linearRampToValueAtTime(0.9, t + 6.6); } catch (_) {} }
     },
     // 点数が変わる時のファンファーレ
@@ -115,7 +144,7 @@
     },
     goal() { SFX.cheer(); },
     // 版558：おしいシュートの「おぉー」と指笛（本家：声のかたまり＋「ヒュイッ、ヒュイーッ」）
-    ooh() { crowdVoices(2.2, 0.8, 0, { n: 22, lo: 110, hi: 260, att: 0.3, rel: 0.9, spread: 0.25, endBend: -0.12, vowel: [[480, 4, 1], [850, 5, 0.6], [2400, 6, 0.12]] }); fanWhistle(0.8, 420, 1900, 0.18, 0.07); },
+    ooh() { if (PRE.ooh) playBuf(PRE.ooh, 0.6); else oohLive(); },
     skill() { [880, 1320, 1760, 2349].forEach((f, i) => tone(f, 0.09, 'triangle', 0.12, i * 0.045)); },
     uniq() { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, 0.12, 'square', 0.08, i * 0.05)); noise(0.5, 0.06, 'highpass', 4000, 0.05); },
     card() { whistle(0.09); whistle(0.085, 0.12); },
@@ -143,24 +172,47 @@
     const [g, hp] = m === 'far' ? [CROWD * 0.36, 420] : m === 'duck' ? [CROWD * 0.08, 600] : [CROWD, 40];
     try { crowdMix.gain.cancelScheduledValues(t); crowdMix.gain.setValueAtTime(crowdMix.gain.value, t); crowdMix.gain.linearRampToValueAtTime(g, t + 0.8); crowdHp.frequency.cancelScheduledValues(t); crowdHp.frequency.setValueAtTime(crowdHp.frequency.value, t); crowdHp.frequency.linearRampToValueAtTime(hp, t + 0.8); } catch (_) {}
   }
+  function crowdBands(a, lp, parts) {
+    const nb = noiseBuffer();
+      // 声の響き：[高さ, 幅（大きいほど細い）, 大きさ]
+      [[680, 2.4, 0.085], [300, 0.9, 0.055], [1050, 2.2, 0.03], [1600, 2, 0.016], [150, 1.2, 0.05]].forEach(([fq, q, vol], k) => {
+        const s = a.createBufferSource(); s.buffer = nb; s.loop = true; s.playbackRate.value = 0.9 + k * 0.05;
+        const bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fq; bp.Q.value = q;
+        const g = a.createGain(); g.gain.value = vol;
+        // 大きさを、ゆっくり・速くの2つの波でゆらす（ざわざわ）
+        [[0.17 + k * 0.05, vol * 0.35], [1.3 + k * 0.7, vol * 0.25]].forEach(([fr, dep]) => { const l = a.createOscillator(); l.frequency.value = fr; const lg = a.createGain(); lg.gain.value = dep; l.connect(lg); lg.connect(g.gain); l.start(); parts.push(l); });
+        { const l = a.createOscillator(); l.frequency.value = 0.4 + k * 0.13; const lg = a.createGain(); lg.gain.value = fq * 0.06; l.connect(lg); lg.connect(bp.frequency); l.start(); parts.push(l); }
+        s.connect(bp); bp.connect(g); g.connect(lp); s.start(0, Math.random()); parts.push(s);
+      });
+  }
+  // 版560：観客の声・歓声・「おぉー」は、最初に一度だけ作って録音しておき、それを鳴らす（何十個もの音を毎回作ると、iPhoneで音が遅れたり雑音になったりする）
+  let PRE = {};
+  async function prerenderAll() {
+    const a = AC; if (!a || PRE.busy) return; PRE.busy = true;
+    const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OC) return;
+    const sr = a.sampleRate;
+    const mk = (secs, build) => { const oc = new OC(1, Math.ceil(secs * sr), sr); const keep = { AC, sfxG, noiseBuf }; AC = oc; sfxG = oc.createGain(); sfxG.connect(oc.destination); noiseBuf = null; try { build(oc, sfxG); } finally { ({ AC, sfxG, noiseBuf } = keep); } return oc.startRendering(); };
+    try {
+      const raw = await mk(14, (oc, out) => { const g = oc.createGain(); g.connect(out); crowdBands(oc, g, []); });
+      // つなぎ目が分からないように、最後の2秒を最初の2秒に重ねて12秒のくり返しにする
+      const L = 12 * sr, X = 2 * sr, src = raw.getChannelData(0), loop = a.createBuffer(1, L, sr), d = loop.getChannelData(0);
+      for (let i = 0; i < L; i++) { if (i < X) { const w = i / X; d[i] = src[i] * Math.sqrt(w) + src[i + L] * Math.sqrt(1 - w); } else d[i] = src[i]; }
+      const cheer = await mk(7, () => cheerLive());
+      const ooh = await mk(2.6, () => oohLive());
+      if (AC === a) PRE = { crowd: loop, cheer, ooh };
+    } catch (_) { PRE.busy = false; }
+  }
+  function playBuf(buf, vol = 1) { const a = ctx(); if (!a || !buf) return; const s2 = a.createBufferSource(); s2.buffer = buf; s2.playbackRate.value = 0.97 + Math.random() * 0.06; const g = a.createGain(); g.gain.value = vol; s2.connect(g); g.connect(sfxG); s2.start(); }
   function crowd(on) {
-    const a = ctx(); if (!a) return;
+    const a = ctx(); if (!a) return; crowdModeNow = on || null;
     if (on && crowdParts.length) { crowdMode(on); return; }
     if (on && !crowdParts.length) {
       const out = a.createGain(); out.gain.value = 0.0001; out.gain.exponentialRampToValueAtTime(0.9, a.currentTime + 1.5);
       const mix = a.createGain(); mix.gain.value = CROWD * (on === 'far' ? 0.36 : on === 'duck' ? 0.08 : 1);
       const hp = a.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = on === 'far' ? 420 : 40; hp.Q.value = 0.5;
       const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; lp.connect(hp); hp.connect(out); out.connect(mix); mix.connect(sfxG);
-      // 声の響き：[高さ, 幅（大きいほど細い）, 大きさ]
-      [[680, 2.4, 0.085], [300, 0.9, 0.055], [1050, 2.2, 0.03], [1600, 2, 0.016], [150, 1.2, 0.05]].forEach(([fq, q, vol], k) => {
-        const s = a.createBufferSource(); s.buffer = noiseBuffer(); s.loop = true; s.playbackRate.value = 0.9 + k * 0.05;
-        const bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fq; bp.Q.value = q;
-        const g = a.createGain(); g.gain.value = vol;
-        // 大きさを、ゆっくり・速くの2つの波でゆらす（ざわざわ）
-        [[0.17 + k * 0.05, vol * 0.35], [1.3 + k * 0.7, vol * 0.25]].forEach(([fr, dep]) => { const l = a.createOscillator(); l.frequency.value = fr; const lg = a.createGain(); lg.gain.value = dep; l.connect(lg); lg.connect(g.gain); l.start(); crowdParts.push(l); });
-        { const l = a.createOscillator(); l.frequency.value = 0.4 + k * 0.13; const lg = a.createGain(); lg.gain.value = fq * 0.06; l.connect(lg); lg.connect(bp.frequency); l.start(); crowdParts.push(l); }
-        s.connect(bp); bp.connect(g); g.connect(lp); s.start(0, Math.random()); crowdParts.push(s);
-      });
+      if (PRE.crowd) { const src = a.createBufferSource(); src.buffer = PRE.crowd; src.loop = true; src.connect(lp); src.start(0, Math.random() * 10); crowdParts.push(src); }   // 版560：前もって作っておいた観客の声（軽い）
+      else crowdBands(a, lp, crowdParts);
       crowdParts.push({ stop() {}, out });
       crowdGain = out; crowdHp = hp; crowdMix = mix;
     } else if (!on && crowdParts.length) { const parts = crowdParts, g = crowdGain, mx = crowdMix; crowdParts = []; crowdGain = null; crowdHp = null; crowdMix = null; try { const t = a.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6); } catch (_) {} try { setTimeout(() => { try { mx.disconnect(); } catch (_) {} }, 700); } catch (_) {} setTimeout(() => parts.forEach((p) => { try { p.stop(); } catch (_) {} }), 800); }
@@ -235,7 +287,7 @@
     if (k === 'bgm') { bgmG.gain.value = v ? 0.55 : 0; }
     if (k === 'vol') master.gain.value = v;
   }
-  window.DotSound = { play, bgm, crowd, set, __render, get state() { return { bgm: cur, want, crowd: crowdMix ? +crowdMix.gain.value.toFixed(2) : 0, hp: crowdHp ? Math.round(crowdHp.frequency.value) : 0 }; }, get pref() { return { ...pref }; } };
+  window.DotSound = { play, bgm, crowd, set, __render, get state() { return { bgm: cur, want, crowd: crowdMix ? +crowdMix.gain.value.toFixed(2) : 0, hp: crowdHp ? Math.round(crowdHp.frequency.value) : 0, pre: Object.keys(PRE).join(',') }; }, get pref() { return { ...pref }; } };
 })();
 // ボタンを押した時の音（戻るボタンは別の音）
 document.addEventListener('click', (e) => {

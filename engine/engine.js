@@ -5161,7 +5161,7 @@
       const el = S.t - halfStartT;
       if (el >= HALF - 1e-6 && whistleNow(el)) {
         lastPlay = null;
-        if (curHalf === 2) break;
+        if (curHalf === 2 || opts.oneHalf) break;   // 版560：練習試合は前半だけ
         curHalf = 2; halfStartT = S.t;
         S.celebrate = 0; S.restart = null;
         S.half = 2;
@@ -5189,8 +5189,8 @@
           let far = 0;
           for (const p of P) { const ko = kickoffSpot(p, S.kickoffTeam); far = Math.max(far, hyp(fx(p.team, ko[0]) - p.x, ko[1] - p.y)); }
           S.koWait = (S.koWait || 0) + DT;
-          if (far > 1.2 && S.koWait < (S.cel0 > 6 ? 4.5 : 2.5)) S.celebrate = 0.01;
-          else { S.koWait = 0; kickoffPositions(S.kickoffTeam); }
+          if (far > 0.6 && S.koWait < 15) S.celebrate = 0.01;   // 版560：全員が戻るまで待つ（前は最大4.5秒で、戻りきらない選手が瞬間移動していた）
+          else { if (globalThis.__koLog) globalThis.__koLog.push([+far.toFixed(1), +S.koWait.toFixed(1)]); S.koWait = 0; kickoffPositions(S.kickoffTeam); }
         }
       } else if (S.restart) {
         tickRestart();

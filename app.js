@@ -76,7 +76,7 @@
     venue = mctx.opts.venue != null ? Math.max(0, Math.min(4, mctx.opts.venue)) : 4;
     applyKits(mctx.opts.kits);
     careerChanges = []; tacChange = null; tacState = null; closeLocker();
-    match = D.simulateMatch(mine, theirs, seed);
+    match = D.simulateMatch(mine, theirs, seed, { oneHalf: !!mctx.opts.oneHalf });   // 版560：練習試合は前半だけ
     { const hb = document.getElementById('htTac'); if (hb) hb.hidden = !mctx.opts.onSub; const sb = document.querySelector('#half [data-panel="subs"]'); if (sb) sb.hidden = !!mctx.opts.onSub; }
     { const ab = document.querySelector('#match aside [data-panel="subs"]'); if (ab) ab.style.display = mctx.opts.watch ? 'none' : ''; }   // 観戦：選手交代はない
     $('#match').classList.toggle('watching', !!mctx.opts.watch); { const ws = document.getElementById('wStop'); if (ws) { ws.hidden = !mctx.opts.watch; ws.onclick = async () => {
@@ -116,7 +116,7 @@
   let subsAt = [];
   // ハーフタイムの交代・作戦変更：同じシードで試合を計算し直す（前半はまったく同じになる）。後半はそこから続ける
   function applyHalf(changes, cb) {
-    const m2 = D.simulateMatch(mctx.mine, mctx.theirs, mctx.seed, { changes });
+    const m2 = D.simulateMatch(mctx.mine, mctx.theirs, mctx.seed, { changes, oneHalf: !!mctx.opts.oneHalf });
     m2.homeShort = match.homeShort; m2.awayShort = match.awayShort;
     match = m2; halfT = match.halfTime || halfT;
     prepTimeline();
@@ -248,7 +248,7 @@
   function stop() { playing = false; cancelAnimationFrame(raf); $('#pause').textContent = '再生'; }
 
   function loop(now) {
-    if (!playing) return;
+    if (!playing || !match) return;
     const dt = Math.min(0.1, (now - lastNow) / 1000);
     lastNow = now;
     if (show && show.hold) advanceShow(dt);
@@ -4068,7 +4068,7 @@
     const sec = (k, title, body, open) => `<div class="lk-sec${open ? ' open' : ''}" data-k="${k}"><button class="lk-sech">${title}<i></i></button><div class="lk-secb">${body}</div></div>`;
     sub.innerHTML = `<div class="lk-stat"><div class="lk-sthead"><small>${plvEsc(head)}</small><div class="lk-score"><span>${plvEsc(match.homeShort)}</span>${emb(o.embH)}<b>${sc[0]}−${sc[1]}</b>${emb(o.embA)}<span>${plvEsc(match.awayShort)}</span></div><em>${title}</em></div>
       <div class="lk-rows">${rows.map((r) => `<div class="lk-row"><span>${r[0]}</span><b>${r[1]}</b><span>${r[2]}</span></div>`).join('')}</div>
-      ${sec('g', '得点', goalsList, false)}${sec('a', '主な欠場選手', ab, false)}${sec('p', final ? '試合結果' : '途中経過', prog, false)}${(mctx && mctx.opts && mctx.opts.watch) ? '' : sec('c', '見つかった課題', `<div class="lk-cards">${cards}</div>`, false)}
+      ${sec('g', '得点', goalsList, false)}${sec('a', '主な欠場選手', ab, false)}${o.halfOthers === null ? '' : sec('p', final ? '試合結果' : '途中経過', prog, false)}${(mctx && mctx.opts && mctx.opts.watch) ? '' : sec('c', '見つかった課題', `<div class="lk-cards">${cards}</div>`, false)}
       </div><button class="lk-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button>`;
     sub.hidden = false;
     sub.querySelectorAll('.lk-sech').forEach((b) => b.onclick = () => b.parentElement.classList.toggle('open'));
