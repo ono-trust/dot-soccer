@@ -1273,7 +1273,7 @@
     const W = bd.clientWidth, H = bd.clientHeight, x = parseFloat(pp.style.left) || 0, y = parseFloat(pp.style.top) || 0;
     pp.style.left = Math.max(6, Math.min(W - pp.offsetWidth - 6, x)) + 'px'; pp.style.top = Math.max(6, Math.min(H - pp.offsetHeight - 6, y)) + 'px';
   }
-  addEventListener('stagefit', () => { const L = $('#clubLayer'); if (L && L.querySelector('.sq2') && !$('#cv-club').hidden) renderLineup2(); });
+  addEventListener('stagefit', () => { const L = $('#clubLayer'); if (L && L.querySelector('.sq2') && !$('#cv-club').hidden && !sqDrag && !document.querySelector('.s2drag')) renderLineup2(); });   // 版531：ドラッグ中は組み直さない
   // 版516：名前の札の中身を、表示の切りかえ（名前・調子／タイプ／星）で変える。長いタイプ名は横に縮めて1行に
   const SQ_SHOW = ['cond', 'type', 'star'], SQ_SHOW_NAME = { cond: '名前・調子', type: 'タイプ', star: 'レア度（星）' };
   function sqTag(q) {
@@ -1373,9 +1373,11 @@
     // リザーブの帯から、横に引っぱるとドラッグ（縦はスクロール）
     L.querySelectorAll('.s2sc').forEach((c) => {
       let dg = null;
-      c.addEventListener('pointerdown', (e) => { if (e.target.closest('.s2rel')) return; dg = { x0: e.clientX, y0: e.clientY, on: false, ghost: null, id: e.pointerId }; });
+      c.addEventListener('pointerdown', (e) => { if (e.target.closest('.s2rel')) return; dg = { x0: e.clientX, y0: e.clientY, on: false, ghost: null, id: e.pointerId };
+        const fin = (ev) => { if (ev.pointerId !== e.pointerId) return; removeEventListener('pointerup', fin, true); removeEventListener('pointercancel', fin, true); if (dg && dg.on) end(ev.type === 'pointercancel' && dg.lx != null ? { clientX: dg.lx, clientY: dg.ly } : ev, false); };   // 版531：指を離した合図を画面全体でも受け取る
+        addEventListener('pointerup', fin, true); addEventListener('pointercancel', fin, true); });
       c.addEventListener('pointermove', (e) => {
-        if (!dg) return; const dx = e.clientX - dg.x0, dy = e.clientY - dg.y0;
+        if (!dg) return; dg.lx = e.clientX; dg.ly = e.clientY; const dx = e.clientX - dg.x0, dy = e.clientY - dg.y0;
         if (!dg.on) { if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) { dg.on = true; try { c.setPointerCapture(dg.id); } catch (_) {} const sq = L.querySelector('.sq2'); dg.sq = sq; dg.ghost = document.createElement('div'); dg.ghost.className = 's2drag'; const im = c.querySelector('img'); if (im) dg.ghost.appendChild(im.cloneNode(true)); sq.appendChild(dg.ghost); c.classList.add('lift'); } else if (Math.abs(dy) > 10) { dg = null; return; } }
         if (dg && dg.on) { e.preventDefault(); const r = dg.sq.getBoundingClientRect(), k = r.width / dg.sq.offsetWidth; dg.ghost.style.left = (e.clientX - r.left) / k + 'px'; dg.ghost.style.top = (e.clientY - r.top) / k + 'px';
           L.querySelectorAll('.hov').forEach((h) => h.classList.remove('hov')); const t = document.elementsFromPoint(e.clientX, e.clientY).map((x) => x.closest && x.closest('.s2p:not(.ghost)')).find(Boolean); if (t) t.classList.add('hov'); }
@@ -1399,11 +1401,16 @@
     L.querySelectorAll('.s2p').forEach((el) => {
       el.onpointerdown = (e) => {
         e.preventDefault(); const i = +el.dataset.i, { r, k } = scaleOf();
-        sqDrag = { i, el, x0: e.clientX, y0: e.clientY, on: false, ghost: null, r, k };
+        sqDrag = { i, el, x0: e.clientX, y0: e.clientY, on: false, ghost: null, r, k, id: e.pointerId };
         try { el.setPointerCapture(e.pointerId); } catch (_) {}
+        // 版531：iPhoneで指を離した合図が選手に届かず、持ち上げたまま止まることがあった → 画面全体でも離した・キャンセルを受け取る
+        const mv = (ev) => { if (sqDrag && sqDrag.el === el && ev.pointerId === sqDrag.id && ev.target !== el) el.onpointermove(ev); };
+        const fin = (ev) => { if (ev.pointerId !== e.pointerId) return; removeEventListener('pointermove', mv, true); removeEventListener('pointerup', fin, true); removeEventListener('pointercancel', fin, true);
+          if (sqDrag && sqDrag.el === el) { if (ev.type === 'pointercancel') { const d = sqDrag; if (d.on && d.lx != null) el.onpointerup({ clientX: d.lx, clientY: d.ly, pointerId: d.id }); else el.onpointercancel(ev); } else el.onpointerup(ev); } };
+        addEventListener('pointermove', mv, true); addEventListener('pointerup', fin, true); addEventListener('pointercancel', fin, true);
       };
       el.onpointermove = (e) => {
-        const d = sqDrag; if (!d || d.el !== el) return;
+        const d = sqDrag; if (!d || d.el !== el) return; d.lx = e.clientX; d.ly = e.clientY;
         if (!d.on && sqRes < 0 && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 12) { d.on = true; d.ghost = el.cloneNode(true); d.ghost.classList.add('ghost'); board.appendChild(d.ghost); el.classList.add('lift'); }
         if (d.on) { d.ghost.style.left = (e.clientX - d.r.left) / d.k + 'px'; d.ghost.style.top = (e.clientY - d.r.top) / d.k + 18 + 'px';
           board.querySelectorAll('.hov').forEach((h) => h.classList.remove('hov')); const tgt = dropAt(e.clientX, e.clientY); if (tgt) tgt.classList.add('hov'); }
@@ -1430,7 +1437,7 @@
         }
         done();
       };
-      el.onpointercancel = () => { const d = sqDrag; sqDrag = null; if (d && d.ghost) d.ghost.remove(); renderLineup2(); };
+      el.onpointercancel = () => { const d = sqDrag; if (d && d.el === el && d.on && d.lx != null) { el.onpointerup({ clientX: d.lx, clientY: d.ly, pointerId: d.id }); return; } sqDrag = null; if (d && d.ghost) d.ghost.remove(); renderLineup2(); };
     });
     function dropAt(x, y) {
       const els = document.elementsFromPoint(x, y);
