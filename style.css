@@ -2491,3 +2491,4 @@ html.short .sq-tabs button{font-size:13px;letter-spacing:-.5px}
 .pk-ok{flex:none;min-width:150px}
 .pk-skip{position:absolute;right:20px;top:20px;background:rgba(0,0,0,.5);color:#fff;border:2px solid rgba(255,255,255,.7);border-radius:999px;padding:8px 18px;font-size:18px;font-weight:900}
 .pk-skip[hidden]{display:none}
+.pk-wrap .lk-box{cursor:pointer}

@@ -3405,9 +3405,9 @@
         cs.forEach((c, i) => later(t0 + i * (big ? 150 : 210), () => { c.classList.add('flip'); S(c.querySelector('.pk-front em') ? 'reveal5' : 'reveal'); }));
         later(t0 + n * (big ? 150 : 210) + 500, finish);
       };
-      box.querySelector('.pk-pack').onclick = open; box.querySelector('.pk-tap').onclick = open;
+      box.onclick = () => { if (!stage) open(); };   // 版566：画面のどこをさわっても開ける
       box.querySelector('.pk-skip').onclick = (e) => { e.stopPropagation(); if (!stage) { stage = 1; box.classList.add('opened'); } finish(); };
-      box.querySelector('.pk-ok').onclick = () => { el.hidden = true; box.innerHTML = ''; done(); };
+      box.querySelector('.pk-ok').onclick = (e) => { e.stopPropagation(); box.onclick = null; el.hidden = true; box.innerHTML = ''; done(); };
       later(1300, () => { if (!stage) box.classList.add('wait'); });
     });
   }
