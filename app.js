@@ -256,8 +256,6 @@
       const simT0 = simT;
       simT += dt * RATE * speed * (speed < 4 ? slowAt(simT) : 1);   // 白夜の視界の間は、ゆっくり
       if (koWhistleT >= 0 && simT0 < koWhistleT && simT >= koWhistleT) { SND().play('whistle'); koWhistleT = -1; }
-      if (!show && speed < 4) { const sd = stateAt(simT); if (sd.owner >= 0) { const pl = sd.players[sd.owner]; const mv = pl && Math.hypot(pl.vx || 0, pl.vy || 0); if (dribOwner !== sd.owner) { dribOwner = sd.owner; dribT = simT; } else if (simT - dribT > 0.42 && (mv == null || mv > 1.2)) { dribT = simT; SND().play('touch'); } } else dribOwner = -1; }   // 版500：ドリブル中のボールタッチの音
-      while (kickPtr < kickAll.length && kickAll[kickPtr] <= simT) { if (kickAll[kickPtr] > simT0 - 0.05 && speed < 4 && !show) SND().play('kick'); kickPtr++; }
       if (simT >= match.duration) {
         // 試合終了（ゴール演出の途中でも、ここで締める。止まったままにならないように）
         simT = match.duration;
@@ -267,9 +265,26 @@
       fireEvents();
       if (show) advanceShow(dt);
     }
+    sndTick();
     draw();
     if (mctx && mctx.opts.tut && mctx.opts.tut.tick && playing && !(show && show.hold)) mctx.opts.tut.tick(simT, tutApi());   // チュートリアル：決まった時間に試合を止めて説明
     if (playing) raf = requestAnimationFrame(loop);
+  }
+
+  // 版502：試合の音（キック・ドリブル・リプレイ中のゴールの歓声）。ふつうの試合中とリプレイ中だけ鳴らす
+  let sndPrevT = 0;
+  const sndLive = () => !show || ['replay', 'jreplay'].includes(show.phase);
+  function sndTick() {
+    const t0 = sndPrevT, t1 = simT; sndPrevT = t1;
+    if (!(t1 > t0 && t1 - t0 < 0.6) || speed >= 4 || !sndLive()) { dribOwner = -1; return; }
+    // キック：t0〜t1の間に蹴った回数
+    let lo = 0, hi = kickAll.length; while (lo < hi) { const m = (lo + hi) >> 1; if (kickAll[m] <= t0) lo = m + 1; else hi = m; }
+    if (lo < kickAll.length && kickAll[lo] <= t1) SND().play('kick');
+    // ドリブル：ボールを持って走っている間のタッチ
+    const sd = stateAt(t1);
+    if (sd.owner >= 0) { const pl = sd.players[sd.owner]; const mv = pl && Math.hypot(pl.vx || 0, pl.vy || 0); if (dribOwner !== sd.owner) { dribOwner = sd.owner; dribT = t1; } else if (t1 - dribT > 0.42 && (mv == null || mv > 1.2)) { dribT = t1; SND().play('touch'); } } else dribOwner = -1;
+    // リプレイの中で、ボールがゴールに入る瞬間に歓声
+    if (show && show.phase === 'replay' && show.goal && t0 < show.goal.t && t1 >= show.goal.t) SND().play('cheer');
   }
 
   // ---------- ゴール後の演出（カルチョビットA風） ----------
@@ -2889,7 +2904,7 @@
       // 技名は頭の上の小さな吹き出しで（大きな技名はリプレイ・ダイジェストでだけ）
       if (sk) {   // 紫電の遊戯が出ている間の技の吹き出しは、紫電の遊戯と同じ色にする
         let ov = null; const L9 = actsOf[i]; if (L9) for (let k = L9.length - 1; k >= 0; k--) { const a = L9[k]; if (a.t > simT) continue; if (simT - a.t > 9) break; if (a.a === 'uend' && a.k === 'shiden') break; if (a.a === 'uniq' && a.k === 'shiden') { ov = D.UNIQ && D.UNIQ.shiden && D.UNIQ.shiden.chip; break; } }
-        skillChips.push([q.x, r.top - 44, sk, ov]); { const kk = i + '|' + sk, last = chipHeard.get(kk); if (!show && speed < 4 && (last == null || Math.abs(simT - last) > 2)) SND().play(sk.includes('【') ? 'uniq' : 'skill'); chipHeard.set(kk, simT); } }
+        skillChips.push([q.x, r.top - 44, sk, ov]); { const kk = i + '|' + sk + '|' + (show ? show.phase : ''), last = chipHeard.get(kk); if (sndLive() && speed < 4 && (last == null || Math.abs(simT - last) > 2)) SND().play(sk.includes('【') ? 'uniq' : 'skill'); chipHeard.set(kk, simT); } }
       // 月影の抜け出し：出ている間、走る選手のうしろに月の光の色の風と残像
       { const L3 = actsOf[i]; for (let k = L3.length - 1; k >= 0; k--) { const a = L3[k]; if (a.t > simT) continue; if (simT - a.t > 6) break;
           if (a.a === 'uend' && a.k === 'tsukikage') break;
