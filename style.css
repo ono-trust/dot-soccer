@@ -2554,3 +2554,7 @@ html.short .sq-tabs button{font-size:13px;letter-spacing:-.5px}
 .cs-wrap .cs-have em{flex:1 1 auto;min-width:0;font-size:28px;letter-spacing:-.5px;overflow:hidden;text-overflow:clip}
 .cs-wrap .cs-have em.n6{font-size:24px}.cs-wrap .cs-have em.n7{font-size:21px}
 .cs-wrap .cs-have small{flex:none}
+/* 版577：ホームのコインと＋の高さをそろえる */
+.hm-next .coin{display:flex !important;align-items:center;gap:6px;line-height:1}
+.hm-next .coin .coin-ico{display:block;margin:0}
+.hm-next .coin::after{flex:none;margin:0 0 0 2px !important;vertical-align:middle}
