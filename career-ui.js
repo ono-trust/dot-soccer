@@ -3372,6 +3372,44 @@
   const SH_PICK_ART = { guren: 'img/pick_guren_542.jpg' };   // 版542：ピックアップの絵がある選手は、その絵を使う（ない選手は顔の絵）
   const SH_CATCOL = { tact: '#1f9a45', tech: '#d81e1e', phys: '#2f6fd6', sup: '#d4a017' };
   let shopSt = { tab: 'rec', cat: 'tact', sel: null, qty: 1 };
+  // 版564：カードパックを開ける演出 — パックが落ちてくる → タップで破れて光る → カードが飛び出して並ぶ → 1枚ずつめくる → まとめ
+  function openPack(got, before, big) {
+    const el = fullScreen('packScreen', 'pk-wrap'), box = el.querySelector('.lk-box');
+    const n = got.length, cols = big ? 6 : 5, rows = Math.ceil(n / cols), CW = big ? 150 : 176, CH = Math.round(CW * 1.33), GX = big ? 22 : 26, GY = 20;
+    const x0 = 640 - (cols * CW + (cols - 1) * GX) / 2, y0 = (big ? 330 : 360) - (rows * CH + (rows - 1) * GY) / 2;
+    const seen = {}, items = got.map((k, i) => { const isNew = !(before[k] > 0) && !seen[k]; seen[k] = 1; return { k, i, isNew, x: x0 + (i % cols) * (CW + GX), y: y0 + Math.floor(i / cols) * (CH + GY) }; });
+    const grp = {}; got.forEach((k) => grp[k] = (grp[k] || 0) + 1);
+    const sum = Object.entries(grp).map(([k, c]) => `<span style="--cc:${SH_CATCOL[C.CARDS[k].cat]}"><b>${esc(C.CARDS[k].name)}</b>×${c}<small>所持 ${before[k] || 0}→${save.cards[k]}</small></span>`).join('');
+    box.innerHTML = `<div class="pk-bg"><i class="pk-rays"></i></div>
+      <p class="pk-ttl">${big ? 'カードパック（大）' : 'カードパック'}</p>
+      <div class="pk-pack${big ? ' gold' : ''}"><div class="pk-top"></div><div class="pk-body"><b>CARD<br>PACK</b><i class="pk-ball">⚽</i><em>${n}枚入り</em></div><i class="pk-shine"></i></div>
+      <p class="pk-tap">タップして開ける</p><div class="pk-flash"></div>
+      <div class="pk-cards">${items.map((it) => `<div class="pk-c" data-i="${it.i}" style="--x:${it.x}px;--y:${it.y}px;width:${CW}px;height:${CH}px;--cc:${SH_CATCOL[C.CARDS[it.k].cat]}"><div class="pk-in"><div class="pk-back"><i>D</i></div><div class="pk-front"><img src="cards/${it.k}.jpg" alt="${esc(C.CARDS[it.k].name)}">${it.isNew ? '<em>NEW</em>' : ''}</div></div></div>`).join('')}</div>
+      <div class="pk-sum" hidden><div class="pk-sl">${sum}</div><button class="pk-ok ib ib-ok ib-img">OK</button></div>
+      <button class="pk-skip">スキップ ▶▶</button>`;
+    // カードの絵を先に読んでおく
+    got.forEach((k) => { const im = new Image(); im.src = `cards/${k}.jpg`; });
+    el.hidden = false; el._fit();
+    const S = (nm) => { try { DotSound.play(nm); } catch (_) {} };
+    const cs = [...box.querySelectorAll('.pk-c')], timers = [];
+    const later = (ms, f) => timers.push(setTimeout(f, ms));
+    return new Promise((done) => {
+      let stage = 0;   // 0：パック 1：開けている 2：まとめ
+      const finish = () => { if (stage === 2) return; stage = 2; timers.forEach(clearTimeout); box.classList.add('opened', 'spread'); cs.forEach((c) => c.classList.add('out', 'flip')); box.querySelector('.pk-sum').hidden = false; box.querySelector('.pk-skip').hidden = true; box.querySelector('.pk-ttl').textContent = `手に入れたカード（${n}枚）`; S('ok'); };
+      const open = () => {
+        if (stage) return; stage = 1; S('tap');
+        box.classList.add('opened'); S('gachaOrb');
+        later(450, () => { box.classList.add('spread'); cs.forEach((c, i) => later(i * 55, () => c.classList.add('out'))); });
+        const t0 = 450 + n * 55 + 450;
+        cs.forEach((c, i) => later(t0 + i * (big ? 150 : 210), () => { c.classList.add('flip'); S(c.querySelector('.pk-front em') ? 'reveal5' : 'reveal'); }));
+        later(t0 + n * (big ? 150 : 210) + 500, finish);
+      };
+      box.querySelector('.pk-pack').onclick = open; box.querySelector('.pk-tap').onclick = open;
+      box.querySelector('.pk-skip').onclick = (e) => { e.stopPropagation(); if (!stage) { stage = 1; box.classList.add('opened'); } finish(); };
+      box.querySelector('.pk-ok').onclick = () => { el.hidden = true; box.innerHTML = ''; done(); };
+      later(1300, () => { if (!stage) box.classList.add('wait'); });
+    });
+  }
   function shop(tab) {
     const el = fullScreen('shopScreen', 'std-wrap sh3-wrap'), box = el.querySelector('.lk-box');
     if (tab) shopSt.tab = tab;
@@ -3419,11 +3457,14 @@
       box.querySelectorAll('[data-go="scout"]').forEach((b) => b.onclick = () => { el.hidden = true; openGacha(); });
       box.querySelectorAll('[data-soon]').forEach((b) => b.onclick = () => toast('プレミアムパスは近日公開です'));
       box.querySelectorAll('[data-info]').forEach((b) => b.onclick = () => coachAsk(`<b>カードパック${b.dataset.info === '12' ? '（大）' : ''}</b><br>特訓カード（戦術・テクニック・フィジカル・サポート）から<br>ランダムで <b>${b.dataset.info}枚</b> 入っています。<br><small>1枚ずつ買うより、1枚あたりがお得です。</small>`, [{ label: 'とじる', value: true }], 'sec'));
-      box.querySelectorAll('[data-ask]').forEach((b) => b.onclick = async () => { const n = +b.dataset.ask, pr = n >= 12 ? C.PRICE.pack12 : C.PRICE.pack5;
-        if ((save.coins || 0) < pr) { toast('コインが足りません'); return; }
-        if (!(await coachAsk(`カードパック${n >= 12 ? '（大）' : ''}（${n}枚）を<br>${pr}コインで買いますか？`))) return;
-        const got = C.buyPack(save, n); store(); draw(); toast(got ? `${got.map((k) => C.CARDS[k].name).join('・')}<br>を手に入れた！` : 'コインが足りません'); });
-      box.querySelectorAll('[data-pack]').forEach((b) => b.onclick = () => { const got = C.buyPack(save, +b.dataset.pack); store(); draw(); toast(got ? `${got.map((k) => C.CARDS[k].name).join('・')}<br>を手に入れた！` : 'コインが足りません'); });
+      // 版564：カードパックは、必ず確認してから買う → 開ける演出 → 手に入れたカードを全部見せる（黄色いボタンでも、すぐには買わない）
+      const packFlow = async (n) => { const big = n >= 12, pr = big ? C.PRICE.pack12 : C.PRICE.pack5;
+        if ((save.coins || 0) < pr) { coachAsk(`コインが足りません。<br><small>カードパック${big ? '（大）' : ''}は <b>${pr}</b> コインです（いま ${coins()} コイン）。</small>`, [{ label: 'OK', value: true }]); return; }
+        if (!(await coachAsk(`<b>カードパック${big ? '（大）' : ''}</b>（特訓カード ${n}枚）を<br><b>${pr}</b> コインで買いますか？<br><small>いま ${coins()} コイン → 買ったあと ${((save.coins || 0) - pr).toLocaleString()} コイン</small>`, [{ label: '買う', value: true }, { label: 'やめる', value: false }]))) return;
+        const before = { ...(save.cards || {}) }, got = C.buyPack(save, n); if (!got) return; store(); draw();
+        await openPack(got, before, big); draw(); };
+      box.querySelectorAll('[data-ask]').forEach((b) => b.onclick = () => packFlow(+b.dataset.ask));
+      box.querySelectorAll('[data-pack]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); packFlow(+b.dataset.pack); });
       box.querySelectorAll('[data-cat]').forEach((b) => b.onclick = () => { shopSt.cat = b.dataset.cat; shopSt.sel = null; draw(); });
       box.querySelectorAll('.sh3-card').forEach((b) => b.onclick = () => { if (shopSt.sel !== b.dataset.c) shopSt.qty = 1; shopSt.sel = b.dataset.c; const g = box.querySelector('.sh3-grid'), st = g ? g.scrollTop : 0; draw(); const g2 = box.querySelector('.sh3-grid'); if (g2) g2.scrollTop = st; });
       box.querySelectorAll('[data-q]').forEach((b) => b.onclick = () => { shopSt.qty = Math.max(1, Math.min(99, shopSt.qty + +b.dataset.q)); const g = box.querySelector('.sh3-grid'), st = g ? g.scrollTop : 0; draw(); const g2 = box.querySelector('.sh3-grid'); if (g2) g2.scrollTop = st; });

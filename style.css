@@ -2436,3 +2436,58 @@ html.short .sq-tabs button{font-size:13px;letter-spacing:-.5px}
 .sh3-toast{position:absolute !important;display:flex;align-items:center;gap:14px;white-space:nowrap;max-width:none !important}
 .sh3-toast .sh3-tc{width:64px;height:auto;border-radius:6px;border:2px solid #fff}
 .sh3-toast small{font-size:16px;font-weight:800;color:#cfe}.sh3-toast em{font-style:normal;color:#ffd23a;font-size:20px}
+/* 版564：カードパックを開ける演出 */
+.pk-wrap{z-index:62;background:#050a1c}
+.pk-wrap .lk-box{overflow:hidden;font-family:'M PLUS 1p',sans-serif}
+.pk-bg{position:absolute;inset:0;background:radial-gradient(circle at 50% 46%,#24407e 0,#0d1a3d 46%,#050a1c 80%)}
+.pk-rays{position:absolute;left:50%;top:46%;width:1800px;height:1800px;margin:-900px 0 0 -900px;background:repeating-conic-gradient(rgba(255,255,255,.07) 0 6deg,transparent 6deg 18deg);animation:pkSpin 24s linear infinite}
+@keyframes pkSpin{to{transform:rotate(360deg)}}
+.pk-ttl{position:absolute;left:0;right:0;top:22px;margin:0;text-align:center;color:#fff;font-size:34px;font-weight:900;text-shadow:0 3px 0 #000,0 0 18px rgba(80,160,255,.7);letter-spacing:4px}
+.pk-pack{position:absolute;left:50%;top:50%;width:250px;height:360px;margin:-180px 0 0 -125px;cursor:pointer;animation:pkDrop .7s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes pkDrop{from{transform:translateY(-700px) rotate(-12deg)}to{transform:none}}
+.pk-wrap .wait .pk-pack,.lk-box.wait .pk-pack{animation:pkWob 1.4s ease-in-out infinite}
+@keyframes pkWob{0%,100%{transform:rotate(0)}25%{transform:rotate(-3deg) scale(1.02)}75%{transform:rotate(3deg) scale(1.02)}}
+.pk-body,.pk-top{position:absolute;left:0;right:0;border:4px solid #fff;box-shadow:0 10px 30px rgba(0,0,0,.6);background:linear-gradient(135deg,#1e4fd6,#5aa0ff 40%,#1e4fd6 60%,#0e2e8a)}
+.pk-pack.gold .pk-body,.pk-pack.gold .pk-top{background:linear-gradient(135deg,#c98a00,#ffe06a 40%,#e0a200 60%,#8a5a00)}
+.pk-top{top:0;height:60px;border-bottom:none;border-radius:10px 10px 0 0;clip-path:polygon(0 0,100% 0,100% 100%,92% 82%,84% 100%,76% 82%,68% 100%,60% 82%,52% 100%,44% 82%,36% 100%,28% 82%,20% 100%,12% 82%,4% 100%,0 86%);transition:transform .45s ease-in,opacity .45s}
+.pk-body{top:52px;bottom:0;border-top:none;border-radius:0 0 10px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#fff;transition:transform .45s,opacity .45s}
+.pk-body b{font-size:46px;line-height:1;font-weight:900;text-align:center;text-shadow:0 4px 0 rgba(0,0,0,.35);letter-spacing:2px}
+.pk-ball{font-style:normal;font-size:64px;filter:drop-shadow(0 4px 0 rgba(0,0,0,.3))}
+.pk-body em{font-style:normal;font-size:20px;font-weight:900;background:rgba(0,0,0,.35);padding:4px 14px;border-radius:999px}
+.pk-shine{position:absolute;inset:0;overflow:hidden;border-radius:10px;pointer-events:none}
+.pk-shine::after{content:'';position:absolute;top:-20%;left:-60%;width:40%;height:140%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);animation:pkShine 2.2s ease-in-out infinite}
+@keyframes pkShine{0%{left:-60%}60%,100%{left:130%}}
+.pk-tap{position:absolute;left:0;right:0;bottom:44px;margin:0;text-align:center;color:#ffd23a;font-size:28px;font-weight:900;text-shadow:0 3px 0 #000;animation:pkBlink 1s ease-in-out infinite}
+@keyframes pkBlink{50%{opacity:.35}}
+.pk-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.opened .pk-tap{display:none}
+.opened .pk-top{transform:translate(160px,-420px) rotate(40deg);opacity:0}
+.opened .pk-body{transform:translateY(80px) scale(.9);opacity:0;transition-delay:.2s}
+.opened .pk-shine{display:none}
+.opened .pk-pack{animation:pkShake .3s linear 1}
+@keyframes pkShake{25%{transform:translateX(-8px) rotate(-2deg)}75%{transform:translateX(8px) rotate(2deg)}}
+.opened .pk-flash{animation:pkFlash .7s ease-out .25s 1 both}
+@keyframes pkFlash{0%{opacity:0}20%{opacity:.95}100%{opacity:0}}
+.pk-cards{position:absolute;inset:0;pointer-events:none}
+.pk-c{position:absolute;left:0;top:0;transform:translate(calc(640px - 50%),300px) scale(.2);opacity:0;transition:transform .5s cubic-bezier(.2,1.2,.4,1),opacity .2s;perspective:900px}
+.pk-c.out{opacity:1;transform:translate(var(--x),var(--y))}
+.pk-in{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .45s ease}
+.pk-c.flip .pk-in{transform:rotateY(180deg)}
+.pk-back,.pk-front{position:absolute;inset:0;border-radius:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden;box-shadow:0 6px 16px rgba(0,0,0,.5)}
+.pk-back{background:repeating-linear-gradient(45deg,#1b3b8f 0 12px,#2550b8 12px 24px);border:4px solid #fff;display:grid;place-items:center}
+.pk-back i{font-style:normal;width:56px;height:56px;border-radius:50%;background:#ffd23a;color:#7a4a00;font-weight:900;font-size:34px;display:grid;place-items:center;border:3px solid #fff}
+.pk-front{transform:rotateY(180deg);background:#fff;border:5px solid var(--cc);overflow:hidden;display:flex;flex-direction:column}
+.pk-front img{width:100%;flex:1;min-height:0;object-fit:cover;display:block}
+.pk-front b{display:block;background:var(--cc);color:#fff;font-size:17px;font-weight:900;text-align:center;padding:4px 2px;white-space:nowrap;overflow:hidden}
+.pk-front em{position:absolute;top:6px;right:6px;font-style:normal;background:#e8102a;color:#fff;font-weight:900;font-size:15px;padding:2px 8px;border-radius:6px;border:2px solid #fff;animation:pkNew .8s ease-in-out infinite alternate}
+@keyframes pkNew{to{transform:scale(1.12)}}
+.pk-c.flip .pk-front{animation:pkGlow .6s ease-out .3s 1}
+@keyframes pkGlow{0%{box-shadow:0 0 0 0 rgba(255,255,255,.9)}100%{box-shadow:0 0 0 22px rgba(255,255,255,0)}}
+.pk-sum{position:absolute;left:40px;right:40px;bottom:16px;display:flex;align-items:center;gap:16px;background:rgba(8,16,40,.92);border:3px solid #ffd23a;border-radius:16px;padding:10px 14px}
+.pk-sum[hidden]{display:none}
+.pk-sl{flex:1;display:flex;flex-wrap:wrap;gap:6px 10px;max-height:96px;overflow-y:auto}
+.pk-sl span{display:inline-flex;align-items:baseline;gap:4px;color:#fff;font-size:17px;font-weight:800;border-left:6px solid var(--cc);padding-left:6px}
+.pk-sl small{color:#9fd0ff;font-size:13px;margin-left:4px}
+.pk-ok{flex:none;min-width:150px}
+.pk-skip{position:absolute;right:20px;top:20px;background:rgba(0,0,0,.5);color:#fff;border:2px solid rgba(255,255,255,.7);border-radius:999px;padding:8px 18px;font-size:18px;font-weight:900}
+.pk-skip[hidden]{display:none}

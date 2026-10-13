@@ -1569,7 +1569,7 @@
     if ((save.coins || 0) < pr) return null;
     save.coins -= pr;
     const r = rng(save), got = [];
-    for (let k = 0; k < n; k++) { const c = CARD_POOL[Math.floor(r() * CARD_POOL.length)]; got.push(c); save.cards[c] = Math.min(CARD_MAX, (save.cards[c] || 0) + 1); }
+    for (let k = 0; k < n; k++) { let c = CARD_POOL[Math.floor(r() * CARD_POOL.length)]; for (let j = 0; j < 30 && (save.cards[c] || 0) >= CARD_MAX; j++) c = CARD_POOL[Math.floor(r() * CARD_POOL.length)]; got.push(c); save.cards[c] = Math.min(CARD_MAX, (save.cards[c] || 0) + 1); }   // 版564：99枚のカードは出にくく（むだにならないように）
     return got;
   }
   const CARD_MAX = 99;
