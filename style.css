@@ -2549,3 +2549,8 @@ html.short .sq-tabs button{font-size:13px;letter-spacing:-.5px}
 .sh3-coinbtn i{background:url(icons/ui_plus.png) center/contain no-repeat !important;border:0 !important;box-shadow:none !important;color:transparent !important;width:44px !important;height:44px !important;top:8px !important;right:-12px !important;font-size:0 !important}
 .gc3-coin::after,.hm-next .coin::after{content:'' !important;width:26px !important;height:26px !important;background:url(icons/ui_plus.png) center/contain no-repeat !important;border:0 !important;border-radius:0 !important}
 .sh3-coin{display:flex;align-items:center}.sh3-coin .sh3-plus{width:42px;height:42px;margin-left:12px}
+/* 版576：所持コインの数字が「コイン」と重なっていた（iPhoneは字が太く広い）→ 数字の長さで字を小さく・重ならない並びに */
+.cs-wrap .cs-have{gap:6px;white-space:nowrap;overflow:hidden}
+.cs-wrap .cs-have em{flex:1 1 auto;min-width:0;font-size:28px;letter-spacing:-.5px;overflow:hidden;text-overflow:clip}
+.cs-wrap .cs-have em.n6{font-size:24px}.cs-wrap .cs-have em.n7{font-size:21px}
+.cs-wrap .cs-have small{flex:none}

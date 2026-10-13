@@ -3422,7 +3422,8 @@
     { id: 'c5', coins: 4500, yen: 3060 },
     { id: 'c6', coins: 9400, yen: 6100, tag: 'いちばんお得' },
   ];
-  const COIN_BASE = 160 / 120;   // いちばん小さいパックの「1円あたりのコイン」を基準に、お得さを出す
+  const COIN_BASE = 160 / 120;
+  const csN = (v) => { const n = (v || 0).toLocaleString().length; return n >= 7 ? 'n7' : n >= 6 ? 'n6' : ''; };   // いちばん小さいパックの「1円あたりのコイン」を基準に、お得さを出す
   function coinShop(onClose) {
     const el = fullScreen('coinScreen', 'cs-wrap'), box = el.querySelector('.lk-box');
     // 版573：監督の絵（img/coin_shop.jpg）をそのまま使い、押せる場所と「所持」の数字だけ重ねる
@@ -3430,7 +3431,7 @@
     const draw = () => {
       box.innerHTML = `<img class="cs-img" src="img/coin_shop.jpg" alt="">
         <button class="cs-back cs-hit" style="left:104px;top:8px;width:68px;height:68px" title="もどる"></button>
-        <span class="cs-have">${COIN}<small class="cs-hl">所持</small><em>${(save.coins || 0).toLocaleString()}</em><small>コイン</small></span>
+        <span class="cs-have">${COIN}<small class="cs-hl">所持</small><em class="${csN(save.coins)}">${(save.coins || 0).toLocaleString()}</em><small>コイン</small></span>
         ${COIN_PACKS.map((p, i) => `<button class="cs-item cs-hit cs-buyb" data-id="${p.id}" style="left:${AREA[i][0]}px;top:${AREA[i][1]}px;width:${AREA[i][2]}px;height:${AREA[i][3]}px" title="${p.coins}コイン ¥${p.yen}"></button>`).join('')}`;
       box.querySelector('.cs-back').onclick = () => { el.hidden = true; if (onClose) onClose(); };
       box.querySelectorAll('.cs-item').forEach((b) => b.onclick = async () => {
@@ -3455,7 +3456,7 @@
       box.appendChild(c); setTimeout(() => { c.remove(); S('reveal'); }, 900 + i * 40);
     }
     const em = box.querySelector('.cs-have em'), t0 = performance.now() + 700, dur = 900;
-    const tick = (now) => { const u = Math.max(0, Math.min(1, (now - t0) / dur)), e = 1 - Math.pow(1 - u, 3); em.textContent = Math.round(c0 + (c1 - c0) * e).toLocaleString(); if (u < 1) requestAnimationFrame(tick); else { em.parentElement.classList.add('pop'); S('ok'); setTimeout(() => { fl.remove(); }, 400); } };
+    const tick = (now) => { const u = Math.max(0, Math.min(1, (now - t0) / dur)), e = 1 - Math.pow(1 - u, 3); { const v = Math.round(c0 + (c1 - c0) * e); em.textContent = v.toLocaleString(); em.className = csN(v); } if (u < 1) requestAnimationFrame(tick); else { em.parentElement.classList.add('pop'); S('ok'); setTimeout(() => { fl.remove(); }, 400); } };
     requestAnimationFrame(tick);
     const msg = document.createElement('p'); msg.className = 'cs-got'; msg.innerHTML = `${COIN}<b>+${(c1 - c0).toLocaleString()}</b> コイン`; box.appendChild(msg); setTimeout(() => msg.remove(), 2400);
   }
