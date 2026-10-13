@@ -2358,8 +2358,10 @@
       box.querySelectorAll('[data-sub]').forEach((b) => b.onclick = () => { const [kind, id] = b.dataset.sub.split(':'); S.sub = { kind, id }; draw(); });
       box.querySelectorAll('[data-cupr]').forEach((b) => b.onclick = () => { S.cupRound = +b.dataset.cupr; draw(); });
       box.querySelectorAll('[data-cupv]').forEach((b) => b.onclick = () => { S.cupView = b.dataset.cupv; draw(); });
-      box.querySelectorAll('[data-team]').forEach((b) => b.onclick = () => { S.sub = { kind: 'team', id: b.dataset.team, back: S.sub }; S.tab = 'stats'; draw(); });
+      box.querySelectorAll('[data-team]').forEach((b) => b.onclick = () => { S.sub = { kind: 'team', id: b.dataset.team, back: S.sub, backTab: S.tab, view: 'info' }; S.tab = 'stats'; draw(); });
+      box.querySelectorAll('[data-tmv]').forEach((b) => b.onclick = () => { S.sub.view = b.dataset.tmv; draw(); });
       box.querySelectorAll('.tm-row[data-pi]').forEach((r) => r.onclick = () => cpuCard(r.dataset.tid, +r.dataset.pi, el));
+      box.querySelectorAll('.tx-p[data-pi],.tv-ace[data-pi]').forEach((r) => r.onclick = () => { if (+r.dataset.pi >= 0) cpuCard(r.dataset.tid, +r.dataset.pi, el); });
       box.querySelectorAll('.tm-star[data-spi]').forEach((r) => r.onclick = () => cpuCard(r.dataset.tid, +r.dataset.spi, el));
       box.querySelectorAll('.rk-row[data-rkp]').forEach((r) => r.onclick = () => {   // ランキングの選手をタップ：選手情報
         const tn = r.dataset.rkt, pn = r.dataset.rkp;
@@ -2373,7 +2375,7 @@
         if (ok) { el.hidden = true; save = C.newCareer(); store(); runners.length = 0; go('home'); }
       };
       box.querySelector('.std-back').onclick = () => {
-        if (S.tab === 'stats' && S.sub && S.sub.kind === 'team') { S.sub = S.sub.back || null; draw(); return; }
+        if (S.tab === 'stats' && S.sub && S.sub.kind === 'team') { S.tab = S.sub.backTab || 'stats'; S.sub = S.sub.back || null; draw(); return; }
         if (S.tab === 'stats' && S.sub && !S.direct) { S.sub = null; draw(); return; }
         if (S.onClose) { const f = S.onClose; el.hidden = true; assocState = null; f(); return; }
         el.hidden = true; assocState = null; go('home');
@@ -2434,7 +2436,8 @@
       list.forEach((x, j) => {
         const res = x.s ? `<b class="${x.s[0] > x.s[1] ? 'w' : x.s[0] < x.s[1] ? 'l' : 'd'}">${x.s[0]}−${x.s[1]}</b>` : '';
         const what = x.opp ? `<img src="${emblemURL(x.opp, 32)}" alt="">${esc(x.opp)}${x.ha ? ` [${x.ha}]` : ''}${x.note ? `<small>${esc(x.note)}</small>` : ''}` : x.label ? `<span class="${x.plan ? 'sc-plan' : ''}">${esc(x.label)}</span>` : '';
-        html += `<div class="sc-row${w === nextW && j === 0 ? ' now' : ''}${w < save.week ? ' past' : ''}"><span class="sc-d">${j === 0 ? d : ''}</span>${x.badge || '<i class="sc-b none"></i>'}<span class="sc-o">${what}</span><span class="sc-x">${j === 0 ? others(w) : ''}</span><span class="sc-r">${res}</span></div>`;
+        const tapT = x.opp && x.opp !== myName && C.findTeam(save, x.opp) ? ` data-team="${esc(x.opp)}"` : '';   // 版511：相手をタップでチーム情報
+        html += `<div class="sc-row${tapT ? ' tap' : ''}${w === nextW && j === 0 ? ' now' : ''}${w < save.week ? ' past' : ''}"${tapT}><span class="sc-d">${j === 0 ? d : ''}</span>${x.badge || '<i class="sc-b none"></i>'}<span class="sc-o">${what}</span><span class="sc-x">${j === 0 ? others(w) : ''}</span><span class="sc-r">${res}</span></div>`;
       });
     }
     return `<div class="std-body"><div class="std-h"><span>年間の予定・結果</span><em>シーズン${save.season}　試合結果</em></div><div class="std-list">${html}</div></div>`;
@@ -2451,7 +2454,7 @@
     if (sub.kind === 'goal' || sub.kind === 'assist') return rankHTML(sub.id, sub.kind);
     if (sub.kind === 'cup') return cupHTML();
     if (sub.kind === 'post') return postHTML();
-    if (sub.kind === 'team') return teamHTML(sub.id);
+    if (sub.kind === 'team') return teamHTML(sub.id, sub.view);
     return '';
   }
   const lgName = (id) => (id === 'cup' ? '国内カップ' : id === 'post' ? '昇格・入れ替え戦' : LG_LABEL[id] || '');
@@ -2670,7 +2673,10 @@
     if (o.noNav) el.querySelectorAll('.pc-nav').forEach((b) => b.remove());   /* 版470 */
   }
   // ---- チームの情報：監督・方針・フォーメーションと、固定の25人 ----
-  function teamHTML(name) {
+  function teamHTML(name, view) {
+    view = view || 'info';
+    const tabs = `<div class="cg-tabs tm-tabs">${[['info', 'チーム'], ['list', '選手データ'], ['xi', 'スタメン']].map(([k, l]) => `<button data-tmv="${k}" class="${view === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    if (view !== 'list') { const h = teamViewHTML(name, view); if (h) return h.replace('<!--tabs-->', tabs); }
     const t = C.findTeam(save, name), ro = t && C.rosterOfTeam(t.id, save.season);
     if (!ro) return `<div class="std-body"><div class="std-h"><span>${esc(name)}</span></div><p class="std-soon">選手の情報がありません</p></div>`;
     const KS = D.PARAM_KEYS, ovr = (q) => Math.round(KS.reduce((a, k) => a + q[k], 0) / KS.length), G = (v) => D.grade(v);
@@ -2682,7 +2688,43 @@
     const rank = (q) => (C.titleOf(save, t.id, q.name) ? 0 : q.role === 'ace' ? 1 : 2);
     const stars = ro.players.filter((q) => starKey(t.id, q)).sort((a, b) => rank(a) - rank(b));
     const strip = stars.length ? `<div class="tm-stars">${stars.map((q) => { const tt = C.titleOf(save, t.id, q.name); return `<div class="tm-star r${rank(q)}" data-spi="${ps.indexOf(q)}" data-tid="${t.id}">${starPic(starKey(t.id, q), ro.kit.shirt, q.pos === 'GK', 'tm-sf')}<b>${esc(q.name)}</b><small>${tt ? '国内屈指' : q.role === 'ace' ? 'エース' : '中心選手'}・${q.pos}</small></div>`; }).join('')}</div>` : '';
-    return `<div class="std-body"><div class="std-h"><span>チーム情報</span><em>${esc(lg)}</em></div>${strip ? '' : ''}<div class="tm-head"><img src="${emblemURL(name, 96)}" alt=""><div><b>${esc(name)}</b><p>監督：${esc(ro.coach.name)}　方針：<em>${esc(ro.coach.policy)}</em>　フォーメーション：${esc(ro.formation)}</p><small>${esc(ro.coach.desc)}</small></div>${strip}</div><div class="tm-cols"><span>No.</span><span>Pos.</span><span>選手</span><span>タイプ</span>${D.PARAMS.map((pp) => `<span class="tm-pk">${esc(pp.name.slice(0, 2))}</span>`).join('')}<span>スキル</span></div><div class="std-list">${rows}</div></div>`;
+    return `<div class="std-body"><div class="std-h"><span>チーム情報</span><em>${esc(lg)}</em></div>${tabs}<div class="tm-head"><img src="${emblemURL(name, 96)}" alt=""><div><b>${esc(name)}</b><p>監督：${esc(ro.coach.name)}　方針：<em>${esc(ro.coach.policy)}</em>　フォーメーション：${esc(ro.formation)}</p><small>${esc(ro.coach.desc)}</small></div>${strip}</div><div class="tm-cols"><span>No.</span><span>Pos.</span><span>選手</span><span>タイプ</span>${D.PARAMS.map((pp) => `<span class="tm-pk">${esc(pp.name.slice(0, 2))}</span>`).join('')}<span>スキル</span></div><div class="std-list">${rows}</div></div>`;
+  }
+
+  // 版511：相手チームの情報（カルチョビットAの、試合日程から相手を選んだ画面）：チーム（スタイル・対戦）／選手データ／スタメン
+  const STYLE_SL = { balance: [0.5, 0.5, 0.5], possession: [0.65, 0.2, 0.45], counter: [0.3, 0.85, 0.3], highpress: [0.8, 0.5, 0.95], wing: [0.7, 0.6, 0.55] };
+  function teamViewHTML(name, view) {
+    const t = C.findTeam(save, name), ro = t && C.rosterOfTeam(t.id, save.season); if (!ro) return null;
+    const lgN = (C.LG[t.lg] || {}).name || '', shirt = (ro.kit || {}).shirt || '#e2453a';
+    const head = `<div class="std-h"><span><img class="tv-emb" src="${emblemURL(name, 40)}" alt="">${esc(name)}</span><em>${lgBadge(t.lg)} ${esc(lgN)}</em></div><!--tabs-->`;
+    if (view === 'xi') {
+      const st = ro.players.filter((q) => q.starter), bench = ro.players.filter((q) => !q.starter).slice(0, 7);
+      const line = (pos) => st.filter((q) => q.pos === pos);
+      const form = String(ro.formation || '4-4-2').split('-').map(Number), W = 760, H = 470;
+      const rows = [['GK', line('GK')], ...[['DF', line('DF')], ['MF', line('MF')], ['FW', line('FW')]]];
+      // MFが2列のフォーメーション（4-2-3-1など）は、MFを前と後ろに分ける
+      const mfRows = form.length > 3 ? form.slice(1, -1) : [line('MF').length];
+      const out = []; let mfs = line('MF').slice(), y = H - 50;
+      const put = (arr, yy) => arr.forEach((q, k) => out.push({ q, x: 60 + (W - 120) * (k + 1) / (arr.length + 1), y: yy }));
+      put(line('GK'), H - 40); put(line('DF'), H - 150);
+      const nRow = mfRows.length; mfRows.forEach((n, k) => { const arr = mfs.splice(0, n); put(arr, H - 150 - (k + 1) * (230 / (nRow + 1)) - 10); });
+      if (mfs.length) put(mfs, 200); put(line('FW'), 70);
+      const chip = (q, x, y, cls) => `<div class="tx-p ${cls || ''}" style="left:${x}px;top:${y}px" data-pi="${cpuList(t.id).indexOf(q)}" data-tid="${t.id}">${(C.faceKeyOf(t.id, q) ? starPic(C.faceKeyOf(t.id, q), shirt, q.pos === 'GK', 'tx-f') : '<i class="tx-f"></i>')}<b class="${POSC[q.pos]}">${esc(q.name)}</b></div>`;
+      return `<div class="std-body">${head}<div class="tx"><div class="tx-pitch">${['FW', 'MF', 'DF'].map((z, k) => `<i class="tx-z z${k}">${z}</i>`).join('')}<i class="tx-box"></i>${out.map((o) => chip(o.q, o.x, o.y)).join('')}</div><div class="tx-bench"><b>控え</b>${bench.map((q, k) => chip(q, 60, 70 + k * 64, 'bn')).join('')}</div><p class="tx-note">フォーメーション ${esc(ro.formation)}（いつもの先発。試合の日は疲れやケガで変わることもあります）</p></div></div>`;
+    }
+    // チーム（スタイル・対戦）
+    const sl = STYLE_SL[ro.style] || STYLE_SL.balance, tblRank = (() => { try { const stn = C.standings(save); const k = stn.findIndex((x) => x.name === name); return k >= 0 ? `${k + 1}位` : ''; } catch (_) { return ''; } })();
+    const slider = (l, r, v) => `<div class="tv-sl"><span>${l}</span><i><b style="left:${Math.round(v * 100)}%"></b></i><span>${r}</span></div>`;
+    const lg = save.league, me = lg.teams.findIndex((x) => x.me), them = lg.teams.findIndex((x) => x.name === name), games = [];
+    if (them >= 0) lg.rounds.forEach((pairs, r) => { const pr = pairs.find(([a, b]) => (a === me && b === them) || (a === them && b === me)); if (!pr) return; const res = lg.results[r] && lg.results[r].find((x) => x.a === pr[0] && x.b === pr[1]), home = pr[0] === me; games.push(`<div class="tv-g"><i class="tv-ha ${home ? 'h' : 'a'}">${home ? 'H' : 'A'}</i><span>第${r + 1}節</span>${res ? (() => { const sc = home ? res.s : [res.s[1], res.s[0]]; return `<b class="${sc[0] > sc[1] ? 'w' : sc[0] < sc[1] ? 'l' : 'd'}">${sc[0]}−${sc[1]}</b>`; })() : '<em>これから</em>'}</div>`); });
+    const ace = ro.players.filter((q) => q.top || q.role === 'ace').slice(0, 3);
+    return `<div class="std-body">${head}<div class="tv">
+      <div class="tv-l"><div class="tv-hd"><img src="${emblemURL(name, 96)}" alt=""><div><b>${esc(name)}</b><small>（${esc(stadiumName({ name, short: t.short }, {}))}）</small><p>${lgBadge(t.lg)} ${esc(lgN)}　<em>${esc(tblRank)}</em></p></div></div>
+        <div class="tv-co"><b>監督　${esc(ro.coach.name)}</b><span>方針：${esc(ro.coach.policy)}　／　${esc(ro.formation)}</span><small>${esc(ro.coach.desc)}</small></div>
+        <div class="tv-st"><div class="tv-sh">スタイル</div>${slider('守備的', '攻撃的', sl[0])}<div class="tv-sh">攻め方</div>${slider('パスでつなぐ', 'すばやく縦へ', sl[1])}<div class="tv-sh">守り方</div>${slider('引いて守る', '前から奪う', sl[2])}</div></div>
+      <div class="tv-r"><div class="tv-rh">対戦</div>${games.join('') || '<p class="std-soon">今シーズンのリーグ戦では当たりません</p>'}
+        ${ace.length ? `<div class="tv-rh">注目の選手</div>${ace.map((q) => `<div class="tv-ace" data-pi="${cpuList(t.id).indexOf(q)}" data-tid="${t.id}">${(C.faceKeyOf(t.id, q) ? starPic(C.faceKeyOf(t.id, q), shirt, q.pos === 'GK', 'tv-af') : '')}<div><b>${esc(q.name)}</b><small>${esc(q.pos)}・${esc(q.type)}</small>${starHTML(C.starOf(t.id, q), C.totsuOf(t.id, q), 'sm')}</div></div>`).join('')}` : ''}</div>
+    </div></div>`;
   }
   function mgrHTML() {
     const lg = save.league, st = C.standings(save), pos = st.findIndex((t) => t.me) + 1, me = st.find((t) => t.me);

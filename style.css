@@ -1882,3 +1882,34 @@ html.short #assocScreen .sc-o,html.phone #assocScreen .sc-o{min-width:0;text-ove
 .gcc:has(.b-auto) .gcc-f{opacity:.7}
 #coachTalk{z-index:70}   /* 版510：全画面の画面（スカウトなど）の上でも、はい・いいえを押せるように */
 .ct-btns{z-index:2}
+/* ===== 版511：相手チームの情報（チーム・選手データ・スタメン）===== */
+.sc-row.tap{cursor:pointer}.sc-row.tap:active{background:#fff6c8}
+.sc-row.tap .sc-o::after{content:"›";margin-left:8px;color:#999;font-weight:900}
+.tm-tabs{padding:8px 12px;background:#eee;display:flex;gap:8px}
+.std-h .tv-emb{width:28px;height:28px;vertical-align:middle;margin-right:6px}
+.tv{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:12px 14px;overflow:auto;background:#f6f8f2}
+.tv-hd{display:flex;gap:12px;align-items:center}.tv-hd img{width:96px;height:96px}
+.tv-hd b{font-size:26px;font-weight:900}.tv-hd small{display:block;font-size:14px;color:#555}.tv-hd p{margin:4px 0 0;font-weight:800}.tv-hd em{font-style:normal;color:#c8102e;font-size:20px;margin-left:8px}
+.tv-co{margin-top:10px;background:#dfe9ff;border-radius:12px;padding:8px 12px;display:flex;flex-direction:column;gap:2px}.tv-co b{font-size:18px}.tv-co small{color:#445}
+.tv-st{margin-top:10px;background:#fff3c4;border:3px solid #e2b62a;border-radius:14px;padding:6px 12px 10px}
+.tv-sh{background:#d6a812;color:#fff;font-weight:900;text-align:center;border-radius:999px;margin:8px 0 6px;padding:2px}
+.tv-sl{display:grid;grid-template-columns:110px 1fr 110px;align-items:center;gap:8px;font-weight:800}.tv-sl span:last-child{text-align:right}
+.tv-sl i{position:relative;height:12px;border-radius:999px;background:#8a6a10}.tv-sl i b{position:absolute;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:#fff;border:3px solid #8a6a10}
+.tv-r{background:#e6f7e2;border:3px solid #6ac26a;border-radius:14px;padding:8px 12px}
+.tv-rh{background:#2a9a3a;color:#fff;font-weight:900;font-size:18px;text-align:center;border-radius:999px;padding:3px;margin:4px 0 8px}
+.tv-g{display:flex;align-items:center;gap:12px;font-weight:900;font-size:20px;padding:4px 6px;border-bottom:1px solid #cfe8c8}
+.tv-ha{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:#fff;font-style:normal}.tv-ha.h{background:#2a9a3a}.tv-ha.a{background:#d8202a}
+.tv-g b.w{color:#c8102e}.tv-g b.l{color:#2a5ad0}.tv-g b.d{color:#555}.tv-g em{font-style:normal;color:#888;font-size:16px}
+.tv-ace{display:flex;gap:10px;align-items:center;padding:4px;cursor:pointer;border-radius:10px}.tv-ace:active{background:#fff}
+.tv-af{width:56px;height:56px;object-fit:cover;object-position:top;border-radius:8px;background:#fff}.tv-ace b{font-size:18px;display:block}.tv-ace small{font-size:13px;color:#555;display:block}
+.tx{flex:1;position:relative;background:#2a6a32;overflow:hidden}
+.tx-pitch{position:absolute;left:20px;top:10px;width:760px;height:470px;border:3px solid #fff;background:#3a9a3a}
+.tx-z{position:absolute;left:0;right:0;font-style:normal;font:900 64px/1 sans-serif;color:#ffffff22;padding-left:12px;display:flex;align-items:center}
+.tx-z.z0{top:0;height:140px;background:#2f7fe055}.tx-z.z1{top:140px;height:150px;background:#f08a1c44}.tx-z.z2{top:290px;height:110px;background:#d83a3a44}
+.tx-box{position:absolute;left:230px;right:230px;bottom:0;height:80px;border:3px solid #fff;border-bottom:0}
+.tx-p{position:absolute;transform:translate(-50%,-60%);display:flex;flex-direction:column-reverse;align-items:center;cursor:pointer}
+.tx-f{width:62px;height:62px;object-fit:cover;object-position:top;border-radius:50%;background:#ddd;display:block;border:2px solid #fff}
+.tx-p b{font-size:15px;font-weight:900;color:#fff;padding:1px 8px;border-radius:6px;white-space:nowrap;margin-bottom:-6px;position:relative;z-index:1}
+.tx-bench{position:absolute;left:800px;top:10px;width:120px;bottom:10px;background:#0003;border-radius:10px}.tx-bench>b{display:block;text-align:center;color:#fff;font-weight:900;margin:4px 0}
+.tx-p.bn .tx-f{width:46px;height:46px}.tx-p.bn b{font-size:13px}
+.tx-note{position:absolute;left:940px;right:10px;top:20px;color:#fff;font-weight:700;font-size:14px;line-height:1.5}
