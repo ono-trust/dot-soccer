@@ -3426,12 +3426,12 @@
   function coinShop(onClose) {
     const el = fullScreen('coinScreen', 'cs-wrap'), box = el.querySelector('.lk-box');
     // 版573：監督の絵（img/coin_shop.jpg）をそのまま使い、押せる場所と「所持」の数字だけ重ねる
-    const AREA = [[88, 125, 367, 244], [467, 125, 344, 244], [825, 125, 367, 244], [88, 381, 367, 262], [467, 381, 344, 262], [825, 381, 367, 262]];
+    const AREA = [[113, 300, 318, 58], [492, 300, 297, 58], [849, 300, 320, 58], [113, 577, 318, 57], [492, 577, 297, 57], [849, 577, 320, 57]];   // 版574：青い「購入」ボタンのところだけ
     const draw = () => {
       box.innerHTML = `<img class="cs-img" src="img/coin_shop.jpg" alt="">
         <button class="cs-back cs-hit" style="left:104px;top:8px;width:68px;height:68px" title="もどる"></button>
         <span class="cs-have">${COIN}<small class="cs-hl">所持</small><em>${(save.coins || 0).toLocaleString()}</em><small>コイン</small></span>
-        ${COIN_PACKS.map((p, i) => `<button class="cs-item cs-hit" data-id="${p.id}" style="left:${AREA[i][0]}px;top:${AREA[i][1]}px;width:${AREA[i][2]}px;height:${AREA[i][3]}px" title="${p.coins}コイン ¥${p.yen}"></button>`).join('')}`;
+        ${COIN_PACKS.map((p, i) => `<button class="cs-item cs-hit cs-buyb" data-id="${p.id}" style="left:${AREA[i][0]}px;top:${AREA[i][1]}px;width:${AREA[i][2]}px;height:${AREA[i][3]}px" title="${p.coins}コイン ¥${p.yen}"></button>`).join('')}`;
       box.querySelector('.cs-back').onclick = () => { el.hidden = true; if (onClose) onClose(); };
       box.querySelectorAll('.cs-item').forEach((b) => b.onclick = async () => {
         const p = COIN_PACKS.find((x) => x.id === b.dataset.id);
