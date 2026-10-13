@@ -3592,6 +3592,20 @@
   }
   $('#goCareer').onclick = open;
   // 確認画面用：次の公式戦を、試合前の画面を飛ばしてそのまま観る（結果は記録しない）
+  // 版581：（テスト用）優勝の演出を見る（記録は何も変えない）
+  function champDemo() {
+    const fx = C.nextFixture(save); if (!fx) return false;
+    const ch = { kind: 'league', title: (C.LG[save.league.id] || {}).name || 'リーグ', n: 1, last: true };
+    const v = { ...ch, team: save.team.name, short: save.team.short || save.team.name, faces: save.team.players.slice(0, 18).map((p) => faceOf(p)).filter(Boolean), emb: emblemURL(save.team.name, 96), sec: staffImg.sec || '', small: 'DOT SOCCER LEAGUE' };
+    const m0 = A().match;
+    runMatch('優勝の演出', '', fx.opp, async () => {
+      const keep = save.titles; save.titles = [...(keep || []), { season: save.season, kind: 'league', title: ch.title }];
+      try { open(); await blackFade(200); await champAfter(ch); } finally { save.titles = keep; }
+      await blackClear(350); open();
+    }, { comp: fx.comp, label: fx.label, home: !!fx.home, skipPre: true });
+    { const t0 = Date.now(); const tryGo = () => { const m = A().match, vis = !document.getElementById('match').hidden; if (m && m !== m0 && vis && A().champDemo(v)) return; if (Date.now() - t0 < 20000) setTimeout(tryGo, 300); }; setTimeout(tryGo, 600); }
+    return true;
+  }
   function labMatch(full) { const fx = C.nextFixture(save); if (!fx) return false; runMatch('試合の日！', '', fx.opp, full ? (score, ev, played) => officialDone(fx, score, ev, played) : () => {}, { comp: fx.comp, label: fx.label, home: !!fx.home, skipPre: true }); return true; }
   // 試合中のパネル（得点・交代・カード）に出す顔写真：CPUの選手は専用・モブの顔、自分のクラブの選手はその選手の顔
   function matchFace(info, shirt) {
@@ -3615,7 +3629,7 @@
   }
   // 版570：コインの数が出ているところ（スカウト・ホーム）を押しても、コイン購入へ
   document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('.gc3-coin, .hm-next .coin'); if (!t) return; e.stopPropagation(); coinShop(() => { const b = document.querySelector('.gc3-coin b'); if (b) b.textContent = (save.coins || 0).toLocaleString(); try { renderHome(); } catch (_) {} }); }, true);
-  window.__career = { champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
+  window.__career = { champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====
@@ -3682,6 +3696,7 @@
     sheet.hidden = true;
     if (m === 'career') window.__career.open();
     else if (m === 'free') $('#newGame').click();
+    else if (m === 'champdemo') { sheet.hidden = true; if (!window.__career.save) window.__career.open(); setTimeout(() => { window.__career.champDemo(); }, 300); return; }   // 版581：（テスト用）
     else if (m === 'testcoin') { const sv = window.__career.save; sv.coins = (sv.coins || 0) + 10000; window.__career.store(); sheet.hidden = true; try { window.__career.renderHome(); } catch (_) {} return; }   // 版552：演出のテスト用
     else if (m === 'tut') { if (window.__tut) { const of = $('#officeScreen'); if (of) { of.hidden = true; go('home'); } if ($('#career').hidden) window.__career.open(); setTimeout(() => window.__tut.replay(), 300); } }
     else if (m === 'sfx' || m === 'bgm') { if (window.DotSound) DotSound.set(m, !DotSound.pref[m]); sndLabel(); sheet.hidden = false; return; }

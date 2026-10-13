@@ -4281,7 +4281,9 @@
     dlg.onclick = nextLine; el.querySelector('.lk-room').onclick = nextLine;
     setTimeout(nextLine, 650);
   }
-  window.__app = { applyKits, artSprite, kitSprite, kitCol, lockerTalk, startWith, showScreen, stop, spriteCanvas, SPR: { W: SPR_W, H: SPR_H }, get match() { return match; } };
+  // 版581：（テスト用）優勝の演出を見る：試合の最後まで飛ばして、すぐ優勝の演出へ
+  function champDemo(ch) { if (!match) return false; closeLocker(); closePlv(); simT = match.duration; champTried = true; startChamp(ch); play(); return true; }
+  window.__app = { champDemo, applyKits, artSprite, kitSprite, kitCol, lockerTalk, startWith, showScreen, stop, spriteCanvas, SPR: { W: SPR_W, H: SPR_H }, get match() { return match; } };
   window.__demo = { simT: () => simT, showPh: () => (show ? show.phase + (show.phase === "sub" ? "#" + show.rt.toFixed(2) + "k" + show.k + "n" + show.list.length : "") : null), playingNow: () => playing, poses: (list) => {
     ctx.fillStyle = '#45a31d'; ctx.fillRect(0, 0, CW, CH);
     list.forEach((pz, k) => { sprite(90 + k * 165, 270, 4.2, match.roster[0][9], 0, 1, 0, false, false, false, pz === 'side' ? null : pz, 0, 'side'); ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif'; ctx.fillText(pz, 60 + k * 165, 300); });
