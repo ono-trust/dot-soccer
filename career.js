@@ -1626,7 +1626,7 @@
   // 毎月1日に切りかわる。ピックアップは固有スキルを持つ☆5の18人を1か月に1人ずつ。天井：そのガチャで200回引くとピックアップ確定
   const GACHA_ORDER = ['guren', 'tsukikage', 'minato', 'byakuya', 'midori', 'kinshachi', 'aonoouza', 'harinoana', 'shiden', 'kagenui', 'matsuri', 'miyabi', 'sakurajima', 'ikari', 'uzushio', 'kage', 'tetsurou', 'sutemi'];
   const GACHA_START = [2026, 9];   // 2026年10月から（月は0から数える）
-  const GACHA_RATE = [[5, 1], [4, 4], [3, 15], [2, 30], [1, 50]];   // ☆ と 確率（％）
+  const GACHA_RATE = [[5, 0.3], [4, 4], [3, 15], [2, 30], [1, 50.7]];   // 版553：☆5はめったに出ない（0.3%）   // ☆ と 確率（％）
   const GACHA_COST = { one: 100, ten: 1000 }, GACHA_PITY = 200;
   const KAKERA_OF = { 1: 1, 2: 2, 3: 5, 4: 15, 5: 50 };   // 完凸のあとに同じ選手が出た時の覚醒のカケラ
   let gachaPool = null;
@@ -1650,7 +1650,7 @@
     if (minStar && star < minStar) star = minStar;
     let pick;
     if (g.pity[bn.id] >= GACHA_PITY) { star = 5; pick = { tid: bn.tid, no: bn.no }; }
-    else if (star === 5) pick = r() < 0.5 ? { tid: bn.tid, no: bn.no } : (() => { const L = gachaPoolAll()[5].filter((x) => !(x.tid === bn.tid && x.no === bn.no)); return L[Math.floor(r() * L.length)]; })();
+    else if (star === 5) pick = { tid: bn.tid, no: bn.no };   // 版553：☆5は今月のピックアップの選手だけ
     else { const L = gachaPoolAll()[star]; pick = L[Math.floor(r() * L.length)]; }
     if (pick.tid === bn.tid && pick.no === bn.no) g.pity[bn.id] = 0;   // ピックアップが出たら天井の数え直し
     return { ...pick, star };
