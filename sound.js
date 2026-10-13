@@ -52,12 +52,19 @@
     whistle() { whistle(0.26); },
     whistle2() { whistle(0.18); whistle(0.42, 0.24); },
     whistle3() { whistle(0.2); whistle(0.2, 0.32); whistle(0.7, 0.64); },
-    goal() {
-      noise(2.8, 0.22, 'bandpass', 900, 0, null, 0.25); noise(2.4, 0.12, 'bandpass', 2200, 0.1, null, 0.3);
-      ['C5', 'E5', 'G5', 'C6'].forEach((n, i) => tone(N(n), 0.16, 'square', 0.12, 0.05 + i * 0.1));
-      tone(N('G5'), 0.12, 'square', 0.12, 0.5); tone(N('C6'), 0.5, 'square', 0.13, 0.62);
-      tone(N('C4'), 0.6, 'triangle', 0.25, 0.62); tone(N('E4'), 0.6, 'triangle', 0.18, 0.62);
+    // 版501：ゴールが決まった瞬間の大歓声（大きく、長く）
+    cheer() {
+      [[380, 3, 0.55], [600, 3, 0.5], [900, 4, 0.4], [1300, 5, 0.28], [2000, 4, 0.14]].forEach(([fq, q, v], k) => noise(4.2 - k * 0.2, v, 'bandpass', fq, k * 0.03, null, 0.18));
+      noise(3.5, 0.18, 'lowpass', 500, 0.05, null, 0.3);   // どよめきの低い音
+      if (crowdGain && AC) { const t = AC.currentTime; try { crowdGain.gain.cancelScheduledValues(t); crowdGain.gain.setValueAtTime(crowdGain.gain.value, t); crowdGain.gain.linearRampToValueAtTime(2.2, t + 0.3); crowdGain.gain.linearRampToValueAtTime(2.0, t + 4); crowdGain.gain.linearRampToValueAtTime(0.9, t + 7); } catch (_) {} }   // しばらく観客全体も大きく
     },
+    // 点数が変わる時のファンファーレ
+    scoreUp() {
+      ['C5', 'E5', 'G5', 'C6'].forEach((n, i) => tone(N(n), 0.16, 'square', 0.14, i * 0.1));
+      tone(N('G5'), 0.12, 'square', 0.14, 0.45); tone(N('C6'), 0.6, 'square', 0.15, 0.57);
+      tone(N('C4'), 0.7, 'triangle', 0.28, 0.57); tone(N('E4'), 0.7, 'triangle', 0.2, 0.57); tone(N('G4'), 0.7, 'triangle', 0.16, 0.57);
+    },
+    goal() { SFX.cheer(); SFX.scoreUp(); },
     ooh() { noise(1.2, 0.12, 'bandpass', 700, 0, null, 0.15); tone(330, 0.9, 'sine', 0.05, 0, 220); },
     skill() { [880, 1320, 1760, 2349].forEach((f, i) => tone(f, 0.09, 'triangle', 0.12, i * 0.045)); },
     uniq() { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, 0.12, 'square', 0.08, i * 0.05)); noise(0.5, 0.06, 'highpass', 4000, 0.05); },

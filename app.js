@@ -67,7 +67,7 @@
   // 試合を始める（フリー試合・育成モード共通）。onDone があれば、試合後に呼ぶ
   let onMatchDone = null, mctx = null;
   const SND = () => window.DotSound || { play() {}, crowd() {}, bgm() {} };   // 版499：サウンド
-  let dribOwner = -1, dribT = 0, kickAll = [], kickPtr = 0, koWhistleT = -1, chipHeard = new Map();
+  let shownScore = '', dribOwner = -1, dribT = 0, kickAll = [], kickPtr = 0, koWhistleT = -1, chipHeard = new Map();
   function startWith(mine, theirs, seed, homeShort, awayShort, done, opts) {
     closePlv();
     { const dc = document.getElementById('digestCtl'); if (dc) dc.style.display = 'none'; }
@@ -85,7 +85,7 @@
         const was = playing; stop(); if (mctx.opts.confirmQuit && !(await mctx.opts.confirmQuit())) { if (was) play(); return; } closePlv(); ws.hidden = true; onMatchDone = null; SND().crowd(false); document.getElementById('half').hidden = true; const q = mctx.opts.onQuit; if (q) q(); };   /* 版481：「観戦をやめますか？」はい／いいえ */ } }   /* 版477：観戦を途中でやめる */
     match.homeShort = homeShort || match.homeShort; match.awayShort = awayShort || match.awayShort;
     prepTimeline();
-    kickAll = kickTimes.flat().map((k) => k.t).sort((x, y) => x - y); kickPtr = 0; koWhistleT = 0.05; chipHeard = new Map(); SND().bgm(null); SND().crowd(true);
+    kickAll = kickTimes.flat().map((k) => k.t).sort((x, y) => x - y); kickPtr = 0; koWhistleT = 0.05; shownScore = ''; chipHeard = new Map(); SND().bgm(null); SND().crowd(true);
     warmUp();
     // 育成モードは入場・対戦カードの画面を先に見せているので、すぐキックオフへ
     show = mctx.opts.noIntro ? { phase: 'kickoff', hold: true, koT: 0, start: 0, goal: null, rt: 0, walk: true } : { phase: 'preCrowd', hold: true, koT: 0, start: 0, goal: null, rt: 0 };
@@ -3387,6 +3387,7 @@
     // ゴール直後は、大きな点数が切り替わるまで上の点数も前のまま
     let sc = st.score;
     if (show && show.goal && (show.phase === 'toNet' || show.phase === 'freeze' || show.phase === 'gkSad' || (show.phase === 'score' && show.rt < 0.85))) { sc = show.goal.score.slice(); sc[show.goal.team] = Math.max(0, sc[show.goal.team] - 1); }
+    { const key = sc[0] + '-' + sc[1]; if (shownScore && key !== shownScore && show && show.goal && show.phase === 'score') SND().play('scoreUp'); shownScore = key; }   // 版501：点数が変わる時にゴールの音
     $('#hs').textContent = sc[0];
     $('#as').textContent = sc[1];
   }
@@ -3431,7 +3432,7 @@
         if (!active || (nb.prio || 0) >= (banner.prio || 0)) banner = nb;
         else if (nb.prio) nextBanner = nb; // 大事な知らせは後で出す
       }
-      if (e.type === 'goal') { startGoalShow(e); SND().play('goal'); }
+      if (e.type === 'goal') { startGoalShow(e); SND().play('cheer'); }
       if ((e.type === 'foul' || e.type === 'offside') && speed < 16) SND().play('whistle');
       if (e.type === 'card' && speed < 16) SND().play('card');
       if (e.type === 'half') { SND().play('whistle2'); koWhistleT = e.t + 0.6; }
