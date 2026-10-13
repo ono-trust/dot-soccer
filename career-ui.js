@@ -3597,6 +3597,8 @@
     const fx = C.nextFixture(save); if (!fx) return false;
     const ch = { kind: 'league', title: (C.LG[save.league.id] || {}).name || 'リーグ', n: 1, last: true };
     const v = { ...ch, team: save.team.name, short: save.team.short || save.team.name, faces: save.team.players.slice(0, 18).map((p) => faceOf(p)).filter(Boolean), emb: emblemURL(save.team.name, 96), sec: staffImg.sec || '', small: 'DOT SOCCER LEAGUE' };
+    document.querySelectorAll('.lk-wrap').forEach((w) => { w.hidden = true; });   // 版582：開いている画面（クラブ事務所など）を閉じてから（前は事務所の上で演出が出ていた）
+    { const pc = document.getElementById('pcModal'); if (pc) pc.hidden = true; }
     const m0 = A().match;
     runMatch('優勝の演出', '', fx.opp, async () => {
       const keep = save.titles; save.titles = [...(keep || []), { season: save.season, kind: 'league', title: ch.title }];

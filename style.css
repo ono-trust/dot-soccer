@@ -2635,3 +2635,5 @@ html.short .sq-tabs button{font-size:13px;letter-spacing:-.5px}
 .ch-faces{top:14px !important;height:530px !important;grid-auto-rows:172px;align-content:start !important;gap:4px 12px !important}
 .ch-faces img{width:auto !important;height:170px !important;justify-self:center}
 .tr-dim{position:absolute;inset:0;filter:brightness(.6)}
+/* 版582：掲示板の文字が重ならないように（小さい英語の下に大会名） */
+.ch-txt em{margin-top:10px !important;line-height:1.15}
