@@ -67,7 +67,7 @@
   // 試合を始める（フリー試合・育成モード共通）。onDone があれば、試合後に呼ぶ
   let onMatchDone = null, mctx = null;
   const SND = () => window.DotSound || { play() {}, crowd() {}, bgm() {} };   // 版499：サウンド
-  let kickAll = [], kickPtr = 0, koWhistleT = -1, chipHeard = new Map();
+  let dribOwner = -1, dribT = 0, kickAll = [], kickPtr = 0, koWhistleT = -1, chipHeard = new Map();
   function startWith(mine, theirs, seed, homeShort, awayShort, done, opts) {
     closePlv();
     { const dc = document.getElementById('digestCtl'); if (dc) dc.style.display = 'none'; }
@@ -256,6 +256,7 @@
       const simT0 = simT;
       simT += dt * RATE * speed * (speed < 4 ? slowAt(simT) : 1);   // 白夜の視界の間は、ゆっくり
       if (koWhistleT >= 0 && simT0 < koWhistleT && simT >= koWhistleT) { SND().play('whistle'); koWhistleT = -1; }
+      if (!show && speed < 4) { const sd = stateAt(simT); if (sd.owner >= 0) { const pl = sd.players[sd.owner]; const mv = pl && Math.hypot(pl.vx || 0, pl.vy || 0); if (dribOwner !== sd.owner) { dribOwner = sd.owner; dribT = simT; } else if (simT - dribT > 0.42 && (mv == null || mv > 1.2)) { dribT = simT; SND().play('touch'); } } else dribOwner = -1; }   // 版500：ドリブル中のボールタッチの音
       while (kickPtr < kickAll.length && kickAll[kickPtr] <= simT) { if (kickAll[kickPtr] > simT0 - 0.05 && speed < 4 && !show) SND().play('kick'); kickPtr++; }
       if (simT >= match.duration) {
         // 試合終了（ゴール演出の途中でも、ここで締める。止まったままにならないように）

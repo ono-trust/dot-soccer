@@ -47,6 +47,7 @@
     tap() { tone(1046, 0.05, 'square', 0.07); },
     ok() { tone(784, 0.07, 'square', 0.09); tone(1175, 0.1, 'square', 0.09, 0.07); },
     back() { tone(660, 0.06, 'square', 0.07); tone(440, 0.08, 'square', 0.07, 0.06); },
+    touch() { noise(0.035, 0.12, 'lowpass', 900); tone(110, 0.05, 'sine', 0.16, 0, 70); },
     kick() { noise(0.06, 0.32, 'lowpass', 1400); tone(150, 0.09, 'sine', 0.35, 0, 55); },
     whistle() { whistle(0.26); },
     whistle2() { whistle(0.18); whistle(0.42, 0.24); },
@@ -73,15 +74,27 @@
     try { (SFX[name] || (() => {}))(); } catch (_) {}
   }
 
-  // ---- 観客の声（試合中ずっと） ----
+  // ---- 観客の声（試合中ずっと）：版500 砂嵐にならないように、人の声の高さ（母音の響き）だけを残し、ざわざわと大きさがゆれる ----
+  let crowdParts = [];
   function crowd(on) {
     const a = ctx(); if (!a) return;
-    if (on && !crowdNode) {
-      const s = a.createBufferSource(); s.buffer = noiseBuffer(); s.loop = true;
-      const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 650; f.Q.value = 0.6;
-      crowdGain = a.createGain(); crowdGain.gain.value = 0.0001; crowdGain.gain.exponentialRampToValueAtTime(0.05, a.currentTime + 1.2);
-      s.connect(f); f.connect(crowdGain); crowdGain.connect(sfxG); s.start(); crowdNode = s;
-    } else if (!on && crowdNode) { const n = crowdNode, g = crowdGain; crowdNode = null; try { g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.6); n.stop(a.currentTime + 0.7); } catch (_) {} }
+    if (on && !crowdParts.length) {
+      const out = a.createGain(); out.gain.value = 0.0001; out.gain.exponentialRampToValueAtTime(0.9, a.currentTime + 1.5);
+      const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800; lp.connect(out); out.connect(sfxG);
+      // 声の響き（フォルマント）：低い声・母音の「ア」「オ」「エ」あたり
+      [[330, 3, 0.05], [520, 4, 0.045], [780, 5, 0.035], [1150, 6, 0.022]].forEach(([fq, q, vol], k) => {
+        const s = a.createBufferSource(); s.buffer = noiseBuffer(); s.loop = true; s.playbackRate.value = 0.9 + k * 0.05;
+        const bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fq; bp.Q.value = q;
+        const g = a.createGain(); g.gain.value = vol;
+        // 大きさを、ゆっくり・速くの2つの波でゆらす（ざわざわ）
+        [[0.17 + k * 0.05, vol * 0.5], [1.3 + k * 0.7, vol * 0.35]].forEach(([fr, dep]) => { const l = a.createOscillator(); l.frequency.value = fr; const lg = a.createGain(); lg.gain.value = dep; l.connect(lg); lg.connect(g.gain); l.start(); crowdParts.push(l); });
+        // 声の高さも少しゆらす
+        { const l = a.createOscillator(); l.frequency.value = 0.4 + k * 0.13; const lg = a.createGain(); lg.gain.value = fq * 0.08; l.connect(lg); lg.connect(bp.frequency); l.start(); crowdParts.push(l); }
+        s.connect(bp); bp.connect(g); g.connect(lp); s.start(0, Math.random()); crowdParts.push(s);
+      });
+      crowdParts.push({ stop() {}, out });
+      crowdGain = out;
+    } else if (!on && crowdParts.length) { const parts = crowdParts, g = crowdGain; crowdParts = []; try { g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.6); } catch (_) {} setTimeout(() => parts.forEach((p) => { try { p.stop(); } catch (_) {} }), 800); }
   }
 
   // ---- BGM：小さな曲を繰り返す（メロディ・ベース・リズム） ----
