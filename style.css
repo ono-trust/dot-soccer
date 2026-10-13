@@ -2535,3 +2535,12 @@ html.short .sq-tabs button{font-size:13px;letter-spacing:-.5px}
 .sh3-coinbtn{border:0 !important;box-shadow:none !important;background:transparent !important;outline:none}
 .cs-pile .coin-ico{left:calc(50% - 32px + (var(--k) - (var(--n) - 1) / 2) * 30px);bottom:calc(var(--k) * 3px + (var(--k) * 37 % 3) * 8px)}
 .cs-pile .coin-ico:nth-child(2n){width:58px;height:58px}
+/* 版573：コイン購入は監督の絵を使う */
+.cs-img{position:absolute;inset:0;width:1280px;height:720px;display:block}
+.cs-hit{position:absolute !important;padding:0 !important;margin:0;border:0 !important;background:transparent !important;box-shadow:none !important;border-radius:18px;cursor:pointer;display:block}
+.cs-hit:active{background:rgba(255,255,255,.22) !important;transform:none}
+.cs-back.cs-hit{border-radius:50%}
+.cs-wrap .cs-have{position:absolute;left:911px;top:12px;width:262px;height:56px;margin:0;box-sizing:border-box;padding:0 18px 0 12px;border-radius:999px;background:#0b1f55;border:3px solid #ffd23a;display:flex;align-items:center;gap:8px;color:#fff;z-index:2}
+.cs-wrap .cs-have .coin-ico{width:40px;height:40px}
+.cs-wrap .cs-have small{font-size:17px;font-weight:900}.cs-wrap .cs-have .cs-hl{margin-left:2px}
+.cs-wrap .cs-have em{flex:1;font-style:normal;font-size:30px;font-weight:900;color:#ffd84a;text-align:right;min-width:0}
