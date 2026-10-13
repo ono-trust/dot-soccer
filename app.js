@@ -595,7 +595,7 @@
   let replayYaw = null;                  // リプレイ中はゴールの方へ大きく振る
   const DIST = 72;             // 注目点までの距離（m）
   // 画面の寄り：カルチョビットAと同じく3段階（近い・ふつう・遠い）
-  const VIEWS = { near: { w: 22, pitch: 0.46 }, normal: { w: 44, pitch: 0.5 }, far: { w: 78, pitch: 0.62 } };
+  const VIEWS = { near: { w: 22, pitch: 0.46 }, normal: { w: 34, pitch: 0.48 }, far: { w: 62, pitch: 0.58 } };   // 版492：ふつうを少し寄せる
   let viewMode = 'normal';
   let VIEW_W = VIEWS.normal.w;           // 注目点で横に見える幅（m）
   let FOCAL = 1900, baseFocal = 1900;
@@ -3663,6 +3663,23 @@
   $('#start').onclick = safeStart;
   $('#newGame').onclick = () => { stop(); showScreen('setup'); };
   $('#pause').onclick = () => (playing ? stop() : play());
+  // 版492：ピンチ（2本指で広げる・つまむ）で、近い・ふつう・遠いを切りかえ（パソコンは Ctrl＋ホイール）
+  function setView(m) {
+    if (!VIEWS[m] || m === viewMode) return; viewMode = m; VIEW_W = VIEWS[m].w; camPitchT = VIEWS[m].pitch;
+    $$('[data-zoom]').forEach((x) => x.classList.toggle('active', x.dataset.zoom === m));
+    resize(); if (!playing) draw();
+    let t = document.getElementById('zoomTip'); if (!t) { t = document.createElement('div'); t.id = 'zoomTip'; $('#match .viewport').appendChild(t); }
+    t.textContent = { near: '近い', normal: 'ふつう', far: '遠い' }[m]; t.classList.remove('on'); void t.offsetWidth; t.classList.add('on');
+  }
+  { const ORDER = ['near', 'normal', 'far'], step = (d) => setView(ORDER[Math.max(0, Math.min(2, ORDER.indexOf(viewMode) + d))]);
+    const vp = $('#match .viewport'); let d0 = 0, done = false;
+    const dist = (e) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    vp.addEventListener('touchstart', (e) => { if (e.touches.length === 2) { d0 = dist(e); done = false; } }, { passive: true });
+    vp.addEventListener('touchmove', (e) => { if (e.touches.length !== 2 || !d0 || done) return; e.preventDefault(); const r = dist(e) / d0; if (r > 1.3) { step(-1); done = true; } else if (r < 0.77) { step(1); done = true; } }, { passive: false });
+    vp.addEventListener('touchend', (e) => { if (e.touches.length < 2) d0 = 0; }, { passive: true });
+    vp.addEventListener('gesturestart', (e) => e.preventDefault());
+    let wl = 0; vp.addEventListener('wheel', (e) => { if (!e.ctrlKey) return; e.preventDefault(); const now = performance.now(); if (now - wl < 350) return; wl = now; step(e.deltaY < 0 ? -1 : 1); }, { passive: false });
+  }
   $$('[data-zoom]').forEach((b) => (b.onclick = () => {
     viewMode = b.dataset.zoom; VIEW_W = VIEWS[viewMode].w; camPitchT = VIEWS[viewMode].pitch;
     $$('[data-zoom]').forEach((x) => x.classList.toggle('active', x === b));

@@ -1785,3 +1785,7 @@ html.short #assocScreen .sc-row,html.phone #assocScreen .sc-row{grid-template-co
 html.short #assocScreen .std-tabs button,html.phone #assocScreen .std-tabs button{font-size:20px!important}
 html.short #assocScreen .sc-o,html.phone #assocScreen .sc-o{min-width:0;text-overflow:ellipsis}
 #match.watching .pv-back{display:none!important}
+/* 版492：ピンチで切りかえた時の表示 */
+#zoomTip{position:absolute;left:50%;top:18%;transform:translateX(-50%);z-index:25;pointer-events:none;background:rgba(0,0,0,.6);color:#fff;font:900 26px/1 "Hiragino Kaku Gothic ProN",sans-serif;padding:10px 22px;border-radius:999px;opacity:0}
+#zoomTip.on{animation:zt 1s ease-out}
+@keyframes zt{0%{opacity:0;transform:translateX(-50%) scale(.8)}15%{opacity:1;transform:translateX(-50%) scale(1)}70%{opacity:1}100%{opacity:0}}
