@@ -2081,3 +2081,22 @@ html .std.tvm .std-body>*{zoom:1!important}
 .gc2-bg{position:absolute;inset:0;background:#06102a center/cover no-repeat;opacity:0;transition:opacity .25s}
 .gc2-bg.on{opacity:1}
 .gc2-fc{left:0;width:600px}
+/* 版522：ショップを1画面に（スクロールなし） */
+#crModal .sheet:has(.shp){width:min(1200px,98%);max-width:none;height:calc(var(--lh, 100vh) - 16px);max-height:none;padding:10px 14px;overflow:hidden;display:flex;flex-direction:column}
+#crModalBody:has(.shp){flex:1;min-height:0;display:flex;flex-direction:column}
+.shp{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;gap:6px}
+.shp-h{flex:none;display:flex;align-items:center;gap:18px}
+.shp-h>b{font-size:24px;font-weight:900}.shp-h .coin{font-size:20px;font-weight:900;color:#c08000;display:flex;align-items:center;gap:4px}.shp-h .coin .coin-ico{width:24px;height:24px}
+.shp-x{margin-left:auto;width:42px;height:42px;border-radius:50%;padding:0;font-size:22px;font-weight:900}
+.shp-top{flex:none;display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr;gap:8px}
+.shp-gc.gc-entry{margin:0;padding:8px 14px;gap:0}
+.shp-gc.gc-entry b{font-size:22px}.shp-gc.gc-entry span{font-size:12px}.shp-gc.gc-entry em{font-size:12px;padding:2px 8px;margin-top:2px}
+.shp .pack{padding:6px 6px;gap:2px;justify-content:center}
+.shp .pack b{font-size:14px;white-space:nowrap}.shp .pack small{font-size:11px;color:#7a5a10}
+.shp .pack button{padding:4px 14px;font-size:18px}
+.shp-hint{flex:none;margin:0;font-size:12px;color:#7a6a40}
+.shp-cards{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.shp .shop-cards2{flex-wrap:nowrap}
+.shp .acard .ac-cnt{display:none}
+.shp-msg{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);margin:0;z-index:5;background:rgba(20,30,20,.92);color:#ffe14a;font-weight:900;font-size:18px;padding:10px 22px;border-radius:999px;border:3px solid #ffe14a;pointer-events:none;transition:opacity .4s;max-width:90%;text-align:center}
+.shp-msg.out{opacity:0}

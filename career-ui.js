@@ -3292,16 +3292,19 @@
   function shop() {
     const cats = ['tact', 'tech', 'phys', 'sup'];
     const draw = (msg) => {
-      $('#crModalBody').innerHTML = `<h2>ショップ　<span class="coin">${COIN}${(save.coins || 0).toLocaleString()} コイン</span></h2>${msg ? `<p class="shopmsg">${msg}</p>` : ''}
-        <button class="gc-entry" id="gcEntry"><b>スカウト</b><span>今月のピックアップ：${esc(C.gachaBanner().uniq.who)}（${esc(C.gachaBanner().uniq.name)}）</span><em>選手をスカウトする ▶</em></button>
-        <div class="shop-top">
-          <div class="pack"><b>カードパック</b><span>ランダムで5枚</span><button data-pack="5" class="primary">${COIN}${C.PRICE.pack5}</button></div>
-          <div class="pack"><b>カードパック（大）</b><span>ランダムで12枚</span><button data-pack="12" class="primary">${COIN}${C.PRICE.pack12}</button></div>
-          <div class="pack prem"><b>プレミアムパス（月額）</b><span>毎日カードが5枚もらえる</span><button disabled>準備中</button></div>
+      // 版522：スクロールしないで1画面に収まる形（上：スカウトとパック／下：カード、カードは画面に合わせて大きさを決める）
+      $('#crModalBody').innerHTML = `<div class="shp"><div class="shp-h"><b>ショップ</b><span class="coin">${COIN}${(save.coins || 0).toLocaleString()} コイン</span><button id="shopClose" class="shp-x" title="とじる">×</button></div>
+        <div class="shp-top">
+          <button class="gc-entry shp-gc" id="gcEntry"><b>スカウト</b><span>今月のピックアップ：${esc(C.gachaBanner().uniq.who)}（${esc(C.gachaBanner().uniq.name)}）</span><em>選手をスカウトする ▶</em></button>
+          <div class="pack"><b>カードパック</b><small>ランダム5枚</small><button data-pack="5" class="primary">${COIN}${C.PRICE.pack5}</button></div>
+          <div class="pack"><b>カードパック（大）</b><small>ランダム12枚</small><button data-pack="12" class="primary">${COIN}${C.PRICE.pack12}</button></div>
+          <div class="pack prem"><b>プレミアムパス</b><small>毎日5枚（月額）</small><button disabled>準備中</button></div>
         </div>
-        <p class="hintp">1枚ずつ買う：通常カード ${COIN}${C.PRICE.card}・サポートカード ${COIN}${C.PRICE.sup}（右下は今の枚数）</p>
-        <div class="shop-cards2">${cats.map((cat) => `<div class="hg ${CATC[cat]}"><span class="hg-l">${C.CAT_NAME[cat]}</span><div class="hg-c">${Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat === cat).map((c) => artCard(c, { cnt: save.cards[c] || 0, extra: `<i class="ac-pr">${COIN}${cat === 'sup' ? C.PRICE.sup : C.PRICE.card}</i>` })).join('')}</div></div>`).join('')}</div>
-        <div class="cr-mbtns"><button id="shopClose" class="primary">閉じる</button></div>`;
+        <p class="shp-hint">1枚ずつ買う：カードをタップ（どれも ${COIN}${C.PRICE.card}）</p>
+        <div class="shp-cards"><div class="shop-cards2 shp-in">${cats.map((cat) => `<div class="hg ${CATC[cat]}"><span class="hg-l">${C.CAT_NAME[cat]}</span><div class="hg-c">${Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat === cat).map((c) => artCard(c, { extra: `<i class="ac-pr">${COIN}${cat === 'sup' ? C.PRICE.sup : C.PRICE.card}</i>` })).join('')}</div></div>`).join('')}</div></div>
+        ${msg ? `<p class="shp-msg">${msg}</p>` : ''}</div>`;
+      { const box = $('#crModalBody .shp-cards'), inn = box && box.querySelector('.shp-in'); if (inn) requestAnimationFrame(() => { inn.style.zoom = 1; const k = Math.min(1.6, (box.clientWidth - 4) / inn.scrollWidth, (box.clientHeight - 4) / inn.scrollHeight); inn.style.zoom = k.toFixed(3); }); }
+      { const m = $('#crModalBody .shp-msg'); if (m) setTimeout(() => m.classList.add('out'), 1800); }
       $('#crModalBody').querySelectorAll('[data-pack]').forEach((b) => b.onclick = () => { const got = C.buyPack(save, +b.dataset.pack); store(); draw(got ? `${got.map((c) => C.CARDS[c].name).join('・')} を手に入れた！` : 'コインが足りません'); });
       $('#crModalBody').querySelectorAll('.shop-cards2 .acard').forEach((b) => b.onclick = () => { const ok = C.buyCard(save, b.dataset.c); store(); draw(ok ? `${C.CARDS[b.dataset.c].name} を買った！` : 'コインが足りません'); });
       $('#shopClose').onclick = () => { $('#crModal').hidden = true; renderHome(); };
