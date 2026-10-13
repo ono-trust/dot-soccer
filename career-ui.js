@@ -3093,7 +3093,7 @@
     const cs = getComputedStyle(probe);
     const sl = parseFloat(cs.paddingLeft) || 0, sr = parseFloat(cs.paddingRight) || 0, sb = parseFloat(cs.paddingBottom) || 0, st = parseFloat(cs.paddingTop) || 0;
     const tg = document.fullscreenElement ? 0 : topGap ? Math.max(st, 52) : 0;   // 上を空ける分（全画面の時は空けない）
-    const aw = vw - sl - sr, ah = vh - tg - (touch ? sb * 0.5 : 0);
+    const aw = vw - sl - sr, ah = vh - tg;   // 版495：上下には余白を作らない（緑の帯は左右だけ）
     const small = Math.min(vw, vh) <= 600;
     // スマホは高さ520相当、PCは720相当で組む（PCは大きな画面でも1.35倍まで）
     let s = small ? Math.min(ah / 520, aw / 960) : Math.min(ah / 720, aw / 1100, 1.35);

@@ -2027,10 +2027,10 @@
       }
       ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, CW, 34); ctx.fillRect(0, CH - 34, CW, 34);
       ctx.font = `italic 900 34px "Arial Black",Impact,sans-serif`; ctx.textAlign = 'left';
-      ctx.lineWidth = 6; ctx.strokeStyle = '#1a1a1a'; ctx.strokeText('REPLAY', 40, 86);
-      ctx.fillStyle = '#f4f4f4'; ctx.fillText('REPLAY', 40, 86);
-      ctx.fillStyle = '#f4f4f4'; ctx.fillRect(40, 96, 170, 3);
-      if (Math.floor(show.rt * 2) % 2 === 0) { ctx.fillStyle = '#e8241c'; ctx.beginPath(); ctx.arc(226, 74, 7, 0, 7); ctx.fill(); }
+      ctx.lineWidth = 6; ctx.strokeStyle = '#1a1a1a'; ctx.strokeText('REPLAY', 40, 146);
+      ctx.fillStyle = '#f4f4f4'; ctx.fillText('REPLAY', 40, 146);
+      ctx.fillStyle = '#f4f4f4'; ctx.fillRect(40, 156, 170, 3);
+      if (Math.floor(show.rt * 2) % 2 === 0) { ctx.fillStyle = '#e8241c'; ctx.beginPath(); ctx.arc(226, 134, 7, 0, 7); ctx.fill(); }
       if (show.phase === 'jfade') { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, show.rt / 0.4)})`; ctx.fillRect(0, 0, CW, CH); }
     }
     if (show.phase === 'jreplay' && show.rt < 0.3) { ctx.fillStyle = `rgba(0,0,0,${1 - show.rt / 0.3})`; ctx.fillRect(0, 0, CW, CH); }
@@ -2039,10 +2039,10 @@
       // REPLAY の文字と上下の帯
       ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, CW, 34); ctx.fillRect(0, CH - 34, CW, 34);
       ctx.font = `italic 900 34px "Arial Black",Impact,sans-serif`; ctx.textAlign = 'left';
-      ctx.lineWidth = 6; ctx.strokeStyle = '#1a1a1a'; ctx.strokeText('REPLAY', 40, 86);
-      ctx.fillStyle = '#f4f4f4'; ctx.fillText('REPLAY', 40, 86);
-      ctx.fillStyle = '#f4f4f4'; ctx.fillRect(40, 96, 170, 3);
-      if (Math.floor(show.rt * 2) % 2 === 0) { ctx.fillStyle = '#e8241c'; ctx.beginPath(); ctx.arc(226, 74, 7, 0, 7); ctx.fill(); }
+      ctx.lineWidth = 6; ctx.strokeStyle = '#1a1a1a'; ctx.strokeText('REPLAY', 40, 146);
+      ctx.fillStyle = '#f4f4f4'; ctx.fillText('REPLAY', 40, 146);
+      ctx.fillStyle = '#f4f4f4'; ctx.fillRect(40, 156, 170, 3);
+      if (Math.floor(show.rt * 2) % 2 === 0) { ctx.fillStyle = '#e8241c'; ctx.beginPath(); ctx.arc(226, 134, 7, 0, 7); ctx.fill(); }
     }
     if (show.phase === 'preVs') drawVs(show.rt);
     if (show.phase === 'fade') { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, show.rt / 0.5)})`; ctx.fillRect(0, 0, CW, CH); }
