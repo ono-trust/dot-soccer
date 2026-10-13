@@ -3432,8 +3432,8 @@
             <span class="sh3-ban-go">スカウトを見る<span>›</span></span></button>
           ${hit('', 843, 142, 391, 270, 'data-tab="prem"', 'プレミアムパス')}
           ${hit('sh3-area', 46, 419, 586, 206, 'data-ask="5"', 'カードパック')}${hit('sh3-area', 640, 419, 594, 206, 'data-ask="12"', 'カードパック（大）')}
-          ${hit('', 63, 571, 198, 42, 'data-info="5"', 'パック内容を見る')}${hit('sh3-buy', 351, 553, 262, 64, 'data-pack="5"', 'カードパックを買う')}
-          ${hit('', 646, 571, 196, 42, 'data-info="12"', 'パック内容を見る')}${hit('sh3-buy', 977, 553, 236, 64, 'data-pack="12"', 'カードパック（大）を買う')}
+          ${hit('', 63, 571, 198, 42, 'data-info="5"', 'パック内容を見る')}<span class="sh3-pr" style="left:351px;top:553px;width:262px">${COIN}<b>${C.PRICE.pack5}</b></span>${hit('sh3-buy', 351, 553, 262, 64, 'data-pack="5"', 'カードパックを買う')}
+          ${hit('', 646, 571, 196, 42, 'data-info="12"', 'パック内容を見る')}<span class="sh3-pr" style="left:977px;top:553px;width:236px">${COIN}<b>${C.PRICE.pack12}</b></span>${hit('sh3-buy', 977, 553, 236, 64, 'data-pack="12"', 'カードパック（大）を買う')}
           ${hit('', 46, 631, 1188, 66, 'data-tab="cards"', '特訓カードを1枚ずつ選ぶ')}</div>`;
       } else if (S.tab === 'prem') {
         h = `<div class="sh3 sh3-prem"><img class="sh3-bgimg" src="img/shop_prem.jpg" alt="">${head}${hit('', 44, 140, 1192, 560, 'data-soon="1"', 'プレミアムパス（近日公開）')}</div>`;
@@ -3457,7 +3457,7 @@
       box.querySelectorAll('[data-go="back"]').forEach((b) => b.onclick = () => { el.hidden = true; renderHome(); });
       box.querySelectorAll('[data-go="scout"]').forEach((b) => b.onclick = () => { el.hidden = true; openGacha(); });
       box.querySelectorAll('[data-soon]').forEach((b) => b.onclick = () => toast('プレミアムパスは近日公開です'));
-      box.querySelectorAll('[data-info]').forEach((b) => b.onclick = () => coachAsk(`<b>カードパック${b.dataset.info === '12' ? '（大）' : ''}</b><br>特訓カード（戦術・テクニック・フィジカル・サポート）から<br>ランダムで <b>${b.dataset.info}枚</b> 入っています。<br><small>1枚ずつ買うより、1枚あたりがお得です。</small>`, [{ label: 'とじる', value: true }], 'sec'));
+      box.querySelectorAll('[data-info]').forEach((b) => b.onclick = () => coachAsk(`<b>カードパック${b.dataset.info === '12' ? '（大）' : ''}</b><br>特訓カード（戦術・テクニック・フィジカル・サポート）から<br>ランダムで <b>${b.dataset.info}枚</b> 入っています。<br><b>${b.dataset.info === '12' ? C.PRICE.pack12 : C.PRICE.pack5}</b> コイン（1枚あたり ${Math.round((b.dataset.info === '12' ? C.PRICE.pack12 : C.PRICE.pack5) / +b.dataset.info)} コイン）<br><small>1枚ずつ買う（${C.PRICE.card}コイン）より、お得です。</small>`, [{ label: 'とじる', value: true }], 'sec'));
       // 版564：カードパックは、必ず確認してから買う → 開ける演出 → 手に入れたカードを全部見せる（黄色いボタンでも、すぐには買わない）
       const packFlow = async (n) => { const big = n >= 12, pr = big ? C.PRICE.pack12 : C.PRICE.pack5;
         if ((save.coins || 0) < pr) { coachAsk(`コインが足りません。<br><small>カードパック${big ? '（大）' : ''}は <b>${pr}</b> コインです（いま ${coins()} コイン）。</small>`, [{ label: 'OK', value: true }]); return; }

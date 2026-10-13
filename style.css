@@ -2492,3 +2492,7 @@ html.short .sq-tabs button{font-size:13px;letter-spacing:-.5px}
 .pk-skip{position:absolute;right:20px;top:20px;background:rgba(0,0,0,.5);color:#fff;border:2px solid rgba(255,255,255,.7);border-radius:999px;padding:8px 18px;font-size:18px;font-weight:900}
 .pk-skip[hidden]{display:none}
 .pk-wrap .lk-box{cursor:pointer}
+/* 版567：パックの値段（絵に入っている古い値段の上に、今の値段のボタンを重ねる） */
+.sh3-pr{position:absolute;height:64px;z-index:3;display:flex;align-items:center;justify-content:center;gap:10px;border-radius:999px;background:linear-gradient(#ffd84a,#f7a400 55%,#e58a00);border:3px solid #fff3b0;box-shadow:inset 0 -5px 0 rgba(150,70,0,.35),0 4px 0 rgba(0,0,0,.25);pointer-events:none}
+.sh3-pr .coin-ico{width:46px;height:46px}
+.sh3-pr b{font-size:44px;font-weight:900;color:#1a2a5a;letter-spacing:1px;font-family:'M PLUS 1p',sans-serif}
