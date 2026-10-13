@@ -3375,6 +3375,7 @@
   // 版564：カードパックを開ける演出 — パックが落ちてくる → タップで破れて光る → カードが飛び出して並ぶ → 1枚ずつめくる → まとめ
   function openPack(got, before, big) {
     const el = fullScreen('packScreen', 'pk-wrap'), box = el.querySelector('.lk-box');
+    box.classList.remove('opened', 'spread', 'wait');   // 版565：前に開けた時の状態が残っていて、2回目からパックが出なかった
     const n = got.length, cols = big ? 6 : 5, rows = Math.ceil(n / cols), CW = big ? 150 : 176, CH = Math.round(CW * 1.33), GX = big ? 22 : 26, GY = 20;
     const x0 = 640 - (cols * CW + (cols - 1) * GX) / 2, y0 = (big ? 330 : 360) - (rows * CH + (rows - 1) * GY) / 2;
     const seen = {}, items = got.map((k, i) => { const isNew = !(before[k] > 0) && !seen[k]; seen[k] = 1; return { k, i, isNew, x: x0 + (i % cols) * (CW + GX), y: y0 + Math.floor(i / cols) * (CH + GY) }; });
