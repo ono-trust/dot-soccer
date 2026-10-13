@@ -2242,7 +2242,10 @@
       el = document.createElement('div'); el.id = id; el.className = 'lk-wrap ' + cls; el.hidden = true;
       el.innerHTML = '<div class="lk-box"></div>';
       (document.getElementById('app') || document.body).appendChild(el);
-      const fit = () => { const k = Math.min((el.clientWidth || innerWidth) / 1280, (el.clientHeight || innerHeight) / 720); el.querySelector('.lk-box').style.transform = `translate(-50%,-50%) scale(${k.toFixed(4)})`; };
+      const fit = () => { const bx = el.querySelector('.lk-box');
+        if (id === 'assocScreen' && document.documentElement.classList.contains('short')) { bx.style.width = (el.clientWidth || innerWidth) + 'px'; bx.style.height = (el.clientHeight || innerHeight) + 'px'; bx.style.transform = 'translate(-50%,-50%)'; return; }   // 版486：スマホでは協会の画面を縮めずに、画面の大きさのまま作る（文字が大きくなる）
+        bx.style.width = ''; bx.style.height = '';
+        const k = Math.min((el.clientWidth || innerWidth) / 1280, (el.clientHeight || innerHeight) / 720); bx.style.transform = `translate(-50%,-50%) scale(${k.toFixed(4)})`; };
       addEventListener('resize', fit); el._fit = fit;
     }
     return el;
