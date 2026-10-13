@@ -2281,7 +2281,7 @@
     A().startWith(ta, tb, seed, shA, shB, (score) => {
       C.pinWatch(save, R.id, R.round, f.a, f.b, score, (A().match || {}).events || []); store();
       open(); openAssoc({ tab: 'watch' });
-    }, { onQuit: () => { open(); openAssoc({ tab: 'watch' }); }, venue: 4, kits: C.kitsPair(save, f.A, f.B), watch: true, noIntro: true, comp: 'D1観戦', label: `第${R.round + 1}節`, homeName: f.A, awayName: f.B, embH: emblemURL(f.A, 48), embA: emblemURL(f.B, 48), grade: (q, k) => C.rankInfo(C.toPts((q.params || q)[k])).g });
+    }, { confirmQuit: () => coachAsk('観戦をやめますか？'), onQuit: () => { open(); openAssoc({ tab: 'watch' }); }, venue: 4, kits: C.kitsPair(save, f.A, f.B), watch: true, noIntro: true, comp: 'D1観戦', label: `第${R.round + 1}節`, homeName: f.A, awayName: f.B, embH: emblemURL(f.A, 48), embA: emblemURL(f.B, 48), grade: (q, k) => C.rankInfo(C.toPts((q.params || q)[k])).g });
   }
   // ================= サッカー協会（本家の N.LEAGUE の画面）：試合日程・成績・監督成績・移籍情報 =================
   const LG_ORDER = ['d1', 'd2', 'd3', 'regE1', 'regW1', 'regE2', 'regW2'];
