@@ -820,6 +820,16 @@
   const embURL = new Map();
   const ART = window.DOT_ART || { emblems: [], leagues: [] };
   const artImgs = {};
+  // 版544：エンブレム・リーグのマーク・お店やスカウトの絵を、起動した時に先に読みこんでおく（チームの画面を開いた時に遅れて出ないように）
+  const preImgs = [];
+  function preloadArt() {
+    const urls = ART.emblems.map((id) => `emblems/${id}.png`).concat(ART.leagues.map((k) => `icons/lg/${k}.png`), ['img/gacha_bg.jpg', 'img/shop_rec.jpg', 'img/shop_cards.jpg', 'img/shop_prem.jpg', 'icons/btn_ok.png', 'icons/btn_no.png', 'icons/btn_blue.png', 'icons/btn_white.png']);
+    let i = 0; const next = () => { const batch = urls.slice(i, i + 8); i += 8; if (!batch.length) return; Promise.all(batch.map((u) => new Promise((ok) => { const im = new Image(); im.onload = im.onerror = () => { try { im.decode && im.decode().catch(() => {}); } catch (_) {} ok(); }; im.src = u; preImgs.push(im); }))).then(() => setTimeout(next, 30)); };
+    setTimeout(next, 300);
+    // 選手の顔の絵（スター・モブ）も、少しあとから少しずつ読みこむ
+    setTimeout(() => { const keys = Object.keys(window.STAR_FACES || {}); let j = 0; const step = () => { for (let k = 0; k < 6 && j < keys.length; k++, j++) { try { starFace(keys[j], '#ffffff', false); } catch (_) {} } if (j < keys.length) setTimeout(step, 120); }; step(); }, 2500);
+  }
+  setTimeout(preloadArt, 0);
   function embImg(id) { if (!ART.emblems.includes(id)) return null; if (!artImgs[id]) { const im = new Image(); im.src = `emblems/${id}.png`; artImgs[id] = im; } return artImgs[id]; }
   function emblemURL(name, size = 64) {
     const lk = C.teamLook(save, name), id = lk.me ? 'hajimari' : lk.id;
