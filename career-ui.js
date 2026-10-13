@@ -3470,7 +3470,7 @@
     const draw = () => {
       const S = shopSt; let h = '';
       // 版527：3つの画面で、上の帯（もどる・ショップ・コイン）とタブを同じ形に（監督の4枚目の絵）
-      const head = `<span class="sh3-coin">${coins()}<small>コイン</small></span><button class="sh3-coinbtn" data-go="coin" title="コインを買う"><i>＋</i></button>${hit('', 34, 12, 72, 70, 'data-go="back"', 'もどる')}
+      const head = `<span class="sh3-coin">${coins()}<small>コイン</small><img class="sh3-plus" src="icons/ui_plus.png" alt="コインを買う"></span><button class="sh3-coinbtn" data-go="coin" title="コインを買う"></button>${hit('', 34, 12, 72, 70, 'data-go="back"', 'もどる')}
         <div class="sh3-tabs">${[['rec', 'おすすめ'], ['cards', '特訓カード'], ['prem', 'プレミアムパス']].map(([k, l]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
       if (S.tab === 'rec') {
         const bn = C.gachaBanner(), U = bn.uniq, q = C.rosterAt(bn.tid, 1).players.find((x) => x.no === bn.no), cc = U.chip || ['#c8141e', '#ffd23a', '#ffe45a'];

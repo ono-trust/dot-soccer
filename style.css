@@ -2545,3 +2545,7 @@ html.short .sq-tabs button{font-size:13px;letter-spacing:-.5px}
 .cs-wrap .cs-have small{font-size:17px;font-weight:900}.cs-wrap .cs-have .cs-hl{margin-left:2px}
 .cs-wrap .cs-have em{flex:1;font-style:normal;font-size:30px;font-weight:900;color:#ffd84a;text-align:right;min-width:0}
 .cs-buyb.cs-hit{border-radius:999px}
+/* 版575：コインの横のプラスボタンを監督の絵（icons/ui_plus.png）に */
+.sh3-coinbtn i{background:url(icons/ui_plus.png) center/contain no-repeat !important;border:0 !important;box-shadow:none !important;color:transparent !important;width:44px !important;height:44px !important;top:8px !important;right:-12px !important;font-size:0 !important}
+.gc3-coin::after,.hm-next .coin::after{content:'' !important;width:26px !important;height:26px !important;background:url(icons/ui_plus.png) center/contain no-repeat !important;border:0 !important;border-radius:0 !important}
+.sh3-coin{display:flex;align-items:center}.sh3-coin .sh3-plus{width:42px;height:42px;margin-left:12px}
