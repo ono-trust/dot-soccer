@@ -3602,7 +3602,7 @@
     const m0 = A().match;
     runMatch('優勝の演出', '', fx.opp, async () => {
       const keep = save.titles; save.titles = [...(keep || []), { season: save.season, kind: 'league', title: ch.title }];
-      try { open(); await blackFade(200); await champAfter(ch); } finally { save.titles = keep; }
+      try { open(); await blackFade(200); await champAfter(ch); } catch (err) { console.error(err); try { const t = document.getElementById('errTip') || document.body.appendChild(Object.assign(document.createElement('p'), { id: 'errTip' })); t.textContent = 'エラー：' + (err && err.message || err) + '（優勝のあと）'; t.hidden = false; } catch (_) {} document.querySelectorAll('.lk-wrap').forEach((w) => { w.hidden = true; }); } finally { save.titles = keep; }
       await blackClear(350); open();
     }, { comp: fx.comp, label: fx.label, home: !!fx.home, skipPre: true });
     { const t0 = Date.now(); const tryGo = () => { const m = A().match, vis = !document.getElementById('match').hidden; if (m && m !== m0 && vis && A().champDemo(v)) return; if (Date.now() - t0 < 20000) setTimeout(tryGo, 300); }; setTimeout(tryGo, 600); }

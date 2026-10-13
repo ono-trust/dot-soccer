@@ -461,7 +461,16 @@
     const n = show.list.length; show.k = ((k % n) + n) % n; show.tr = 0;
     simT = show.list[show.k].t0; cam.init = false; lastBall = null; ballTrail.length = 0;
   }
-  function digestEnd() { digestCtl(false); show = null; simT = match.duration; finish(); }
+  function showErr(err, where) { console.error(err); try { let t = document.getElementById('errTip'); if (!t) { t = document.createElement('p'); t.id = 'errTip'; document.body.appendChild(t); } t.textContent = 'エラー：' + (err && err.message || err) + '（' + where + '）'; t.hidden = false; setTimeout(() => { t.hidden = true; }, 10000); } catch (_) {} }
+  // 版584：ダイジェストのあと、試合結果へ。うまくいかない時も止まらずに次（ロッカールームなど）へ進む
+  function digestEnd() {
+    try { digestCtl(false); } catch (_) {}
+    show = null; simT = match.duration;
+    try { finish(); } catch (err) {
+      showErr(err, 'digestEnd');
+      try { const r = document.getElementById('mresult'); if (r) r.hidden = true; stop(); const fn = onMatchDone; onMatchDone = null; if (fn) fn(match.score.slice()); else finish(true); } catch (e2) { showErr(e2, 'digestEnd2'); }
+    }
+  }
   function digestCtl(on) {
     let el = document.getElementById('digestCtl');
     if (!el) {
@@ -532,7 +541,7 @@
       addEventListener('resize', fit); el._fit = fit;
     }
     el.hidden = false; el._fit();
-    renderStatus(el.querySelector('.lk-sub'), match.duration + 1, '試合終了', 90, () => { el.hidden = true; next(); }, true);
+    try { renderStatus(el.querySelector('.lk-sub'), match.duration + 1, '試合終了', 90, () => { el.hidden = true; next(); }, true); } catch (err) { showErr(err, '試合結果'); el.hidden = true; next(); return; }
     if (mctx && mctx.opts.tut && mctx.opts.tut.onResult) mctx.opts.tut.onResult(el, tutApi());   // チュートリアル：結果画面の説明
   }
   // チュートリアルから試合を操作する（止める・再開・結果まで飛ばす・自分のチームが攻める向き）
