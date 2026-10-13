@@ -1296,6 +1296,7 @@
     return `<b class="s2n ${POSC[q.position]}">${esc(q.name)}</b>`;
   }
   function renderLineup2() {
+    const keepRes = (document.querySelector('#clubLayer .s2st-l') || {}).scrollTop || 0;   // 版561：リザーブを選んでも、一覧の位置をそのままに
     const ps = save.team.players, tac = C.ensureTactics(save), cells = tac.cells, roles = C.slotRoles(cells);
     const R = C.GRID_R, COLS = C.GRID_C;
     // 版513：スマホ（高さの低い画面）は、縮めずに画面の大きさに合わせて組み直す（顔と文字を大きく）
@@ -1366,6 +1367,7 @@
       ${forms}
       <p class="s2hint">選手をドラッグして、マスに置く・ほかの選手（控えとも）と入れ替える。タップでくわしく。</p></div>`;
     const L = $('#clubLayer'), board = L.querySelector('.s2board'); fitSq2();
+    { const rl = L.querySelector('.s2st-l'); if (rl && keepRes) rl.scrollTop = keepRes; }
     board.querySelectorAll('img.fc').forEach((im) => { const f = () => cutFace(im); im.addEventListener('load', f); if (im.complete) f(); });
     const done = () => { store(); renderLineup2(); };
     L.querySelectorAll('.s2btn').forEach((b) => b.onclick = () => { const a = b.dataset.a;
@@ -2329,6 +2331,7 @@
       store(); open();
       await postComp(res, info);
       store(); open();
+      await blackClear(350);   // 版561：順位表のあとの暗転を明ける（前は秘書の画面が明けていたが、支持率をなくしたので真っ暗のまま止まっていた）
       await endWeek();
       return;
     }
@@ -2394,6 +2397,8 @@
     if (!f) { f = document.createElement('div'); f.id = 'blkFade'; (document.getElementById('app') || document.body).appendChild(f); }
     f.style.transition = `opacity ${ms}ms`; f.style.display = 'block'; requestAnimationFrame(() => { f.style.opacity = '1'; setTimeout(ok, ms + 20); });
   });
+  // 版561：念のため、真っ暗のまま6秒以上たったら明ける（画面が黒いまま固まらないように）
+  { let blkSince = 0; setInterval(() => { const f = document.getElementById('blkFade'); const on = f && f.style.display === 'block' && f.style.opacity === '1'; if (!on) { blkSince = 0; return; } if (!blkSince) blkSince = Date.now(); else if (Date.now() - blkSince > 6000) { blkSince = 0; blackClear(300); } }, 1000); }
   const blackClear = (ms) => new Promise((ok) => { const f = document.getElementById('blkFade'); if (!f) return ok(); f.style.transition = `opacity ${ms}ms`; f.style.opacity = '0'; setTimeout(() => { f.style.display = 'none'; ok(); }, ms + 20); });
   // リーグを表す4つのアイコン（仮）と、リーグのロゴ
   const LG_ICONS = '<div class="std-ic"><i class="i1">D1</i><i class="i2">D2</i><i class="i3">D3</i><i class="i4">地域</i></div>';

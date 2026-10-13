@@ -2427,3 +2427,8 @@ html.short .rbtns{top:88px;gap:4px}html.short .rbtns button{width:72px;height:72
 .sb2-slots{background:rgba(80,80,80,.45)!important;border-radius:10px;top:8px!important;bottom:8px!important;right:8px!important}
 .sb2-ghost .fc,.sb2-ghost .sb2-fci{position:absolute;left:-32px;top:-32px;width:64px!important;height:62px!important}
 .sb2-left{border-color:#e7ff62!important}
+/* 版561：スタメン・戦術のタブ（試合中の作戦）が2行になってずれていた → 1行・まん中に */
+.sq-tabs button{white-space:nowrap;padding:0 4px !important;display:flex;align-items:center;justify-content:center;line-height:1 !important;overflow:hidden;font-size:15px}
+html.short .sq-tabs button{font-size:13px;letter-spacing:-.5px}
+/* 版561：特訓のカード3枚が、右上のもどるボタンと重なっていた（3枚目の×が押せない）→ カードを左へ寄せる */
+.trb-set .tslots2{justify-content:flex-start;gap:8px;padding-right:78px;align-self:stretch}

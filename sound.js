@@ -8,7 +8,7 @@
     if (AC) return AC;
     const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
     try { AC = new C({ latencyHint: 'interactive' }); } catch (_) { AC = new C(); }
-    AC.onstatechange = () => { if (AC && AC.state === 'interrupted') needRebuild = true; };   // 版560：電話・画面収録などで音が止められた
+    AC.onstatechange = () => { if (!AC) return; if (AC.state === 'interrupted') needRebuild = true; else if (AC.state === 'running') setTimeout(() => { if (AC && AC.state === 'running' && want && !cur) bgm(want); }, 0); };   // 版560：電話・画面収録などで音が止められた
     master = AC.createGain(); master.gain.value = pref.vol; master.connect(AC.destination);
     sfxG = AC.createGain(); sfxG.gain.value = pref.sfx ? 1 : 0; sfxG.connect(master);
     bgmG = AC.createGain(); bgmG.gain.value = pref.bgm ? 0.55 : 0; bgmG.connect(master);
@@ -36,8 +36,10 @@
     clockA = [now, at];
   }, 2000);
   // iPhoneは、画面にさわった時でないと音が出せない：最初のタッチで音を使えるようにする
-  const unlock = () => { if (needRebuild) rebuild(); const a = ctx(); if (!a) return; if (a.state !== 'running') a.resume(); if (want && !cur) bgm(want); };
-  ['pointerdown', 'touchstart', 'keydown'].forEach((e) => addEventListener(e, unlock, { passive: true }));
+  // 版561：resume は少し待ってから動き出すので、動き出してから曲を始める（前は最初のタッチで曲が始まらず、しばらく無音だった）
+  const startWant = () => { if (AC && AC.state === 'running' && want && !cur) bgm(want); };
+  const unlock = () => { if (needRebuild) rebuild(); const a = ctx(); if (!a) return; if (a.state !== 'running') { try { const pr = a.resume(); if (pr && pr.then) pr.then(startWant, () => {}); } catch (_) {} setTimeout(startWant, 120); setTimeout(startWant, 500); } else startWant(); };
+  ['pointerdown', 'touchstart', 'touchend', 'pointerup', 'click', 'keydown'].forEach((e) => addEventListener(e, unlock, { passive: true, capture: true }));   // 版561：iPhoneは指を離した時（touchend）でないと音を始められないことがある
   document.addEventListener('visibilitychange', () => { if (!AC) return; if (document.hidden) { try { AC.suspend(); } catch (_) {} needRebuild = true; } else rebuild(); });   // 版560：戻ってきたら作り直す（一瞬閉じると音がずれていた）
   addEventListener('pageshow', (e) => { if (e.persisted && AC) rebuild(); });
 
