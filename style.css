@@ -2558,3 +2558,9 @@ html.short .sq-tabs button{font-size:13px;letter-spacing:-.5px}
 .hm-next .coin{display:flex !important;align-items:center;gap:6px;line-height:1}
 .hm-next .coin .coin-ico{display:block;margin:0}
 .hm-next .coin::after{flex:none;margin:0 0 0 2px !important;vertical-align:middle}
+/* 版578：所持コインの「コイン」が右で見切れていた → 枠を少し広げ、字を小さめに */
+.cs-wrap .cs-have{left:898px !important;width:280px !important;padding:0 16px 0 10px !important;gap:5px !important;overflow:visible !important}
+.cs-wrap .cs-have .coin-ico{width:36px !important;height:36px !important}
+.cs-wrap .cs-have small{font-size:15px !important}
+.cs-wrap .cs-have em{font-size:26px;text-align:right}
+.cs-wrap .cs-have em.n6{font-size:22px !important}.cs-wrap .cs-have em.n7{font-size:19px !important}
