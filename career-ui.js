@@ -1209,7 +1209,7 @@
   }
   const ROLE_NAME = { captain: 'キャプテン', pk: 'PKキッカー', fk: 'FKキッカー', ck: 'CKキッカー' }, ROLE_TAG = { captain: 'C', pk: 'PK', fk: 'FK', ck: 'CK' };
   // ================= スタメン（カルチョビットAのボード）：マス目のピッチに顔を並べ、ドラッグで動かす・入れ替える =================
-  let sqShow = 'cond', sqDrag = null, sqPop = -1, sqNote = false, sqFromHome = false;
+  let sqShow = 'cond', sqDrag = null, sqPop = -1, sqNote = false, sqFromHome = false, sqRes = -1, sqResOpen = false;
   // 顔の白い背景を抜く（ふちから続く白だけ透明に）。小さく描いてもにじまないよう、ほどよい大きさで作っておく
   const cutCache = new Map();
   function cutFace(img) {
@@ -1271,6 +1271,9 @@
       <button class="s2btn s2nb" data-a="note"><span>${formMini(tac.formation === 'custom' ? '4-4-2' : tac.formation)}</span><b>フォーメーション</b></button>
       <button class="s2btn s2db" data-a="show" title="${sqShow === 'type' ? '選手タイプ' : '調子'}（切りかえ）"><span><img class="s2chg" src="icons/ui_change.png" alt="切りかえ"></span></button>
       <button class="s2btn s2tb" data-a="tac"><span>${RB_TAC_SVG}</span><b>戦術</b></button>
+      ${(save.reserve || []).length ? `<button class="s2btn s2rb" data-a="res"><span>${(save.reserve || []).length}</span><b>リザーブ</b></button>` : ''}
+      ${sqResOpen && sqRes >= 0 ? `<div class="s2resbar">${facePic(save.reserve[sqRes], 's2rf')}<b>${esc(save.reserve[sqRes].name)}</b><span>と入れかえる、チームの選手をタップ</span><button class="s2res-back">やめる</button></div>` : ''}
+      ${sqResOpen && sqRes < 0 ? `<div class="s2res"><div class="s2res-h"><b>リザーブ（控え室）</b><small>${sqRes >= 0 ? '入れかえるチームの選手をタップ' : '入れる選手をタップ → チームの選手をタップで入れかえ'}</small><button class="s2res-x">×</button></div><div class="s2res-l">${save.reserve.map((q, k) => `<div class="s2rc${k === sqRes ? ' on' : ''}" data-r="${k}">${facePic(q, 's2rf')}<b class="s2n ${POSC[q.position]}">${esc(q.name)}</b><span>${starHTML(C.ensureStar(q), q.totsu)}</span><small>${esc(q.type || '')}</small><button class="s2rel" data-rel="${k}">放出</button></div>`).join('')}</div></div>` : ''}
       ${forms}
       <p class="s2hint">選手をドラッグして、マスに置く・ほかの選手（控えとも）と入れ替える。タップでくわしく。</p></div>`;
     const L = $('#clubLayer'), board = L.querySelector('.s2board');
@@ -1280,7 +1283,14 @@
       if (a === 'note') { sqNote = !sqNote; renderLineup2(); }
       else if (a === 'show') { sqShow = sqShow === 'type' ? 'cond' : 'type'; renderLineup2(); }
       else if (a === 'tac') { sqTab = 'tac'; renderLineup(); }
+      else if (a === 'res') { sqResOpen = !sqResOpen; sqRes = -1; renderLineup2(); }
       else if (a === 'club') openClub({ onDone: () => renderLineup() }); });
+    { const rb = L.querySelector('.s2res-back'); if (rb) rb.onclick = () => { sqRes = -1; renderLineup2(); }; }
+    { const rx = L.querySelector('.s2res-x'); if (rx) rx.onclick = () => { sqResOpen = false; sqRes = -1; renderLineup2(); }; }
+    L.querySelectorAll('.s2rc').forEach((c) => c.onclick = (e) => { if (e.target.closest('.s2rel')) return; const k = +c.dataset.r; sqRes = sqRes === k ? -1 : k; pick = -1; sqPop = -1; renderLineup2(); });
+    L.querySelectorAll('.s2rel').forEach((b) => b.onclick = async (e) => { e.stopPropagation(); const k = +b.dataset.rel, q = save.reserve[k]; const kk = (C.KAKERA_OF[C.ensureStar(q)] || 1) * (1 + (q.totsu || 0));
+      if (!(await coachAsk(`${esc(q.name)}を放出しますか？<br><small>ほかのクラブへ移籍します（戻ってきません）。<br>覚醒のカケラ <b>${kk}</b> をもらえます。</small>`))) return;
+      save.reserve.splice(k, 1); save.kakera = (save.kakera || 0) + kk; sqRes = -1; if (!save.reserve.length) sqResOpen = false; done(); });   // 版508：放出（覚醒のカケラになる）
     L.querySelectorAll('.s2f').forEach((b) => b.onclick = () => { tac.formation = b.dataset.f; tac.cells = C.cellsFor(b.dataset.f); sqNote = false; pick = -1; done(); });
     { const x = L.querySelector('.s2px'); if (x) x.onclick = (e) => { e.stopPropagation(); sqPop = -1; renderLineup2(); }; }
     { const pd = L.querySelector('.s2pd'); if (pd) pd.onclick = () => { const i = +pd.dataset.pd; sqPop = -1; playerDetail(i); }; }
@@ -1303,6 +1313,13 @@
         const d = sqDrag; sqDrag = null; if (!d || d.el !== el) return;
         if (!d.on) {   // タップ：くわしく（2回目のタップ・別の選手のタップで入れ替えもできる）
           const i = d.i;
+          if (sqRes >= 0) {   // 版508：リザーブの選手とチームの選手を入れかえ
+            const ps = save.team.players, r = save.reserve[sqRes];
+            if (i === 0 && r.position !== 'GK') { coachAsk('GKの所には、GKの選手しか入れられません。', [{ label: 'OK', value: true }]); return; }
+            const out = ps[i]; ps[i] = r; save.reserve[sqRes] = out; { const pc = save.plan && save.plan.cards; if (pc) delete pc[i]; }
+            { const tac = C.ensureTactics(save); for (const k in (tac.roles || {})) if (tac.roles[k] === out.name) tac.roles[k] = null; }
+            sqRes = -1; pick = -1; sqPop = -1; if (!save.reserve.length) sqResOpen = false; done(); return;
+          }
           if (pick >= 0 && pick !== i) { swapPlayers(pick, i); pick = -1; sqPop = -1; done(); return; }
           if (sqPop === i) { sqPop = -1; pick = -1; } else { sqPop = i; pick = i; }
           renderLineup2(); return;
