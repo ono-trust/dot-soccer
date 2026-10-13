@@ -32,7 +32,7 @@
   function showScreen(name) {
     for (const id of screenIds) $('#' + id).hidden = id !== name;
     document.querySelector('header').hidden = name === 'match';
-    if (name !== 'match') showOverlay(null);
+    if (name !== 'match') { showOverlay(null); try { SND().crowd(false); } catch (_) {} }   // 版532：試合の画面を出たら、観客の声も必ず止める
   }
   function showOverlay(name) { for (const id of overlayIds) $('#' + id).hidden = id !== name; }
 
@@ -276,7 +276,7 @@
   const sndLive = () => !show || ['replay', 'jreplay'].includes(show.phase);
   function sndTick() {
     const t0 = sndPrevT, t1 = simT; sndPrevT = t1;
-    if (!(t1 > t0 && t1 - t0 < 0.6) || speed >= 4 || !sndLive()) { dribOwner = -1; return; }
+    if (!(t1 > t0 && t1 - t0 < 0.6) || speed >= 4 || !sndLive() || $('#match').hidden) { dribOwner = -1; return; }   // 版532：試合の画面が隠れている時は鳴らさない
     // キック：t0〜t1の間に蹴った回数
     let lo = 0, hi = kickAll.length; while (lo < hi) { const m = (lo + hi) >> 1; if (kickAll[m] <= t0) lo = m + 1; else hi = m; }
     if (lo < kickAll.length && kickAll[lo] <= t1) SND().play('kick');

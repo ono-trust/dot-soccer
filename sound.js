@@ -108,7 +108,7 @@
       });
       crowdParts.push({ stop() {}, out });
       crowdGain = out;
-    } else if (!on && crowdParts.length) { const parts = crowdParts, g = crowdGain; crowdParts = []; try { g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.6); } catch (_) {} setTimeout(() => parts.forEach((p) => { try { p.stop(); } catch (_) {} }), 800); }
+    } else if (!on && crowdParts.length) { const parts = crowdParts, g = crowdGain; crowdParts = []; crowdGain = null; try { const t = a.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6); } catch (_) {} try { setTimeout(() => { try { g.disconnect(); } catch (_) {} }, 700); } catch (_) {} setTimeout(() => parts.forEach((p) => { try { p.stop(); } catch (_) {} }), 800); }
   }
 
   // ---- BGM：小さな曲を繰り返す（メロディ・ベース・リズム） ----

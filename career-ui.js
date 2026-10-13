@@ -53,7 +53,7 @@
   function go(v) {
     if (v === 'assoc') { go('home'); openAssoc({ tab: 'sched' }); return; }   // サッカー協会は全画面
     if (v === 'lineup' && view !== 'lineup') sqFromHome = view === 'home';   // クラブ事務所から来た時だけ、クラブ設定のボタンを出す
-    view = v; try { window.DotSound && DotSound.bgm(v === 'home' ? 'home' : 'club'); } catch (_) {}   // 版499：BGM
+    view = v; try { window.DotSound && (DotSound.crowd(false), DotSound.bgm(v === 'home' ? 'home' : 'club')); } catch (_) {}   /* 版532：ホームに来たら試合の音を止める */   // 版499：BGM
     $('#cv-home').hidden = v !== 'home';
     $('#cv-club').hidden = v === 'home';
     $('#cvBack').hidden = v === 'home';
