@@ -1349,19 +1349,19 @@
 
   const POS_TAG = { GK: '#8e5bd6', DF: '#d83a3a', MF: '#f08a1c', FW: '#2f7fe0' };
   function nameTag(x, y, info, team, wide, card) {
-    ctx.font = `700 ${wide ? 15 : 14}px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif`;
+    ctx.font = `700 ${wide ? 19 : 18}px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif`;   // 版496：名前の札を大きく
     const num = String(info.number), nm = info.name + (wide ? '｜' + info.type : '');
-    const wn = ctx.measureText(num).width + 10, wt = ctx.measureText(nm).width + 10;
-    const x0 = x - (wn + wt) / 2, y0 = y - 22;
-    ctx.fillStyle = POS_TAG[info.gk ? 'GK' : info.position] || (team ? '#d8392f' : '#2a62c9'); ctx.fillRect(x0, y0, wn, 20);   /* 版482：背番号の地の色はポジションの色（GK紫・DF赤・MF橙・FW青） */
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(x0 + wn, y0, wt, 20);
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, wn + wt - 1, 19);
+    const wn = ctx.measureText(num).width + 12, wt = ctx.measureText(nm).width + 12;
+    const x0 = x - (wn + wt) / 2, y0 = y - 27, TH = 25;
+    ctx.fillStyle = POS_TAG[info.gk ? 'GK' : info.position] || (team ? '#d8392f' : '#2a62c9'); ctx.fillRect(x0, y0, wn, TH);   /* 版482：背番号の地の色はポジションの色（GK紫・DF赤・MF橙・FW青） */
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(x0 + wn, y0, wt, TH);
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, wn + wt - 1, TH - 1);
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#fff'; ctx.fillText(num, x0 + 5, y0 + 15);
-    ctx.fillStyle = '#1a1a1a'; ctx.fillText(nm, x0 + wn + 5, y0 + 15);
+    ctx.fillStyle = '#fff'; ctx.fillText(num, x0 + 6, y0 + 19);
+    ctx.fillStyle = '#1a1a1a'; ctx.fillText(nm, x0 + wn + 6, y0 + 19);
     if (card) {
       // 警告・退場を受けた選手は、名前の札の右にカード
-      const cx = Math.round(x0 + wn + wt + 3), cy = y0 + 2;
+      const cx = Math.round(x0 + wn + wt + 3), cy = y0 + 4;
       ctx.fillStyle = card === 'red' ? '#e8241c' : '#ffd400'; ctx.fillRect(cx, cy, 11, 16);
       ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.strokeRect(cx + 0.5, cy + 0.5, 10, 15);
     }
@@ -1755,6 +1755,8 @@
   function playerPanel(idx, lines, alpha, extra, mid) {
     const team = idx < 11 ? 0 : 1, info = rinfo(team, idx % 11);
     const w = 470, h = 112, x = (CW - w) / 2, y = mid ? CH * 0.36 : CH * 0.56;
+    const PS = 1.45, pcx = CW / 2, pcy = y + h / 2, f0 = faceList.length;   // 版496：選手の表示を大きく
+    ctx.save(); ctx.translate(pcx, pcy); ctx.scale(PS, PS); ctx.translate(-pcx, -pcy);
     ctx.globalAlpha = alpha;
     ctx.fillStyle = 'rgba(24,32,28,0.9)'; rrect(x, y, w, h, 10); ctx.fill();
     ctx.strokeStyle = '#d8c98a'; ctx.lineWidth = 3; ctx.stroke();
@@ -1770,7 +1772,8 @@
     ctx.font = `700 15px ${F}`; ctx.fillStyle = '#e8ece9';
     lines.forEach((l, k) => ctx.fillText(l, x + 118 + (extra && k === 0 ? 28 : 0), y + 84 + k * 18));
     if (extra) extra(x + 118, y + 70);
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = 1; ctx.restore();
+    for (let k = f0; k < faceList.length; k++) { const f = faceList[k], tx = (v) => pcx + (v - pcx) * PS, ty = (v) => pcy + (v - pcy) * PS; f.x = tx(f.x); f.y = ty(f.y); f.cx = tx(f.cx); f.w *= PS; f.h *= PS; f.cw *= PS; f.ch *= PS; }
   }
 
   // ---------- 演出の描画 ----------
