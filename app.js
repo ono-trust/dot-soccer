@@ -2904,7 +2904,7 @@
       // 技名は頭の上の小さな吹き出しで（大きな技名はリプレイ・ダイジェストでだけ）
       if (sk) {   // 紫電の遊戯が出ている間の技の吹き出しは、紫電の遊戯と同じ色にする
         let ov = null; const L9 = actsOf[i]; if (L9) for (let k = L9.length - 1; k >= 0; k--) { const a = L9[k]; if (a.t > simT) continue; if (simT - a.t > 9) break; if (a.a === 'uend' && a.k === 'shiden') break; if (a.a === 'uniq' && a.k === 'shiden') { ov = D.UNIQ && D.UNIQ.shiden && D.UNIQ.shiden.chip; break; } }
-        skillChips.push([q.x, r.top - 44, sk, ov]); { const kk = i + '|' + sk + '|' + (show ? show.phase : ''), last = chipHeard.get(kk); if (sndLive() && speed < 4 && (last == null || Math.abs(simT - last) > 2)) SND().play(sk.includes('【') ? 'uniq' : 'skill'); chipHeard.set(kk, simT); } }
+        skillChips.push([q.x, r.top - 44, sk, ov]); { const kk = i + '|' + sk + '|' + (show ? show.phase : ''), last = chipHeard.get(kk); if (sndLive() && speed < 4 && (last == null || Math.abs(simT - last) > 2)) /* 版503：スキル発動の音はなし */ chipHeard.set(kk, simT); } }
       // 月影の抜け出し：出ている間、走る選手のうしろに月の光の色の風と残像
       { const L3 = actsOf[i]; for (let k = L3.length - 1; k >= 0; k--) { const a = L3[k]; if (a.t > simT) continue; if (simT - a.t > 6) break;
           if (a.a === 'uend' && a.k === 'tsukikage') break;
