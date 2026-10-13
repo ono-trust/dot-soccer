@@ -922,10 +922,31 @@
   }
 
   // 版480：選手カードの右の3つ（カルチョビットAのクラブ事務所 → チーム編成 → 選手と同じ）
+  // 版512：チームの選手を放出（ほかのクラブへ移籍・覚醒のカケラになる）。スタメンが抜けたら控えから埋める
+  async function releasePlayer(i, after) {
+    const ps = save.team.players, p = ps[i]; if (!p) return;
+    const MIN = 16;
+    if (ps.length <= MIN) { coachAsk(`チームの選手が${MIN}人より少なくなるので、放出できません。`, [{ label: 'OK', value: true }]); return; }
+    if (p.position === 'GK' && ps.filter((q) => q.position === 'GK').length <= 1) { coachAsk('GKがいなくなるので、放出できません。', [{ label: 'OK', value: true }]); return; }
+    const kk = (C.KAKERA_OF[C.ensureStar(p)] || 1) * (1 + (p.totsu || 0));
+    if (!(await coachAsk(`${esc(p.name)}を放出しますか？<br><small>ほかのクラブへ移籍します（戻ってきません）。<br>覚醒のカケラ <b>${kk}</b> をもらえます。</small>`))) return;
+    if (i < 11) {   // スタメン：同じポジションの控え（いなければ先頭の控え）と入れかえてから抜く
+      let j = -1; for (let k = 11; k < ps.length; k++) if (ps[k].position === (i === 0 ? 'GK' : p.position)) { j = k; break; }
+      if (j < 0 && i === 0) for (let k = 11; k < ps.length; k++) if (ps[k].position === 'GK') { j = k; break; }
+      if (j < 0) j = 11;
+      ps[i] = ps[j]; ps[j] = p; { const pc = save.plan && save.plan.cards; if (pc) { const a = pc[i], b = pc[j]; if (b) pc[i] = b; else delete pc[i]; if (a) pc[j] = a; else delete pc[j]; } } i = j;
+    }
+    ps.splice(i, 1);
+    { const pc = save.plan && save.plan.cards; if (pc) { const nc = {}; for (const k in pc) { const n = +k; if (n < i) nc[n] = pc[k]; else if (n > i) nc[n - 1] = pc[k]; } save.plan.cards = nc; } }
+    { const tac = C.ensureTactics(save); for (const k in (tac.roles || {})) if (tac.roles[k] === p.name) tac.roles[k] = null; }
+    save.kakera = (save.kakera || 0) + kk; store();
+    if (window.DotSound) try { DotSound.play('tap'); } catch (_) {}
+    if (after) after();
+  }
   function officeSide(el, i, o) {
     const p = save.team.players[i];
     const side = document.createElement('div'); side.className = 'pc-side';
-    side.innerHTML = [['num', 'pc_number', '背番号'], ['pos', 'pc_pos', '登録ポジション'], ['name', 'pc_name', '登録名']].map(([a, f, l]) => `<button data-ed="${a}" title="${l}"><img src="icons/${f}.png" alt="${l}"></button>`).join('');
+    side.innerHTML = [['num', 'pc_number', '背番号'], ['pos', 'pc_pos', '登録ポジション'], ['name', 'pc_name', '登録名'], ['rel', 'pc_release', '放出']].map(([a, f, l]) => `<button data-ed="${a}" title="${l}"><img src="icons/${f}.png" alt="${l}"></button>`).join('');
     el.appendChild(side);
     // 版506：カードは画面に収まる大きさに縮めて、右のボタンと重ならない所へ（スマホで見切れないように）
     { const card = el.querySelector('.pc-card'); if (card) { card.style.transform = ''; const W = el.clientWidth, H = el.clientHeight, cw = card.offsetWidth, ch = card.offsetHeight, avail = W - 96 - 12 - 24 - 16; const k = Math.min(1, avail / cw, (H - 16) / ch); card.style.position = 'absolute'; card.style.left = Math.max(12, (avail - cw * k) / 2 + 12) + 'px'; card.style.top = ((H - ch * k) / 2) + 'px'; card.style.transform = `scale(${k.toFixed(3)})`; card.style.transformOrigin = '0 0'; } }
@@ -934,7 +955,8 @@
       const d = document.createElement('div'); d.className = 'pc-edit'; d.innerHTML = `<div class="pe-in"><h3>${title}</h3>${body}<div class="pe-btns"><button class="pe-no">やめる</button></div></div>`;
       el.appendChild(d); d.onclick = (e) => { e.stopPropagation(); if (e.target === d) d.remove(); }; d.querySelector('.pe-no').onclick = () => d.remove(); bind(d);
     };
-    side.querySelectorAll('[data-ed]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); const a = b.dataset.ed;
+    side.querySelectorAll('[data-ed]').forEach((b) => b.onclick = async (e) => { e.stopPropagation(); const a = b.dataset.ed;
+      if (a === 'rel') { releasePlayer(i, () => { el.hidden = true; if (o.onChange) o.onChange(); }); return; }   // 版512：放出
       if (a === 'num') {
         const used = new Map(save.team.players.map((q) => [q.number, q]));
         let h = '<div class="pe-nums">'; for (let n = 1; n <= 99; n++) { const q = used.get(n); h += `<button data-n="${n}" class="${q === p ? 'me' : q ? 'used' : ''}" title="${q ? esc(q.name) : ''}">${n}${q && q !== p ? `<small>${esc(q.name)}</small>` : ''}</button>`; } h += '</div><p class="pe-note">ほかの選手の番号を選ぶと、その選手と番号を入れかえます。</p>';
@@ -1227,10 +1249,36 @@
     } catch (e) { /* 読めない時はそのまま */ }
   }
 
+  // 版512：選手どうしが重ならないように（となりのマス＝縦横ななめ1マス以内には置かない）
+  function unpile(cells) {
+    const near = (a, b) => a && b && Math.abs(a.r - b.r) <= 1 && Math.abs(a.c - b.c) <= 1;
+    let moved = false;
+    for (let i = 2; i < 11; i++) {
+      if (!cells[i]) continue;
+      if (![...Array(i).keys()].some((j) => j > 0 && near(cells[i], cells[j]))) continue;
+      let best = null, bd = 1e9;
+      for (let r = 0; r < C.GRID_R; r++) for (let c = 0; c < C.GRID_C; c++) {
+        if (C.zoneOf(r) !== C.zoneOf(cells[i].r)) continue;
+        const cand = { r, c }; if ([...Array(11).keys()].some((j) => j > 0 && j !== i && near(cand, cells[j]))) continue;
+        const dd = Math.abs(r - cells[i].r) * 3 + Math.abs(c - cells[i].c); if (dd < bd) { bd = dd; best = cand; }
+      }
+      if (best) { cells[i] = best; moved = true; }
+    }
+    return moved;
+  }
+  // 版512：スマホ（画面の高さが低い）では、スタメン画面（1280×720で作ってある）を丸ごと縮めて収める
+  function fitSq2() {
+    const L = $('#clubLayer'), sq = L && L.querySelector('.sq2'); if (!sq) return;
+    if (!document.documentElement.classList.contains('short')) { sq.style.cssText = ''; return; }
+    const W = L.clientWidth, H = L.clientHeight, k = Math.min(W / 1280, H / 720);
+    sq.style.cssText = `inset:auto;left:${(W - 1280 * k) / 2}px;top:${(H - 720 * k) / 2}px;width:1280px;height:720px;transform:scale(${k.toFixed(4)});transform-origin:0 0;background:none`;
+  }
+  addEventListener('stagefit', () => fitSq2());
   function renderLineup2() {
     const ps = save.team.players, tac = C.ensureTactics(save), cells = tac.cells, roles = C.slotRoles(cells);
     const R = C.GRID_R, COLS = C.GRID_C, PX0 = 20, PY0 = 64, CW = 46, CH = 46, PW = CW * COLS, PH = CH * (R + 2);
     const cx = (c) => PX0 + c * CW + CW / 2, cy = (r) => PY0 + (R - 1 - r) * CH + CH / 2;
+    if (unpile(cells)) store();   // 版512：となりのマスに重なった選手は、すき間のあるマスへ
     const occ = {}; for (let i = 1; i < 11; i++) if (cells[i]) occ[cells[i].r + ':' + cells[i].c] = i;
     let grid = '';
     for (let r = 0; r < R; r++) for (let c = 0; c < COLS; c++) grid += `<i class="s2c z-${C.zoneOf(r)}" data-r="${r}" data-c="${c}" style="left:${PX0 + c * CW}px;top:${PY0 + (R - 1 - r) * CH}px;width:${CW}px;height:${CH}px"></i>`;
@@ -1262,7 +1310,7 @@
         <div class="s2rl">${Object.keys(ROLE_NAME).map((k) => `<button data-role="${k}" class="${tac.roles[k] === sel.name ? 'on' : ''}"><i class="s2rt rt-${k}">${ROLE_TAG[k]}</i>${ROLE_NAME[k]}</button>`).join('')}</div>
         <button class="s2pd" data-pd="${sqPop}">選手データを見る</button></div>`; }
     $('#clubLayer').innerHTML = `<div class="sq2"><div class="s2board">
-        <div class="s2head"><img src="${emblemURL(save.team.name, 40)}" alt=""><b>${esc(save.team.name)}</b><em>［${esc(label)}］</em></div>
+        <div class="s2head"${sqResOpen && sqRes >= 0 ? ' style="visibility:hidden"' : ''}><img src="${emblemURL(save.team.name, 40)}" alt=""><b>${esc(save.team.name)}</b><em>［${esc(label)}］</em></div>
         <div class="s2pitch" style="left:${PX0}px;top:${PY0}px;width:${PW}px;height:${PH}px"><i class="s2gk" style="top:${R * CH}px;height:${CH * 2}px"></i><i class="s2box" style="left:${PW * 0.22}px;width:${PW * 0.56}px;top:${R * CH - CH * 0.15}px;height:${CH * 2.15}px"></i><i class="s2box2" style="left:${PW * 0.34}px;width:${PW * 0.32}px;top:${R * CH + CH * 0.85}px;height:${CH * 1.15}px"></i></div>
         ${grid}${zl}
         <div class="s2bench"><b class="s2bh">ベンチ入り</b></div><div class="s2bench g"><b class="s2bh">ベンチ外</b></div>
@@ -1272,11 +1320,11 @@
       <button class="s2btn s2db" data-a="show" title="${sqShow === 'type' ? '選手タイプ' : '調子'}（切りかえ）"><span><img class="s2chg" src="icons/ui_change.png" alt="切りかえ"></span></button>
       <button class="s2btn s2tb" data-a="tac"><span>${RB_TAC_SVG}</span><b>戦術</b></button>
       ${(save.reserve || []).length ? `<button class="s2btn s2rb" data-a="res"><span>${(save.reserve || []).length}</span><b>リザーブ</b></button>` : ''}
-      ${sqResOpen && sqRes >= 0 ? `<div class="s2resbar">${facePic(save.reserve[sqRes], 's2rf')}<b>${esc(save.reserve[sqRes].name)}</b><span>と入れかえる、チームの選手をタップ</span><button class="s2res-back">やめる</button></div>` : ''}
-      ${sqResOpen && sqRes < 0 ? `<div class="s2res"><div class="s2res-h"><b>リザーブ（控え室）</b><small>${sqRes >= 0 ? '入れかえるチームの選手をタップ' : '入れる選手をタップ → チームの選手をタップで入れかえ'}</small><button class="s2res-x">×</button></div><div class="s2res-l">${save.reserve.map((q, k) => `<div class="s2rc${k === sqRes ? ' on' : ''}" data-r="${k}">${facePic(q, 's2rf')}<b class="s2n ${POSC[q.position]}">${esc(q.name)}</b><span>${starHTML(C.ensureStar(q), q.totsu)}</span><small>${esc(q.type || '')}</small><button class="s2rel" data-rel="${k}">放出</button></div>`).join('')}</div></div>` : ''}
+      ${sqResOpen && sqRes >= 0 ? `<div class="s2resbar">${facePic(save.reserve[sqRes], 's2rf')}<b>${esc(save.reserve[sqRes].name)}</b><span>と入れかえる選手をタップ</span><button class="s2res-back">やめる</button></div>` : ''}
+      ${sqResOpen && sqRes < 0 ? `<div class="s2res"><div class="s2res-h"><b>リザーブ（控え室）</b><small>${sqRes >= 0 ? '入れかえるチームの選手をタップ' : '入れる選手をタップ → チームの選手をタップで入れかえ'}</small><button class="s2res-x">×</button></div><div class="s2res-l">${save.reserve.map((q, k) => `<div class="s2rc${k === sqRes ? ' on' : ''}" data-r="${k}">${facePic(q, 's2rf')}<b class="s2n ${POSC[q.position]}">${esc(q.name)}</b><span>${starHTML(C.ensureStar(q), q.totsu)}</span><small>${esc(q.type || '')}</small><button class="s2rel" data-rel="${k}" title="放出"><img src="icons/pc_release.png" alt="放出"></button></div>`).join('')}</div></div>` : ''}
       ${forms}
       <p class="s2hint">選手をドラッグして、マスに置く・ほかの選手（控えとも）と入れ替える。タップでくわしく。</p></div>`;
-    const L = $('#clubLayer'), board = L.querySelector('.s2board');
+    const L = $('#clubLayer'), board = L.querySelector('.s2board'); fitSq2();
     board.querySelectorAll('img.fc').forEach((im) => { const f = () => cutFace(im); im.addEventListener('load', f); if (im.complete) f(); });
     const done = () => { store(); renderLineup2(); };
     L.querySelectorAll('.s2btn').forEach((b) => b.onclick = () => { const a = b.dataset.a;
@@ -1305,7 +1353,7 @@
       };
       el.onpointermove = (e) => {
         const d = sqDrag; if (!d || d.el !== el) return;
-        if (!d.on && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 7) { d.on = true; d.ghost = el.cloneNode(true); d.ghost.classList.add('ghost'); board.appendChild(d.ghost); el.classList.add('lift'); }
+        if (!d.on && sqRes < 0 && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 12) { d.on = true; d.ghost = el.cloneNode(true); d.ghost.classList.add('ghost'); board.appendChild(d.ghost); el.classList.add('lift'); }
         if (d.on) { d.ghost.style.left = (e.clientX - d.r.left) / d.k + 'px'; d.ghost.style.top = (e.clientY - d.r.top) / d.k + 18 + 'px';
           board.querySelectorAll('.hov').forEach((h) => h.classList.remove('hov')); const tgt = dropAt(e.clientX, e.clientY); if (tgt) tgt.classList.add('hov'); }
       };
@@ -1329,7 +1377,8 @@
         pick = -1; sqPop = -1;
         if (tgt && tgt.classList.contains('s2p')) { const j = +tgt.dataset.i; if (j !== d.i) swapPlayers(d.i, j); }
         else if (tgt && tgt.classList.contains('s2c') && d.i > 0 && d.i < 11) {
-          const rr = +tgt.dataset.r, cc = +tgt.dataset.c, who = occ[rr + ':' + cc];
+          const rr = +tgt.dataset.r, cc = +tgt.dataset.c; let who = occ[rr + ':' + cc];
+          if (!who) for (let k = 1; k < 11; k++) if (k !== d.i && cells[k] && Math.abs(cells[k].r - rr) <= 1 && Math.abs(cells[k].c - cc) <= 1) { who = k; break; }   // 版512：となりに置くと重なるので、その選手と入れかえ
           if (who && who !== d.i) { const t2 = cells[who]; cells[who] = cells[d.i]; cells[d.i] = t2; } else cells[d.i] = { r: rr, c: cc };
           tac.formation = 'custom';
         }
@@ -1675,7 +1724,7 @@
     else if (tc) await modal(`<h2>今週の練習</h2>${tc}`, [{ label: 'OK', primary: true }]);
     if (res.leagueDone) await modal(`<h2>リーグ戦終了！</h2><p class="cr-score">${esc(save.league.name)}　${res.pos}位</p><p>昇格・降格はシーズンの終わり（2月）に決まります。それまでは特訓でチームを鍛えよう。</p>`, [{ label: 'OK', primary: true }]);
     if (res.season) await venueTalk(res.season);
-    if (res.season) await modal(`<h2>シーズン${save.season - 1} 終了</h2><p>${esc(res.season.from)}　${res.season.pos}位</p><h2>${esc(res.season.msg)}</h2><p>新しいシーズン：${esc(res.season.to)}</p>${(res.season.titles || []).map((x) => x.mine ? `<p class="cr-learn">★ ${esc(x.name)}が「国内屈指の${esc(x.type)}」になった！</p>` : x.lost ? `<p>${esc(x.lost)}は「国内屈指の${esc(x.type)}」ではなくなった…（${esc(x.team)}の${esc(x.name)}へ）</p>` : `<p class="sn-t">国内屈指の${esc(x.type)}：${esc(x.team)}の${esc(x.name)}</p>`).join('')}${(res.season.retired || []).length ? `<p class="sn-r"><b>引退</b>${res.season.retired.slice(0, 8).map((x) => `${esc(x.team)}の${esc(x.name)}（${x.age}歳${x.title ? '・国内屈指' : ''}）`).join('、')}${res.season.retired.length > 8 ? ` ほか${res.season.retired.length - 8}人` : ''}</p>` : ''}`, [{ label: '新シーズンへ', primary: true }]);
+    if (res.season) await modal(`<h2>シーズン${save.season - 1} 終了</h2><p>${esc(res.season.from)}　${res.season.pos}位</p><h2>${esc(res.season.msg)}</h2><p>新しいシーズン：${esc(res.season.to)}</p>${(res.season.titles || []).map((x) => x.mine ? `<p class="cr-learn">★ ${esc(x.name)}が「国内屈指の${esc(x.type)}」になった！</p>` : x.lost ? `<p>${esc(x.lost)}は「国内屈指の${esc(x.type)}」ではなくなった…（${esc(x.team)}の${esc(x.name)}へ）</p>` : `<p class="sn-t">国内屈指の${esc(x.type)}：${esc(x.team)}の${esc(x.name)}</p>`).join('')}${(res.season.retired || []).length ? `<p class="sn-r"><b>引退</b>${res.season.retired.slice(0, 8).map((x) => `${esc(x.team)}の${esc(x.name)}${x.title ? '（国内屈指）' : ''}`).join('、')}${res.season.retired.length > 8 ? ` ほか${res.season.retired.length - 8}人` : ''}</p>` : ''}`, [{ label: '新シーズンへ', primary: true }]);
     const cs = C.campState(save);
     if (res.campStart && cs) await modal(`<h2>⛺ ${cs.name === '夏合宿' ? '8月は夏合宿！' : '2月は春季キャンプ！'}</h2><p>${cs.name === '夏合宿' ? 'リーグは中断期間に入ります。' : '新シーズンに向けた合宿です。'}合宿中は公式戦がありません（練習試合はできます）。</p><ul class="campul"><li>特訓は<b>1週に${cs.trains}回</b>までできる</li><li>カードの効果が<b>${cs.mult}倍</b></li><li>全体練習が<b>いつもより充実</b>（全員が少しずつ伸びる）</li><li>そのぶん疲れやすいので、ケガに注意</li></ul>`, [{ label: '合宿スタート！', primary: true }]);
     store();
@@ -3048,7 +3097,7 @@
       let head, row;
       if (mode === 'st') { head = th('P', '試合') + th('G', '得点') + th('A', 'アシスト') + th('Y', '<i class="ob-y"></i>') + th('X', '<i class="ob-x">×</i>'); row = (o) => { const r = rec(o.p); return `<td>${r.P}</td><td>${r.G}</td><td>${r.A}</td><td>${r.Y + r.R}</td><td>${o.p.injury > 0 ? o.p.injury + '週' : '0'}</td>`; }; }
       else if (mode === 'ab') { head = PK.map((k, j) => th(k, ico(k), 'ic')).join('') + '<th>タイプ</th>'; row = (o) => { C.ensurePts(o.p); return PK.map((k) => { const g = C.rankInfo(o.p.pts[k]).g; return `<td><i class="rk2 g-${g}">${g}</i></td>`; }).join('') + `<td><span class="tbadge ${TYPE_CLS[o.p.type] || 'ty-bal'}">${esc(o.p.type || '')}</span></td>`; }; }
-      else { head = th('star', 'レア度') + '<th>上限</th>' + th('fat', '疲労') + '<th>年齢</th>'; row = (o) => `<td>${starHTML(C.ensureStar(o.p), o.p.totsu)}</td><td>${capBadge(C.capGrade(o.p))}</td><td><i class="cdot ${condDot(o.p)}"></i> ${Math.round(o.p.fatigue || 0)}%</td><td>${o.p.age || '-'}</td>`; }
+      else { head = th('star', 'レア度') + '<th>上限</th>' + th('fat', '疲労'); row = (o) => `<td>${starHTML(C.ensureStar(o.p), o.p.totsu)}</td><td>${capBadge(C.capGrade(o.p))}</td><td><i class="cdot ${condDot(o.p)}"></i> ${Math.round(o.p.fatigue || 0)}%</td>`; }
       return `<div class="of-p of-team"><div class="ot-h">${esc(save.team.name)}　チーム編成<span>${['成績', '能力', '状態'][['st', 'ab', 'cd'].indexOf(mode)]}</span></div><div class="ot-sc"><table class="ot"><tr>${th('pos', 'Pos.')}${th('no', 'No.')}<th class="nm">選手</th><th></th>${head}</tr>
         ${ps.map((o) => `<tr data-i="${o.i}" class="${o.i < 11 ? '' : 'sub'}"><td><i class="pos ${POSC[o.p.position]}">${o.p.position}</i></td><td class="no">${o.p.number}</td><td class="nm">${esc(o.p.name)}</td><td><i class="cdot ${condDot(o.p)}"></i></td>${row(o)}</tr>`).join('')}</table></div>
         <button class="ot-mode ui-img" title="表示を切りかえる"><img src="icons/ui_change.png" alt="切りかえ"></button><p class="ot-hint">見出しをタップで並べかえ。右下のボタンで「成績・能力・状態」を切りかえ</p></div>`;

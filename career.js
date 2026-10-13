@@ -1690,7 +1690,7 @@
     const used = new Set(ps.map((x) => x.number)); let n = q.no; if (used.has(n)) { n = 12; while (used.has(n)) n++; } p.number = n;
     p.star = pick.star; p.totsu = 0; p.gsrc = pick.tid + '_' + pick.no; p.faceKey = faceKeyOf(pick.tid, q) || undefined;
     { const hc = p.faceKey && root.STAR_HAIR && root.STAR_HAIR[p.faceKey]; if (hc != null) p.hairColor = hc; }
-    p.fatigue = 10; p.cond = 0; p.injury = 0; p.games = 0; p.foot = p.foot || (Math.random() < 0.2 ? 'L' : 'R'); p.age = q.age || 24; gachaWeak(p); ensurePot(p);
+    p.fatigue = 10; p.cond = 0; p.injury = 0; p.games = 0; p.foot = p.foot || (Math.random() < 0.2 ? 'L' : 'R'); delete p.age; gachaWeak(p); ensurePot(p);
     if (full) save.reserve.push(p); else ps.push(p);
     return { kind: 'new', p, star: pick.star, q, tid: pick.tid, reserve: full };
   }

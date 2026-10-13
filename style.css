@@ -1762,7 +1762,7 @@ button.ui-img:active img{transform:scale(.93)}
 /* 版481：右の3つのボタンを、カードのすぐ右に（画面のはしから離す） */
 #pcModal.pc-office .pc-card{margin:0;transform-origin:left center}
 #pcModal.pc-office .pc-side{right:12px;left:auto;gap:8px}
-#pcModal.pc-office .pc-side button{width:96px;height:96px}
+#pcModal.pc-office .pc-side button{width:84px;height:84px}
 /* 版482：自分と相手のユニフォームを並べて選ぶ */
 .kp-in.kp2{padding:14px 18px;background:rgba(248,246,234,.96)}
 .kp2 .kp-teams{display:flex;gap:22px}
@@ -1869,12 +1869,12 @@ html.short #assocScreen .sc-o,html.phone #assocScreen .sc-o{min-width:0;text-ove
 .s2rc .s2rf{width:84px;height:84px;object-fit:cover;object-position:top;border-radius:8px}
 .s2rc .s2n{position:static;transform:none;font-size:15px}
 .s2rc small{font-size:12px;opacity:.85}
-.s2rel{margin-top:4px;font-size:13px;padding:3px 12px;border-radius:999px;border:2px solid #ff8a8a;background:#a02020;color:#fff;font-weight:800}
+.s2rel{position:absolute;right:-8px;top:-10px;width:50px;height:50px;padding:0;border:0;background:none;box-shadow:none;cursor:pointer}.s2rel img{width:100%;height:100%;filter:drop-shadow(0 3px 0 rgba(0,0,0,.45))}.s2rel:active img{transform:scale(.92)}
 
-.s2resbar{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:10px;background:rgba(18,22,40,.95);border:3px solid #ffe14a;border-radius:999px;padding:4px 8px 4px 4px;color:#fff;box-shadow:0 0 16px #ffe14a88}
+.s2resbar{position:absolute;left:50%;top:18px;white-space:nowrap;max-width:880px;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:10px;background:rgba(18,22,40,.95);border:3px solid #ffe14a;border-radius:999px;padding:4px 8px 4px 4px;color:#fff;box-shadow:0 0 16px #ffe14a88}
 .s2resbar .s2rf{width:44px;height:44px;border-radius:50%;object-fit:cover;object-position:top}
-.s2resbar b{font-size:20px}.s2resbar span{font-size:15px;font-weight:800;color:#ffe14a}
-.s2res-back{border-radius:999px;padding:4px 14px;font-weight:800}
+.s2resbar b{font-size:20px}.s2resbar span{font-size:16px;font-weight:800;color:#ffe14a}.s2resbar>*{flex:none}
+.s2res-back{border-radius:999px;padding:4px 14px;font-weight:800;white-space:nowrap}
 .gc-row{display:flex;gap:10px;align-items:center}
 .gc-auto{background:rgba(255,255,255,.15);color:#fff;border:2px solid rgba(255,255,255,.4);border-radius:999px;padding:6px 16px;font-weight:800}
 .gc-auto.on{background:#2a9ad8;border-color:#bfe8ff}
