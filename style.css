@@ -1999,3 +1999,25 @@ html .std.tvm .std-body>*{zoom:1!important}
 .sq2.ph .s2st-h b{font-size:13px;white-space:nowrap}
 .sq2.ph .s2strip .s2res-x{width:28px;height:28px;font-size:15px}
 .sq2.ph .s2st-hint{font-size:10px}
+/* 版517：リザーブ選手の能力（下の選手をタップできるよう、さわれない札にする） */
+.s2rpop{pointer-events:none;opacity:.96;border-color:#7a5cd0}
+.s2rp-tag{margin-left:6px;background:#6a4ac0;color:#fff;font-size:11px;padding:2px 6px;border-radius:999px}
+.s2rpop .cnd b{color:#333}
+.s2drag{position:absolute;z-index:50;pointer-events:none;transform:translate(-50%,-60%) scale(1.15);filter:drop-shadow(0 6px 6px rgba(0,0,0,.5))}
+.s2drag img{width:64px;height:62px;display:block}
+.s2sc.lift{opacity:.35}
+/* 版517：帯の名札は顔の下に（顔にかけない） */
+.s2sc{height:84px}
+.s2sc .s2sf{width:56px;height:54px;flex:none}
+.s2sc .s2n{top:auto;margin-top:2px;position:relative}
+.sq2.ph .s2sc{height:80px}
+/* 版517：切りかえ・戦術ボタンは右の列へ（リザーブの帯と重ならない） */
+.sq2.ph .s2db{left:auto;right:6px;top:170px}.sq2.ph .s2tb{left:auto;right:6px;top:290px}
+.sq2.ph .s2rb{top:134px}
+.s2db{left:1134px;top:360px}
+.sq2.resopen .s2tb,.sq2.resopen .s2db{display:flex}
+.s2sc .s2n{bottom:auto!important;top:auto!important}
+.s2strip .s2rel.s2rel2{position:static;flex:none;width:auto;height:44px;margin:4px;display:flex;align-items:center;justify-content:center;gap:4px;background:#a02020;border:2px solid #ff9a9a;border-radius:999px;color:#fff}
+.s2rel2 img{width:38px!important;height:38px!important}.s2rel2 b{font:900 14px/1 "Hiragino Kaku Gothic ProN",sans-serif}
+.s2strip .s2rel.s2rel2{height:52px;background:none;border:0}
+.s2rel2 img{width:50px!important;height:50px!important}
