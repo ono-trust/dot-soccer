@@ -426,7 +426,7 @@
       el = document.createElement('div'); el.id = 'mresult'; el.className = 'lk-wrap lk-dim';
       el.innerHTML = '<div class="lk-box"><div class="lk-sub"></div></div>';
       (document.getElementById('app') || document.body).appendChild(el);
-      const fit = () => { const k = Math.min((el.clientWidth || innerWidth) / 1280, (el.clientHeight || innerHeight) / 720); el.querySelector('.lk-box').style.transform = `translate(-50%,-50%) scale(${k.toFixed(4)})`; };
+      const fit = () => { const A = document.getElementById('app'); const k = Math.min((el.clientWidth || (A && A.clientWidth) || innerWidth) / 1280, (el.clientHeight || (A && A.clientHeight) || innerHeight) / 720); el.querySelector('.lk-box').style.transform = `translate(-50%,-50%) scale(${k.toFixed(4)})`; };
       addEventListener('resize', fit); el._fit = fit;
     }
     el.hidden = false; el._fit();
@@ -3692,7 +3692,7 @@
   // ---------- 操作 ----------
   roster();
   $('#level') && $('#level').addEventListener('change', roster);
-  showScreen('setup');
+  if (!document.getElementById('career')) showScreen('setup');   // 版534：起動時に最初のメニュー画面を一瞬出さない（育成モードがすぐ開く）
   $('#start').onclick = safeStart;
   $('#newGame').onclick = () => { stop(); showScreen('setup'); };
   $('#pause').onclick = () => (playing ? stop() : play());
@@ -4017,7 +4017,7 @@
       const fit = () => { const k = Math.min((el.clientWidth || innerWidth) / 1280, (el.clientHeight || innerHeight) / 720); el.querySelector('.lk-box').style.transform = `translate(-50%,-50%) scale(${k.toFixed(4)})`; };
       addEventListener('resize', fit); el._fit = fit;
     }
-    el._fit(); el.hidden = false;
+    el.hidden = false; el._fit();   // 版534：隠れたまま大きさを測ると0になり、画面が小さく縮んでいた
     const t = simT, second = t >= halfT, m = Math.max(1, Math.min(90, Math.ceil((t * match.clockScale) / 60)));
     renderStatus(el.querySelector('.lk-sub'), t, `${second ? '後半' : '前半'}　${m}分`, m, () => { el.hidden = true; if (wasPlaying) play(); });
   }
@@ -4143,7 +4143,7 @@
   // ---------- 試合のあとのロッカールーム：だれもいない部屋で、コーチや選手が話す（本家） ----------
   //  lines：[{ name, face（画像のURL）, text, cards：[{ id, name }] }]。タップで次へ。最後まで行ったら暗転して done
   function lockerTalk(lines, done) {
-    const el = lkEl(); el._fit(); el.hidden = false; el.classList.add('lk-talk');
+    const el = lkEl(); el.hidden = false; el._fit(); el.classList.add('lk-talk');
     el.querySelector('.lk-sub').hidden = true;
     let dlg = el.querySelector('.lk-dlg');
     if (!dlg) { dlg = document.createElement('div'); dlg.className = 'lk-dlg'; dlg.innerHTML = '<img class="lk-face" alt=""><div class="lk-band"><b class="lk-name"></b><p class="lk-text"></p><div class="lk-cards2"></div><i class="lk-more">▶</i></div>'; el.querySelector('.lk-box').appendChild(dlg); }

@@ -2288,3 +2288,6 @@ button.ib:disabled{filter:grayscale(1) opacity(.6)}
 .sh3-card{height:224px}
 .sh3-card img{height:176px!important;width:100%;aspect-ratio:auto}
 .sh3-dr img{border-width:4px}
+/* 版534：右上のもどるボタンと重ならないように */
+.ts-h{padding-right:120px}
+html.short .rbtns{top:88px;gap:4px}html.short .rbtns button{width:72px;height:72px}

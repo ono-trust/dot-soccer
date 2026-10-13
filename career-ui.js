@@ -2371,7 +2371,7 @@
       const fit = () => { const bx = el.querySelector('.lk-box');
         if (id === 'assocScreen' && (document.documentElement.classList.contains('short') || document.documentElement.classList.contains('phone'))) { bx.style.width = (el.clientWidth || innerWidth) + 'px'; bx.style.height = (el.clientHeight || innerHeight) + 'px'; bx.style.transform = 'translate(-50%,-50%)'; return; }   // 版486：スマホでは協会の画面を縮めずに、画面の大きさのまま作る（文字が大きくなる）
         bx.style.width = ''; bx.style.height = '';
-        const k = Math.min((el.clientWidth || innerWidth) / 1280, (el.clientHeight || innerHeight) / 720); bx.style.transform = `translate(-50%,-50%) scale(${k.toFixed(4)})`; };
+        const A = document.getElementById('app'); const k = Math.min((el.clientWidth || (A && A.clientWidth) || innerWidth) / 1280, (el.clientHeight || (A && A.clientHeight) || innerHeight) / 720); bx.style.transform = `translate(-50%,-50%) scale(${k.toFixed(4)})`; };
       addEventListener('resize', fit); el._fit = fit;
     }
     return el;
