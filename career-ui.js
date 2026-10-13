@@ -3308,7 +3308,7 @@
   // ================= ショップ =================
   // 版526：ショップ（監督のデザイン案3枚：おすすめ／特訓カード／プレミアムパス）。案の絵を下地にして、数字・ピックアップ・カードは中身に合わせて描く
   const SH_CATS = [['all', 'すべて'], ['tact', '戦術'], ['tech', 'テクニック'], ['phys', 'フィジカル'], ['sup', 'サポート']];
-  const SH_CATCOL = { tact: '#1f9a45', tech: '#e2512a', phys: '#2f6fd6', sup: '#d4a017' };
+  const SH_CATCOL = { tact: '#1f9a45', tech: '#d81e1e', phys: '#2f6fd6', sup: '#d4a017' };
   let shopSt = { tab: 'rec', cat: 'tact', sel: null, qty: 1 };
   function shop(tab) {
     const el = fullScreen('shopScreen', 'std-wrap sh3-wrap'), box = el.querySelector('.lk-box');
