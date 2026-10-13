@@ -3840,7 +3840,7 @@
       <div class="lk-sub" hidden></div>
       <div class="lk-black"></div></div>`;
     (document.getElementById('app') || document.body).appendChild(el);   // 交代のボード（#app の中）が上に重なるように
-    const fit = () => { const box = el.querySelector('.lk-box'); const k = Math.min((el.clientWidth || innerWidth) / 1280, (el.clientHeight || innerHeight) / 720); box.style.transform = `translate(-50%,-50%) scale(${k.toFixed(4)})`; };
+    const fit = () => { const box = el.querySelector('.lk-box'); const A = document.getElementById('app'), W = el.clientWidth || (A && A.clientWidth) || innerWidth, H = el.clientHeight || (A && A.clientHeight) || innerHeight; const k = H / 720, bw = Math.max(1280, Math.round(W / k)); box.style.width = bw + 'px'; box.style.transform = `translate(-50%,-50%) scale(${k.toFixed(4)})`; };   /* 版556：横長の画面では部屋を横に広げて、黒い余白を出さない（ボタンは左右の端に付く） */
     addEventListener('resize', fit); el._fit = fit;
     el.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => {
       if (!lk || lk.leaving) return;
@@ -3856,9 +3856,9 @@
     return el;
   }
   function openLocker() {
-    const el = lkEl(); el._fit();
+    const el = lkEl();
     lk = { t0: performance.now(), left: LK_SEC, last: performance.now(), leaving: false, raf: 0, sit: lkSeats() };
-    el.hidden = false; el.querySelector('.lk-sub').hidden = true;
+    el.hidden = false; el._fit(); el.querySelector('.lk-sub').hidden = true;   // 版556：見えてから大きさを合わせる（黒い余白が出ていた）
     { const w = !!(mctx && mctx.opts && mctx.opts.watch); el.querySelector('.lk-btns').style.visibility = w ? 'hidden' : ''; }   // 観戦：交代・戦術はない
     const bl = el.querySelector('.lk-black'); bl.style.transition = 'none'; bl.style.opacity = '1';
     requestAnimationFrame(() => { bl.style.transition = 'opacity .7s'; bl.style.opacity = '0'; });

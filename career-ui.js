@@ -1589,8 +1589,8 @@
             <div class="sb2-slots">${'<i></i>'.repeat(7)}</div>
             <p class="sb2-tip">${left() > 0 ? '控えの選手を、代えたい選手へドラッグ' : '交代枠はもうありません'}　／　タップで選手カード</p>
           </div>
-          <button class="sb2-round sb2-back" title="もどる"><svg viewBox="0 0 40 40"><path d="M15 31h10a9.5 9.5 0 0 0 0-19H14" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/><path d="M3 12l12-9v18z" fill="#fff"/></svg></button>
-          <button class="sb2-round sb2-rot" title="作戦ボード"><svg viewBox="0 0 40 40"><path d="M9 17a12 12 0 0 1 21-6" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M33 4v11H22z" fill="#fff"/><path d="M31 23a12 12 0 0 1-21 6" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M7 36V25h11z" fill="#fff"/></svg></button>
+          <button class="sb2-round sb2-back sb2-img" title="もどる"><img src="icons/ui_back.png" alt="もどる"></button>
+          <button class="sb2-round sb2-rot sb2-img" title="作戦ボード"><img src="icons/ui_change.png" alt="作戦ボード"></button>
         </div>`;
       el.hidden = false;
       fitBox();
@@ -1654,7 +1654,7 @@
     // 「はい／いいえ」の確認
     const ask = (html) => new Promise((res) => {
       const d = document.createElement('div'); d.className = 'sb-ask';
-      d.innerHTML = `<div class="sb-askbox"><p>${html}</p><div><button class="primary" data-v="1">はい</button><button data-v="0">いいえ</button></div></div>`;
+      d.innerHTML = `<div class="sb-askbox"><p>${html}</p><div class="sb-askbtns"><button class="primary ib ib-ok" data-v="1">は　い</button><button class="ib ib-no" data-v="0">いいえ</button></div></div>`;
       el.appendChild(d);
       d.querySelectorAll('button').forEach((b) => b.onclick = () => { d.remove(); res(b.dataset.v === '1'); });
     });
@@ -1662,7 +1662,7 @@
     const finish = () => {
       const moved = JSON.stringify(plan.cells) !== JSON.stringify(ms.cells), attCh = plan.att !== ms.att;
       if (!plan.subs.length && !moved && !attCh) { el.hidden = true; if (info.cancel) info.cancel(); return; }
-      el.querySelector('.sb-back').disabled = true;
+      { const bb = el.querySelector('.sb2-back') || el.querySelector('.sb-back'); if (bb) bb.disabled = true; }   // 版556：ボタンが見つからずに止まって、もどれなくなっていた
       const t = base;
       const ch = { team: 0, at: info.atHalf ? null : info.t, subs: plan.subs.map((x) => ({ slot: x.slot, player: ps[x.bench] })), tac: { attitude: plan.att, press: t.press, pass_style: t.pass, attack_side: t.side, line_height: t.line, zone_width: t.width, compact: t.compact, situ: { ...t.situ } } };
       if (moved) ch.tac.cells = plan.cells.map((c) => c && { ...c });
