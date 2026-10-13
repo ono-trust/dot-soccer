@@ -1760,8 +1760,8 @@ button.ui-img:active img{transform:scale(.93)}
 .pe-btns button.primary{background:#e7ff62}
 #app:has(#pcModal.pc-office:not([hidden])) #officeScreen .of-r{visibility:hidden}
 /* 版481：右の3つのボタンを、カードのすぐ右に（画面のはしから離す） */
-#pcModal.pc-office .pc-card{margin-right:150px}
-#pcModal.pc-office .pc-side{right:auto;left:calc(50% + 396px);gap:8px}
+#pcModal.pc-office .pc-card{margin:0;transform-origin:left center}
+#pcModal.pc-office .pc-side{right:12px;left:auto;gap:8px}
 #pcModal.pc-office .pc-side button{width:96px;height:96px}
 /* 版482：自分と相手のユニフォームを並べて選ぶ */
 .kp-in.kp2{padding:14px 18px;background:rgba(248,246,234,.96)}

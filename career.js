@@ -1607,6 +1607,7 @@
   }
   // 古いセーブを新しい育成ポイントとカードへ
   function migrate(save) {
+    try { gachaFixOld(save); } catch (_) {}   // 版506：スカウトで来た強い選手を、弱い状態に
     // ランクの幅を変えた（E→Dを短く）：今までの育成ポイントを、同じランクの同じ位置に移しかえる
     if (save.ptsVer !== 3) {
       const FROM = save.ptsVer === 2 ? RANK_V2 : RANK_OLD;
@@ -1662,7 +1663,7 @@
     return { id: (d.getFullYear() * 100 + d.getMonth() + 1) + ':' + key, key, uniq: U, tid, no: +no, until: `${end.getMonth() + 1}月${end.getDate()}日` };
   }
   function gachaQ(tid, no) { return rosterAt(tid, 1).players.find((q) => q.no === no); }
-  function ensureGacha(save) { if (!save.gacha) save.gacha = { pity: {}, total: 0 }; if (save.kakera == null) save.kakera = 0; return save.gacha; }
+  function ensureGacha(save) { if (!save.gacha) save.gacha = { pity: {}, total: 0 }; if (save.kakera == null) save.kakera = 0; gachaFixOld(save); return save.gacha; }
   function gachaOne(save, bn, r, minStar) {
     const g = ensureGacha(save); g.pity[bn.id] = (g.pity[bn.id] || 0) + 1;
     let star; const u = r() * 100; let acc = 0; for (const [s, pct] of GACHA_RATE) { acc += pct; if (u < acc) { star = s; break; } } star = star || 1;
@@ -1688,10 +1689,18 @@
     const used = new Set(ps.map((x) => x.number)); let n = q.no; if (used.has(n)) { n = 12; while (used.has(n)) n++; } p.number = n;
     p.star = pick.star; p.totsu = 0; p.gsrc = pick.tid + '_' + pick.no; p.faceKey = faceKeyOf(pick.tid, q) || undefined;
     { const hc = p.faceKey && root.STAR_HAIR && root.STAR_HAIR[p.faceKey]; if (hc != null) p.hairColor = hc; }
-    p.fatigue = 10; p.cond = 0; p.injury = 0; p.games = 0; p.foot = p.foot || (Math.random() < 0.2 ? 'L' : 'R'); p.age = q.age || 24; ensurePts(p); ensurePot(p);
+    p.fatigue = 10; p.cond = 0; p.injury = 0; p.games = 0; p.foot = p.foot || (Math.random() < 0.2 ? 'L' : 'R'); p.age = q.age || 24; gachaWeak(p); ensurePot(p);
     if (full) save.reserve.push(p); else ps.push(p);
     return { kind: 'new', p, star: pick.star, q, tid: pick.tid, reserve: full };
   }
+  // 版506：スカウトで来た選手は、育てる前の弱い状態（能力はE〜C）。得意・不得意の形（どの能力が高いか）はそのまま残す
+  function gachaWeak(p) {
+    if (p.gweak) return; ensurePts(p);
+    const v = KEYS.map((k) => p.pts[k]), lo = Math.min(...v), hi = Math.max(...v), A = RANK[0][1] + 2, B = RANK[2][2] - 1;
+    for (const k of KEYS) { const u = hi > lo ? (p.pts[k] - lo) / (hi - lo) : 0.5; p.pts[k] = Math.round((A + (B - A) * Math.pow(u, 1.15)) * 10) / 10; p[k] = toEng(p.pts[k]); }
+    p.gweak = 1;
+  }
+  function gachaFixOld(save) { for (const p of [...save.team.players, ...(save.reserve || [])]) if (p.gsrc && !p.gweak) gachaWeak(p); }
   function gachaPull(save, n, r) {
     r = r || Math.random; const bn = gachaBanner(), cost = n >= 10 ? GACHA_COST.ten : GACHA_COST.one * n;
     if ((save.coins || 0) < cost) return null;
