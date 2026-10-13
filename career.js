@@ -878,11 +878,20 @@
   }
   // 試合のユニフォーム：相手と色がかぶったら、相手は2着目（サブの色か白）
   const colDist = (a, b) => { const x = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16)), y = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16)); return Math.hypot(x[0] - y[0], (x[1] - y[1]) * 1.2, x[2] - y[2]); };
-  function kitsFor(save, oppName, sel) {
+  // 相手のホーム・アウェー（アウェーはサブの色を地にした無地）
+  function oppKits(save, oppName) {
+    const t = findTeam(save, oppName), ro = t && ROSTERS[t.id];
+    const home = ro ? { ...ro.kit } : { pat: 'solid', shirt: '#e2453a', sub: '#ffffff', shorts: '#ffffff', socks: '#e2453a' };
+    const light = colDist(home.sub || '#ffffff', home.shirt) >= 120 ? (home.sub || '#ffffff') : '#f4f4f0';
+    const away = { pat: 'solid', shirt: light, sub: home.shirt, shorts: home.shirt === light ? '#1a1a1a' : home.shirt, socks: light };
+    return { home, away };
+  }
+  function kitsFor(save, oppName, sel, oppSel) {
     const cl = ensureClub(save); let mine = { ...(sel === 'away' ? cl.kit2 : cl.kit) };
     if (!sel || sel === 'auto') { const t0 = findTeam(save, oppName), r0 = t0 && ROSTERS[t0.id]; if (r0 && colDist(mine.shirt, r0.kit.shirt) < 120 && colDist(cl.kit2.shirt, r0.kit.shirt) >= 120) mine = { ...cl.kit2 }; }   // おまかせ：相手と色がかぶったらアウェー
     const t = findTeam(save, oppName), ro = t && ROSTERS[t.id];
     let opp = ro ? { ...ro.kit } : { pat: 'solid', shirt: '#e2453a', sub: '#ffffff', shorts: '#ffffff', socks: '#e2453a' };
+    if (oppSel === 'home' || oppSel === 'away') return [mine, { ...oppKits(save, oppName)[oppSel] }];   // 版482：相手のユニフォームも選べる
     if (colDist(mine.shirt, opp.shirt) < 120) {
       const alt = colDist(mine.shirt, opp.sub) >= 120 ? opp.sub : colDist(mine.shirt, '#f4f4f0') >= 120 ? '#f4f4f0' : '#1a1a1a';
       opp = { pat: 'solid', shirt: alt, sub: opp.shirt, shorts: alt === '#f4f4f0' ? opp.shirt : '#f4f4f0', socks: alt };
@@ -1631,5 +1640,5 @@
   }
   root.__resolveCup = (s) => resolveCupRound(s, null);
   const cpuTeam = (id) => (ROSTERS[id] && TEAM_BY_ID[id] ? rosterTeam(null, TEAM_BY_ID[id], rosterAt(id, 1)) : null);   // 確認ページ用：CPUチームをそのまま試合に出す
-  root.DotCareer = { BENCH_N, kitsPair, d1Round, pinWatch, faceKeyOf, cpuTeam, ensureStar, starOf, totsuOf, capGrade, capPts, capIdx, GRADES, rosterAt, lvlAt, retiredAt, titleOf, ensureTitles, evalTitles, CUP_LABELS, cupIn, ensureClub, renameClub, kitsFor, KIT_DEFAULT, EMB_DEFAULT, TEAMS, TEAM_BY_ID, ROSTERS, rosterOfTeam, leagueTable, prevOrder, goalRank, recordGoals, CUP_WEEKS_ALL: CUP_WEEKS, leagueWeeksOf: leagueWeeks, POST_WEEKS, CARDS, CAT_NAME, SP, findSpecial, previewCards, trainCards, trainOne, weekTick, GRID_R, GRID_C, zoneOf, cellsFor, formationLabel, FORMATIONS, TACTIC_ITEMS, STYLES, SITU_DEFAULT, SITU_ACTS, SITU_ROWS, SITU_FROM, ensureTactics, slotRoles, applyTactics, skillRate, endWeek, SEASON_WEEKS, INJURIES, TYPE_TUNE, POT_TYPES, ensurePot, potMul, trainedThisWeek, trainsDone, trainLimit, trainMult, campState, campAdvance, CAMP, slotInfo, SLOT_MAX, SKILL_RATE, rewardCards, newLeague, newCup, playFixture, peekRound, afterOfficial, playPractice, practiceOpponent, practiceOptions, teamLook, recordStats, teamLevel, findTeam, CUP_WEEKS, CAMPS, LG, rankInfo, PMAX, PRICE, buyCard, buyPack, toEng, toPts, migrate, ensurePts, TEAM_MENUS: TEAM_PTS, MENUS, SPECIAL, LEAGUES, PNAME, newCareer, menusFor, train, learnSkill, slots, skillChance, nextFixture, finishRound, standings, endSeason, opponentTeam, matchTeam, avgParam, decideType };
+  root.DotCareer = { oppKits, BENCH_N, kitsPair, d1Round, pinWatch, faceKeyOf, cpuTeam, ensureStar, starOf, totsuOf, capGrade, capPts, capIdx, GRADES, rosterAt, lvlAt, retiredAt, titleOf, ensureTitles, evalTitles, CUP_LABELS, cupIn, ensureClub, renameClub, kitsFor, KIT_DEFAULT, EMB_DEFAULT, TEAMS, TEAM_BY_ID, ROSTERS, rosterOfTeam, leagueTable, prevOrder, goalRank, recordGoals, CUP_WEEKS_ALL: CUP_WEEKS, leagueWeeksOf: leagueWeeks, POST_WEEKS, CARDS, CAT_NAME, SP, findSpecial, previewCards, trainCards, trainOne, weekTick, GRID_R, GRID_C, zoneOf, cellsFor, formationLabel, FORMATIONS, TACTIC_ITEMS, STYLES, SITU_DEFAULT, SITU_ACTS, SITU_ROWS, SITU_FROM, ensureTactics, slotRoles, applyTactics, skillRate, endWeek, SEASON_WEEKS, INJURIES, TYPE_TUNE, POT_TYPES, ensurePot, potMul, trainedThisWeek, trainsDone, trainLimit, trainMult, campState, campAdvance, CAMP, slotInfo, SLOT_MAX, SKILL_RATE, rewardCards, newLeague, newCup, playFixture, peekRound, afterOfficial, playPractice, practiceOpponent, practiceOptions, teamLook, recordStats, teamLevel, findTeam, CUP_WEEKS, CAMPS, LG, rankInfo, PMAX, PRICE, buyCard, buyPack, toEng, toPts, migrate, ensurePts, TEAM_MENUS: TEAM_PTS, MENUS, SPECIAL, LEAGUES, PNAME, newCareer, menusFor, train, learnSkill, slots, skillChance, nextFixture, finishRound, standings, endSeason, opponentTeam, matchTeam, avgParam, decideType };
 })(typeof window !== 'undefined' ? window : globalThis);

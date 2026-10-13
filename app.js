@@ -1344,12 +1344,13 @@
     return { top: yy + 2 * px, px: px * 14 / SPR_W };
   }
 
+  const POS_TAG = { GK: '#8e5bd6', DF: '#d83a3a', MF: '#f08a1c', FW: '#2f7fe0' };
   function nameTag(x, y, info, team, wide, card) {
     ctx.font = `700 ${wide ? 15 : 14}px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif`;
     const num = String(info.number), nm = info.name + (wide ? '｜' + info.type : '');
     const wn = ctx.measureText(num).width + 10, wt = ctx.measureText(nm).width + 10;
     const x0 = x - (wn + wt) / 2, y0 = y - 22;
-    ctx.fillStyle = team ? '#d8392f' : '#2a62c9'; ctx.fillRect(x0, y0, wn, 20);
+    ctx.fillStyle = POS_TAG[info.gk ? 'GK' : info.position] || (team ? '#d8392f' : '#2a62c9'); ctx.fillRect(x0, y0, wn, 20);   /* 版482：背番号の地の色はポジションの色（GK紫・DF赤・MF橙・FW青） */
     ctx.fillStyle = '#ffffff'; ctx.fillRect(x0 + wn, y0, wt, 20);
     ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, wn + wt - 1, 19);
     ctx.textAlign = 'left';
@@ -4119,7 +4120,7 @@
     dlg.onclick = nextLine; el.querySelector('.lk-room').onclick = nextLine;
     setTimeout(nextLine, 650);
   }
-  window.__app = { artSprite, kitSprite, kitCol, lockerTalk, startWith, showScreen, stop, spriteCanvas, SPR: { W: SPR_W, H: SPR_H }, get match() { return match; } };
+  window.__app = { applyKits, artSprite, kitSprite, kitCol, lockerTalk, startWith, showScreen, stop, spriteCanvas, SPR: { W: SPR_W, H: SPR_H }, get match() { return match; } };
   window.__demo = { simT: () => simT, showPh: () => (show ? show.phase + (show.phase === "sub" ? "#" + show.rt.toFixed(2) + "k" + show.k + "n" + show.list.length : "") : null), playingNow: () => playing, poses: (list) => {
     ctx.fillStyle = '#45a31d'; ctx.fillRect(0, 0, CW, CH);
     list.forEach((pz, k) => { sprite(90 + k * 165, 270, 4.2, match.roster[0][9], 0, 1, 0, false, false, false, pz === 'side' ? null : pz, 0, 'side'); ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif'; ctx.fillText(pz, 60 + k * 165, 300); });

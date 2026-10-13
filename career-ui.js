@@ -1707,6 +1707,7 @@
             <div class="lv-s">${esc(stad)}</div></div>
           <div class="rbtns lv-btns"><button data-a="lineup"><span>${rbLineupSVG()}</span><b>スタメン</b></button><button data-a="tac"><span>${RB_TAC_SVG}</span><b>戦術</b></button><button data-a="kit" class="lv-kit lv-kitimg" title="ユニフォーム"><img src="icons/off_kit.png" alt="ユニフォーム"></button><button data-a="ko" class="lv-ko lv-koimg" title="試合開始"><img src="icons/btn_kickoff.png" alt="試合開始"></button></div>`;
         el.hidden = false;
+        try { A().applyKits(C.kitsFor(save, op.name, meta.kitSel, meta.oppSel)); } catch (_) {}   // 版482：並んでいる選手も、この試合のユニフォームで
         const cv = el.querySelector('canvas'), ctx2 = cv.getContext('2d');
         const myL = save.team.players.slice(0, 11), opT = C.opponentTeam(save, op).players.slice(0, 11);
         const rows = meta.home ? [{ ps: myL, team: 0 }, { ps: opT, team: 1 }] : [{ ps: opT, team: 1 }, { ps: myL, team: 0 }];
@@ -2094,16 +2095,22 @@
   }
   // 試合のユニフォームを選ぶ（カルチョビットAの、ホーム・アウェー・キーパーが並ぶ画面）
   function kitPick(el, op, meta, back) {
-    const cl = C.ensureClub(save), cur = meta.kitSel || 'auto', ps = save.team.players;
-    const auto = C.kitsFor(save, op.name, 'auto')[0], isAway = auto.shirt === cl.kit2.shirt && auto.pat === cl.kit2.pat;
-    const card = (k, label, kit, gk) => `<button class="kp-c${(cur === k || (cur === 'auto' && k === (isAway ? 'away' : 'home'))) ? ' on' : ''}" data-k="${k}"${gk ? ' disabled' : ''}><b>${label}</b><div class="kp-cv" data-kit="${k}"></div>${gk ? '<small>GKは黄色</small>' : ''}</button>`;
+    const cl = C.ensureClub(save), cur = meta.kitSel || 'auto', curO = meta.oppSel || 'auto', ps = save.team.players, ok = C.oppKits(save, op.name), opPs = C.opponentTeam(save, op).players;
+    const now = C.kitsFor(save, op.name, cur, curO);
+    const same = (a, b) => a.shirt === b.shirt && a.pat === b.pat;
+    const onMine = (k) => same(now[0], k === 'home' ? cl.kit : cl.kit2), onOpp = (k) => same(now[1], ok[k]);
+    const card = (side, k, label, on) => `<button class="kp-c${on ? ' on' : ''}" data-side="${side}" data-k="${k}"><b>${label}</b><div class="kp-cv" data-kit="${side}-${k}"></div></button>`;
     let ov = el.querySelector('.kp'); if (!ov) { ov = document.createElement('div'); ov.className = 'kp'; el.appendChild(ov); }
-    ov.innerHTML = `<div class="kp-in"><h3>この試合のユニフォーム</h3><div class="kp-row">${card('home', 'ホーム', cl.kit)}${card('away', 'アウェー', cl.kit2)}${card('gk', 'キーパー', null, true)}</div>
-      <p class="kp-note">相手：${esc(op.name)}　${cur === 'auto' ? '（おまかせ：相手と色がかぶらない方）' : ''}</p><div class="kp-btns"><button data-k="auto" class="${cur === 'auto' ? 'on' : ''}">おまかせ</button><button class="kp-ok primary">決定</button></div></div>`;
-    const draw1 = (k, kit, gk) => { const host = ov.querySelector(`[data-kit="${k}"]`); for (const [view, p] of [['front', ps[9]], ['f34', ps[5]]]) { const cv = gk ? A().spriteCanvas(ps[0], 0, view, 0, false, true) : A().kitSprite(kit, p || {}, view); if (cv) { const c2 = document.createElement('canvas'); c2.width = cv.width * 4; c2.height = cv.height * 4; const x = c2.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(cv, 0, 0, c2.width, c2.height); host.appendChild(c2); } } };
-    draw1('home', cl.kit); draw1('away', cl.kit2); draw1('gk', null, true);
-    ov.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => { meta.kitSel = b.dataset.k; kitPick(el, op, meta, back); });
-    ov.querySelector('.kp-ok').onclick = () => { ov.remove(); back(); };
+    ov.innerHTML = `<div class="kp-in kp2"><h3>この試合のユニフォーム</h3><div class="kp-teams">
+        <div class="kp-team"><div class="kp-tn"><img src="${emblemURL(save.team.name, 32)}" alt="">${esc(save.team.name)}</div><div class="kp-row">${card('me', 'home', 'ホーム', onMine('home'))}${card('me', 'away', 'アウェー', onMine('away'))}</div></div>
+        <div class="kp-team"><div class="kp-tn"><img src="${emblemURL(op.name, 32)}" alt="">${esc(op.name)}</div><div class="kp-row">${card('op', 'home', 'ホーム', onOpp('home'))}${card('op', 'away', 'アウェー', onOpp('away'))}</div></div></div>
+      <p class="kp-note">${cur === 'auto' && curO === 'auto' ? 'おまかせ：色がかぶらないように選びます' : '色がかぶって見にくい時は、どちらかをアウェーに'}</p><div class="kp-btns"><button data-auto="1" class="${cur === 'auto' && curO === 'auto' ? 'on' : ''}">おまかせ</button><button class="kp-ok primary">決定</button></div></div>`;
+    const draw1 = (key, kit, pl) => { const host = ov.querySelector(`[data-kit="${key}"]`); for (const [view, p] of [['front', pl[9]], ['f34', pl[5]]]) { const cv = A().kitSprite(kit, p || {}, view); if (cv) { const c2 = document.createElement('canvas'); c2.width = cv.width * 4; c2.height = cv.height * 4; const x = c2.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(cv, 0, 0, c2.width, c2.height); host.appendChild(c2); } } };
+    draw1('me-home', cl.kit, ps); draw1('me-away', cl.kit2, ps); draw1('op-home', ok.home, opPs); draw1('op-away', ok.away, opPs);
+    const apply = () => { try { A().applyKits(C.kitsFor(save, op.name, meta.kitSel, meta.oppSel)); } catch (_) {} };
+    ov.querySelectorAll('[data-side]').forEach((b) => b.onclick = () => { if (b.dataset.side === 'me') { meta.kitSel = b.dataset.k; if (!meta.oppSel || meta.oppSel === 'auto') meta.oppSel = onOpp('away') ? 'away' : 'home'; } else { meta.oppSel = b.dataset.k; if (!meta.kitSel || meta.kitSel === 'auto') meta.kitSel = onMine('away') ? 'away' : 'home'; } apply(); kitPick(el, op, meta, back); });
+    ov.querySelector('[data-auto]').onclick = () => { meta.kitSel = 'auto'; meta.oppSel = 'auto'; apply(); kitPick(el, op, meta, back); };
+    ov.querySelector('.kp-ok').onclick = () => { ov.remove(); apply(); back(); };
   }
   async function runMatch(title, sub, opTeamInfo, done, meta) {
     venueNow = venueOf(opTeamInfo, meta);
@@ -2117,7 +2124,7 @@
         const played = mt.played.slice();
         for (const nm of subsIn) { const i = save.team.players.findIndex((q) => q.name === nm); if (i >= 0 && !played.includes(i)) played.push(i); }
         done(score, (A().match || {}).events || [], played);
-      }, { venue: venueNow, kits: C.kitsFor(save, opTeamInfo.name, (meta || {}).kitSel), tut: window.__tut ? window.__tut.matchOpts(meta || {}) : null, onSub: (info) => subSheet(mt, info, ms), noIntro: true, comp: (meta || {}).comp || title, label: (meta || {}).label || '', absent: save.team.players.filter((q) => q.injury > 0 || q.suspend > 0).map((q) => ({ name: q.name, pos: q.position, number: q.number, weeks: q.injury, why: q.suspend > 0 ? '出場停止' : `ケガ（あと${q.injury}週）` })), homeName: save.team.name, awayName: opTeamInfo.name, halfOthers: (my, minute) => halfOthers(my, minute), embH: emblemURL(save.team.name, 48), embA: emblemURL(opTeamInfo.name, 48), grade: (q, k, tm) => { const sp = tm ? null : save.team.players.find((x) => x.name === q.name); if (sp) { C.ensurePts(sp); return C.rankInfo(sp.pts[k]).g; } return C.rankInfo(C.toPts((q.params || q)[k])).g; } });
+      }, { venue: venueNow, kits: C.kitsFor(save, opTeamInfo.name, (meta || {}).kitSel, (meta || {}).oppSel), tut: window.__tut ? window.__tut.matchOpts(meta || {}) : null, onSub: (info) => subSheet(mt, info, ms), noIntro: true, comp: (meta || {}).comp || title, label: (meta || {}).label || '', absent: save.team.players.filter((q) => q.injury > 0 || q.suspend > 0).map((q) => ({ name: q.name, pos: q.position, number: q.number, weeks: q.injury, why: q.suspend > 0 ? '出場停止' : `ケガ（あと${q.injury}週）` })), homeName: save.team.name, awayName: opTeamInfo.name, halfOthers: (my, minute) => halfOthers(my, minute), embH: emblemURL(save.team.name, 48), embA: emblemURL(opTeamInfo.name, 48), grade: (q, k, tm) => { const sp = tm ? null : save.team.players.find((x) => x.name === q.name); if (sp) { C.ensurePts(sp); return C.rankInfo(sp.pts[k]).g; } return C.rankInfo(C.toPts((q.params || q)[k])).g; } });
       return;
     }
     const r = D.simulateMatch(mt.team, opp, seed, { frames: false });

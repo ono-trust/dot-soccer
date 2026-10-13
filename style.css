@@ -1763,3 +1763,13 @@ button.ui-img:active img{transform:scale(.93)}
 #pcModal.pc-office .pc-card{margin-right:150px}
 #pcModal.pc-office .pc-side{right:auto;left:calc(50% + 396px);gap:8px}
 #pcModal.pc-office .pc-side button{width:96px;height:96px}
+/* 版482：自分と相手のユニフォームを並べて選ぶ */
+.kp-in.kp2{padding:14px 18px;background:rgba(248,246,234,.96)}
+.kp2 .kp-teams{display:flex;gap:22px}
+.kp2 .kp-team{background:rgba(0,0,0,.05);border-radius:12px;padding:8px}
+.kp2 .kp-tn{display:flex;align-items:center;justify-content:center;gap:6px;font-weight:900;font-size:16px;margin-bottom:6px;color:#1b2a20}
+.kp2 .kp-tn img{width:28px;height:28px}
+.kp2 .kp-row{gap:10px}
+.kp2 .kp-c{width:170px}
+.kp2 .kp-cv canvas{width:66px!important;height:88px!important}
+.kp{background:rgba(0,0,0,.25)}
