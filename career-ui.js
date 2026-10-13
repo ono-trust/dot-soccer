@@ -1134,7 +1134,7 @@
     return `<button class="acard ${CATC[cd.cat]} ${opt.cls || ''}" data-c="${c}" title="${esc(tip)}"><img src="cards/${c}.jpg" alt="${esc(cd.name)}" draggable="false">${opt.ups ? `<span class="ac-up">${upsHTML(cd)}<em>疲労${cd.fat > 0 ? '+' : ''}${cd.fat}</em></span>` : ''}${opt.cnt != null ? `<i class="ac-cnt">×${opt.cnt}</i>` : ''}${opt.extra || ''}</button>`;
   }
   // 特訓画面：いつも同じ大きさの「ボード」に組んで、画面に合わせて拡大縮小（スクロールなしで全部のカードが見える）
-  const TRB_W = 1120, TRB_H = 580;
+  const TRB_W = 1120, TRB_H = 620;
   function fitBoard() {
     const b = document.querySelector('#clubLayer .trb'); if (!b) return;
     const L = $('#clubLayer'), w = L.clientWidth, h = L.clientHeight, s = Math.min(w / TRB_W, h / TRB_H);
@@ -1150,7 +1150,7 @@
     const camp = C.campState(save), nDone = C.trainsDone(save, p), lim = C.trainLimit(save);
     const found = new Set(save.spFound || []);
     // 選手の列（顔と背番号）
-    const line = ps.map((q, i) => `<button class="tl2${i === selIdx ? ' sel' : ''}${q.injury > 0 ? ' inj' : ''}${i >= 11 ? ' sub' : ''}" data-i="${i}">${portrait(q)}<b><i class="pos ${POSC[q.position]}">${q.position}</i>${q.number}</b>${C.trainedThisWeek(save, q) ? '<em class="dn">済</em>' : C.trainsDone(save, q) ? `<em class="hf">あと${lim - C.trainsDone(save, q)}</em>` : (save.plan.cards[i] || []).length ? `<em class="pl">${(save.plan.cards[i] || []).length}枚</em>` : ''}</button>`).join('');
+    const line = ps.map((q, i) => `<button class="tl2${i === selIdx ? ' sel' : ''}${q.injury > 0 ? ' inj' : ''}${i >= 11 ? ' sub' : ''}${i >= 11 + C.BENCH_N ? ' out' : ''}${i === 11 || i === 11 + C.BENCH_N ? ' gap' : ''}" data-i="${i}">${facePic(q, 'tl2f', i >= 11)}<b><i class="pos ${POSC[q.position]}">${q.position}</i>${q.number}</b><small class="tl2n">${esc(q.name)}</small>${C.trainedThisWeek(save, q) ? '<em class="dn">済</em>' : C.trainsDone(save, q) ? `<em class="hf">あと${lim - C.trainsDone(save, q)}</em>` : (save.plan.cards[i] || []).length ? `<em class="pl">${(save.plan.cards[i] || []).length}枚</em>` : ''}</button>`).join('');
     // セット枠
     const slots = [0, 1, 2].map((k) => mine[k] ? artCard(mine[k], { cls: 'slot', extra: '<i class="x">×</i>' }) : '<div class="tslot2">カード</div>').join('');
     const sp = pv.sp ? (found.has(pv.sp.id) ? `<div class="spban">スペシャルメニュー「${esc(pv.sp.name)}」${pv.sp.skill ? `<small>${(p.skills || []).includes(pv.sp.skill) ? `${esc(D.SKILLS[pv.sp.skill].name)}は習得ずみ（能力だけ上がる）` : `${esc(D.SKILLS[pv.sp.skill].name)}を覚えるチャンス（${Math.round(C.skillRate(p, pv.sp.skill) * 100)}%）`}</small>` : pv.sp.type ? `<small>タイプが${esc(pv.sp.type)}に近づく</small>` : ''}</div>` : '<div class="spban new">！？ スペシャルメニューの予感…</div>') : '';

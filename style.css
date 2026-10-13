@@ -2291,3 +2291,15 @@ button.ib:disabled{filter:grayscale(1) opacity(.6)}
 /* 版534：右上のもどるボタンと重ならないように */
 .ts-h{padding-right:120px}
 html.short .rbtns{top:88px;gap:4px}html.short .rbtns button{width:72px;height:72px}
+/* 版537：特訓の選手えらび：1列で横にスクロール。顔・ポジション・番号・名前（スタメン→ベンチ→ベンチ外、区切りに少し間） */
+.trb-line{display:flex!important;gap:4px!important;height:118px!important;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x;padding:4px 2px 2px;scrollbar-width:thin;top:262px!important}
+.trb-line .tl2{flex:none;width:76px;height:108px;padding:2px 0 3px;justify-content:flex-start;gap:1px;border-width:3px;border-radius:10px}
+.trb-line .tl2.gap{margin-left:14px}
+.trb-line .tl2.out{background:rgba(60,60,60,.85)}
+.trb-line .tl2 .tl2f{width:60px;height:58px;object-fit:contain;display:block;pointer-events:none}
+.trb-line .tl2 b{font-size:15px;line-height:1}.trb-line .tl2 b .pos{font-size:10px;padding:0 3px;margin-right:2px}
+.trb-line .tl2n{font-size:11px;font-weight:800;line-height:1.2;max-width:72px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.trb-line .tl2 em{font-size:11px;padding:1px 4px;top:2px;right:2px}
+.trb-line{height:104px!important}
+.trb-line .tl2{height:96px;width:72px}.trb-line .tl2 .tl2f{width:54px;height:50px}
+.trb-hand{top:370px!important}
