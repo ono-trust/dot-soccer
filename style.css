@@ -2073,3 +2073,7 @@ html .std.tvm .std-body>*{zoom:1!important}
 .gc2-nm{font-size:96px}
 .gc2-un b{font-size:46px}.gc2-un small{font-size:17px}
 .gc2-row button{font-size:13px;padding:8px 4px}
+/* 版520：選手データの名前の欄から、星や「国内屈指」がタイプの欄へはみ出さない */
+.tm-row .tm-nm{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden;white-space:nowrap}
+.tm-row .tm-nm .stars{flex:none}
+.tm-row .tm-nm b.tm-top,.tm-row .tm-nm b.tm-ace,.tm-row .tm-nm b.tm-core{flex:none;font-size:11px;padding:1px 4px}

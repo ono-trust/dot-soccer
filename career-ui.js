@@ -2790,7 +2790,7 @@
     const order = { GK: 0, DF: 1, MF: 2, FW: 3 };
     const ps = cpuList(t.id);   // 選手カードと同じ並び（番号で選手を取り違えないように）
     const sk = (q) => q.skills.slice(0, 3).map((k) => ((D.SKILLS[k] || {}).name || k)).join('・') + (q.skills.length > 3 ? ` ほか${q.skills.length - 3}` : '');
-    const rows = ps.map((q, pi) => `<div class="tm-row${q.starter ? ' st' : ''}" data-pi="${pi}" data-tid="${t.id}"><span class="tm-no">${q.no}</span><i class="pos ${POSC[q.pos]}">${q.pos}</i><span class="tm-nm">${esc(q.name)}${starHTML(C.starOf(t.id, q), C.totsuOf(t.id, q), 'sm')}${C.titleOf(save, t.id, q.name) ? `<b class="tm-top" title="国内屈指の${esc(C.titleOf(save, t.id, q.name))}">国内屈指</b>` : ''}${q.role === 'ace' ? '<b class="tm-ace">エース</b>' : q.role === 'core' && !q.top ? '<b class="tm-core">中心</b>' : ''}</span><span class="tm-ty">${typeBadge(q.type, 'sm')}</span>${KS.map((k) => `<span class="tm-g"><b class="rk rk-${G(q[k])}">${G(q[k])}</b></span>`).join('')}<span class="tm-sk" title="${esc(q.skills.map((k) => (D.SKILLS[k] || {}).name || k).join('・'))}">${esc(sk(q))}</span></div>`).join('');
+    const rows = ps.map((q, pi) => `<div class="tm-row${q.starter ? ' st' : ''}" data-pi="${pi}" data-tid="${t.id}"><span class="tm-no">${q.no}</span><i class="pos ${POSC[q.pos]}">${q.pos}</i><span class="tm-nm">${esc(q.name)}${starHTML(C.starOf(t.id, q), C.totsuOf(t.id, q), 'sm')}${C.titleOf(save, t.id, q.name) ? `<b class="tm-top" title="国内屈指の${esc(C.titleOf(save, t.id, q.name))}">国内屈指</b>` : ''}${C.titleOf(save, t.id, q.name) ? '' : q.role === 'ace' ? '<b class="tm-ace">エース</b>' : q.role === 'core' && !q.top ? '<b class="tm-core">中心</b>' : ''}</span><span class="tm-ty">${typeBadge(q.type, 'sm')}</span>${KS.map((k) => `<span class="tm-g"><b class="rk rk-${G(q[k])}">${G(q[k])}</b></span>`).join('')}<span class="tm-sk" title="${esc(q.skills.map((k) => (D.SKILLS[k] || {}).name || k).join('・'))}">${esc(sk(q))}</span></div>`).join('');
     const lg = (C.LG[t.lg] || {}).name || '';
     const rank = (q) => (C.titleOf(save, t.id, q.name) ? 0 : q.role === 'ace' ? 1 : 2);
     const stars = ro.players.filter((q) => starKey(t.id, q)).sort((a, b) => rank(a) - rank(b));
@@ -2805,7 +2805,9 @@
     const lgN = (C.LG[t.lg] || {}).name || '', shirt = (ro.kit || {}).shirt || '#e2453a';
     const head = `<div class="std-h"><span><img class="tv-emb" src="${emblemURL(name, 40)}" alt="">${esc(name)}</span><!--tabs--><em>${lgBadge(t.lg)} ${esc(lgN)}</em></div>`;
     if (view === 'xi') {
-      const st = ro.players.filter((q) => q.starter), bench = ro.players.filter((q) => !q.starter).slice(0, 7);
+      let st = ro.players.filter((q) => q.starter); const bench = ro.players.filter((q) => !q.starter).slice(0, 7);
+      // 版520：並びは、試合で実際に立つ場所（入れ替え・真ん中の指定をした後）と同じにする
+      try { const ct = C.cpuTeam(t.id), byName = new Map(st.map((q) => [q.name, q])), ord = ct.players.slice(0, 11).map((p) => byName.get(p.name)).filter(Boolean); if (ord.length === st.length) st = ord; } catch (_) {}
       const line = (pos) => st.filter((q) => q.pos === pos);
       const form = String(ro.formation || '4-4-2').split('-').map(Number), W = 760, H = 470;
       const rows = [['GK', line('GK')], ...[['DF', line('DF')], ['MF', line('MF')], ['FW', line('FW')]]];
