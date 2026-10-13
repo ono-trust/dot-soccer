@@ -2264,7 +2264,7 @@
     C.recordGoals(save, fx, ev);
     const got = C.rewardCards(save, score, ev);
     if (res.coins) { save.coins = (save.coins || 0) + res.coins; got.coins = (got.coins || 0) + res.coins; }
-    const off = C.afterOfficial(save, ev, score, res);
+    const off = C.afterOfficial(save, ev, score, res, played);
     const newInj = save.team.players.filter((q) => q.injury > 0 && !injBefore.has(q.name));
     afterRound(got, res, { fx, score, ev, off, newInj, before });
   }
@@ -2309,6 +2309,7 @@
     const t2 = iss ? '新しい課題も見つかりましたね。効率良く練習しましょう。' : w ? 'この調子でいきましょう！' : d ? '次は勝ち点3をとりにいきましょう。' : '切りかえて、次の試合に向けて練習しましょう。';
     lines.push({ name: 'コーチ', face: staffFace('coach'), art: !!staffImg.coach, text: `${t1}\n${t2}` });
     if (got && got.length) lines.push({ name: 'コーチ', face: staffFace('coach'), art: !!staffImg.coach, text: `${got.issueN && got.issueN < got.length ? `見つかった課題のカード${got.issueN}枚と、試合のごほうび${got.length - got.issueN}枚。\n合わせて` : ''}トレーニングカードを${got.length}枚手に入れました。${got.coins ? `（コイン+${got.coins}）` : ''}`, cards: got.map((c) => ({ id: c, name: C.CARDS[c] ? C.CARDS[c].name : c })) });
+    if ((info.off.condUp || []).length) { const L = info.off.condUp; lines.push({ name: 'コーチ', face: staffFace('coach'), art: !!staffImg.coach, text: `勝ったので、試合に出た選手の調子が上がりました！\n${L.slice(0, 5).join('・')}${L.length > 5 ? ` ほか${L.length - 5}人` : ''}` }); }   // 版515
     for (const nm of info.off.reds) { const p = save.team.players.find((q) => q.name === nm); if (p) lines.push({ name: p.name, face: faceOf(p), text: '今日のレッドカードで\n次の公式戦は出場停止になってしまいました。\n監督、すみませんでした…。' }); }
     // 試合中のケガ：ここで本人が報告する（週の終わりのコーチの報告では、もう言わない）
     const told = new Set();
@@ -2401,6 +2402,13 @@
     return `<div class="std-tiles">${top}${reg}</div>`;
   }
   let assocState = null;
+  // 版515：相手チームの情報（チーム・スタメン）を、はみ出さない大きさに縮めて1画面に収める
+  function tvFit(box) {
+    const tv = box.querySelector('.tv'), ti = tv && tv.querySelector('.tv-in');
+    if (ti) { ti.style.zoom = 1; const k = Math.min(1, (tv.clientHeight - 20) / ti.scrollHeight, (tv.clientWidth - 20) / ti.scrollWidth); ti.style.zoom = k.toFixed(3); }
+    const tx = box.querySelector('.tx'), xi = tx && tx.querySelector('.tx-in');
+    if (xi) { const W = tx.clientWidth, H = tx.clientHeight, k = Math.min(W / 1000, H / 490); xi.style.transform = `scale(${k.toFixed(4)})`; xi.style.left = Math.max(0, (W - 1000 * k) / 2) + 'px'; }
+  }
   function openAssoc(opt) {
     opt = opt || {};
     const el = fullScreen('assocScreen', 'std-wrap'), box = el.querySelector('.lk-box');
@@ -2415,7 +2423,9 @@
       else if (S.tab === 'stats') body = S.sub ? statSubHTML(S.sub) : statMenuHTML(myLg);
       else if (S.tab === 'mgr') body = mgrHTML();
       else body = watchHTML();
-      box.innerHTML = `<div class="std">${head}${body}</div>`;
+      const tvm = S.tab === 'stats' && S.sub && S.sub.kind === 'team';
+      box.innerHTML = `<div class="std${tvm ? ' tvm' : ''}">${head}${body}</div>`;
+      if (tvm) requestAnimationFrame(() => tvFit(box));   // 版515：相手チームの情報は1画面に収める
       { const m = box.querySelector('.sm-menu'), bd = box.querySelector('.std-body'), H = document.documentElement;   // 版489：成績のメニューは、画面に少し余裕をもって収まる大きさに
         if (m && bd && (H.classList.contains('short') || H.classList.contains('phone'))) { m.style.zoom = 1; requestAnimationFrame(() => { const z0 = parseFloat(getComputedStyle(m.parentElement).zoom) || 1, avail = bd.clientHeight / z0 - 24, need = m.offsetHeight + 12; m.style.zoom = Math.max(0.6, Math.min(1.5, avail / need)).toFixed(3); }); } }
       box.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { S.tab = b.dataset.tab; S.sub = null; S.direct = false; draw(); });
@@ -2755,7 +2765,7 @@
     const rank = (q) => (C.titleOf(save, t.id, q.name) ? 0 : q.role === 'ace' ? 1 : 2);
     const stars = ro.players.filter((q) => starKey(t.id, q)).sort((a, b) => rank(a) - rank(b));
     const strip = stars.length ? `<div class="tm-stars">${stars.map((q) => { const tt = C.titleOf(save, t.id, q.name); return `<div class="tm-star r${rank(q)}" data-spi="${ps.indexOf(q)}" data-tid="${t.id}">${starPic(starKey(t.id, q), ro.kit.shirt, q.pos === 'GK', 'tm-sf')}<b>${esc(q.name)}</b><small>${tt ? '国内屈指' : q.role === 'ace' ? 'エース' : '中心選手'}・${q.pos}</small></div>`; }).join('')}</div>` : '';
-    return `<div class="std-body"><div class="std-h"><span>チーム情報</span><em>${esc(lg)}</em></div>${tabs}<div class="tm-head"><img src="${emblemURL(name, 96)}" alt=""><div><b>${esc(name)}</b><p>監督：${esc(ro.coach.name)}　方針：<em>${esc(ro.coach.policy)}</em>　フォーメーション：${esc(ro.formation)}</p><small>${esc(ro.coach.desc)}</small></div>${strip}</div><div class="tm-cols"><span>No.</span><span>Pos.</span><span>選手</span><span>タイプ</span>${D.PARAMS.map((pp) => `<span class="tm-pk">${esc(pp.name.slice(0, 2))}</span>`).join('')}<span>スキル</span></div><div class="std-list">${rows}</div></div>`;
+    return `<div class="std-body"><div class="std-h"><span><img class="tv-emb" src="${emblemURL(name, 40)}" alt="">${esc(name)}</span>${tabs}<em>${lgBadge(t.lg)} ${esc(lg)}</em></div><div class="tm-head"><img src="${emblemURL(name, 96)}" alt=""><div><b>${esc(name)}</b><p>監督：${esc(ro.coach.name)}　方針：<em>${esc(ro.coach.policy)}</em>　フォーメーション：${esc(ro.formation)}</p><small>${esc(ro.coach.desc)}</small></div>${strip}</div><div class="tm-cols"><span>No.</span><span>Pos.</span><span>選手</span><span>タイプ</span>${D.PARAMS.map((pp) => `<span class="tm-pk">${esc(pp.name.slice(0, 2))}</span>`).join('')}<span>スキル</span></div><div class="std-list">${rows}</div></div>`;
   }
 
   // 版511：相手チームの情報（カルチョビットAの、試合日程から相手を選んだ画面）：チーム（スタイル・対戦）／選手データ／スタメン
@@ -2763,7 +2773,7 @@
   function teamViewHTML(name, view) {
     const t = C.findTeam(save, name), ro = t && C.rosterOfTeam(t.id, save.season); if (!ro) return null;
     const lgN = (C.LG[t.lg] || {}).name || '', shirt = (ro.kit || {}).shirt || '#e2453a';
-    const head = `<div class="std-h"><span><img class="tv-emb" src="${emblemURL(name, 40)}" alt="">${esc(name)}</span><em>${lgBadge(t.lg)} ${esc(lgN)}</em></div><!--tabs-->`;
+    const head = `<div class="std-h"><span><img class="tv-emb" src="${emblemURL(name, 40)}" alt="">${esc(name)}</span><!--tabs--><em>${lgBadge(t.lg)} ${esc(lgN)}</em></div>`;
     if (view === 'xi') {
       const st = ro.players.filter((q) => q.starter), bench = ro.players.filter((q) => !q.starter).slice(0, 7);
       const line = (pos) => st.filter((q) => q.pos === pos);
@@ -2777,7 +2787,7 @@
       const nRow = mfRows.length; mfRows.forEach((n, k) => { const arr = mfs.splice(0, n); put(arr, H - 150 - (k + 1) * (230 / (nRow + 1)) - 10); });
       if (mfs.length) put(mfs, 200); put(line('FW'), 70);
       const chip = (q, x, y, cls) => `<div class="tx-p ${cls || ''}" style="left:${x}px;top:${y}px" data-pi="${cpuList(t.id).indexOf(q)}" data-tid="${t.id}">${(C.faceKeyOf(t.id, q) ? starPic(C.faceKeyOf(t.id, q), shirt, q.pos === 'GK', 'tx-f') : '<i class="tx-f"></i>')}<b class="${POSC[q.pos]}">${esc(q.name)}</b></div>`;
-      return `<div class="std-body">${head}<div class="tx"><div class="tx-pitch">${['FW', 'MF', 'DF'].map((z, k) => `<i class="tx-z z${k}">${z}</i>`).join('')}<i class="tx-box"></i>${out.map((o) => chip(o.q, o.x, o.y)).join('')}</div><div class="tx-bench"><b>控え</b>${bench.map((q, k) => chip(q, 60, 70 + k * 64, 'bn')).join('')}</div><p class="tx-note">フォーメーション ${esc(ro.formation)}（いつもの先発。試合の日は疲れやケガで変わることもあります）</p></div></div>`;
+      return `<div class="std-body">${head}<div class="tx"><div class="tx-in"><div class="tx-pitch">${['FW', 'MF', 'DF'].map((z, k) => `<i class="tx-z z${k}">${z}</i>`).join('')}<i class="tx-box"></i>${out.map((o) => chip(o.q, o.x, o.y)).join('')}</div><div class="tx-bench"><b>控え</b>${bench.map((q, k) => chip(q, 60, 66 + k * 60, 'bn')).join('')}</div><p class="tx-note">${esc(ro.formation)}<small>いつもの先発。試合の日は疲れやケガで変わることもあります</small></p></div></div></div>`;
     }
     // チーム（スタイル・対戦）
     const sl = STYLE_SL[ro.style] || STYLE_SL.balance, tblRank = (() => { try { const stn = C.standings(save); const k = stn.findIndex((x) => x.name === name); return k >= 0 ? `${k + 1}位` : ''; } catch (_) { return ''; } })();
@@ -2785,13 +2795,13 @@
     const lg = save.league, me = lg.teams.findIndex((x) => x.me), them = lg.teams.findIndex((x) => x.name === name), games = [];
     if (them >= 0) lg.rounds.forEach((pairs, r) => { const pr = pairs.find(([a, b]) => (a === me && b === them) || (a === them && b === me)); if (!pr) return; const res = lg.results[r] && lg.results[r].find((x) => x.a === pr[0] && x.b === pr[1]), home = pr[0] === me; games.push(`<div class="tv-g"><i class="tv-ha ${home ? 'h' : 'a'}">${home ? 'H' : 'A'}</i><span>第${r + 1}節</span>${res ? (() => { const sc = home ? res.s : [res.s[1], res.s[0]]; return `<b class="${sc[0] > sc[1] ? 'w' : sc[0] < sc[1] ? 'l' : 'd'}">${sc[0]}−${sc[1]}</b>`; })() : '<em>これから</em>'}</div>`); });
     const ace = ro.players.filter((q) => q.top || q.role === 'ace').slice(0, 3);
-    return `<div class="std-body">${head}<div class="tv">
+    return `<div class="std-body">${head}<div class="tv"><div class="tv-in">
       <div class="tv-l"><div class="tv-hd"><img src="${emblemURL(name, 96)}" alt=""><div><b>${esc(name)}</b><small>（${esc(stadiumName({ name, short: t.short }, {}))}）</small><p>${lgBadge(t.lg)} ${esc(lgN)}　<em>${esc(tblRank)}</em></p></div></div>
         <div class="tv-co"><b>監督　${esc(ro.coach.name)}</b><span>方針：${esc(ro.coach.policy)}　／　${esc(ro.formation)}</span><small>${esc(ro.coach.desc)}</small></div>
         <div class="tv-st"><div class="tv-sh">スタイル</div>${slider('守備的', '攻撃的', sl[0])}<div class="tv-sh">攻め方</div>${slider('パスでつなぐ', 'すばやく縦へ', sl[1])}<div class="tv-sh">守り方</div>${slider('引いて守る', '前から奪う', sl[2])}</div></div>
       <div class="tv-r"><div class="tv-rh">対戦</div>${games.join('') || '<p class="std-soon">今シーズンのリーグ戦では当たりません</p>'}
         ${ace.length ? `<div class="tv-rh">注目の選手</div>${ace.map((q) => `<div class="tv-ace" data-pi="${cpuList(t.id).indexOf(q)}" data-tid="${t.id}">${(C.faceKeyOf(t.id, q) ? starPic(C.faceKeyOf(t.id, q), shirt, q.pos === 'GK', 'tv-af') : '')}<div><b>${esc(q.name)}</b><small>${esc(q.pos)}・${esc(q.type)}</small>${starHTML(C.starOf(t.id, q), C.totsuOf(t.id, q), 'sm')}</div></div>`).join('')}` : ''}</div>
-    </div></div>`;
+    </div></div></div>`;
   }
   function mgrHTML() {
     const lg = save.league, st = C.standings(save), pos = st.findIndex((t) => t.me) + 1, me = st.find((t) => t.me);

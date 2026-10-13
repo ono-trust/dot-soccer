@@ -615,16 +615,19 @@
     });
   }
   // 公式戦のあと：出場停止（レッドカード→次の公式戦）と、サポーターの支持率
-  function afterOfficial(save, events, myScore, res) {
+  function afterOfficial(save, events, myScore, res, played) {
     const ps = save.team.players, served = [], reds = [];
     for (const p of ps) if (p.suspend > 0) { p.suspend--; served.push(p.name); }   // 今日の試合で出場停止が明けた
     for (const e of events || []) if (e.type === 'card' && e.team === 0 && e.color === 'red') { const q = ps.find((x) => x.name === e.player); if (q) { q.suspend = 1; reds.push(q.name); } }
     const d = myScore[0] - myScore[1];
+    // 版515：公式戦に勝つと、試合に出た選手の調子が1段上がる（PK戦で勝ち上がった時も）
+    const won = d > 0 || (d === 0 && res && res.win === true), condUp = [];
+    if (won) (played || []).forEach((i) => { const q = ps[i]; if (q && condOf(q) < 2) { q.cond = condOf(q) + 1; condUp.push(q.name); } });
     let dl = d > 0 ? 5 + Math.min(3, d - 1) : d === 0 ? 0 : -5 - Math.min(3, -d - 1);
     if (res && res.champion) dl += 15; else if (res && res.win === false && (res.kind === 'cup' || res.kind === 'post')) dl -= 3;
     const before = save.support ?? 60;
     save.support = clamp(before + dl, 0, 100);
-    return { reds, served, support: save.support, delta: save.support - before };
+    return { reds, served, condUp, support: save.support, delta: save.support - before };
   }
   // 公式戦の記録（シーズンごとの 出場P・得点G・アシストA・警告Y・退場R）
   function recordStats(save, events, playedIdx) {

@@ -1945,3 +1945,29 @@ html.short #assocScreen .sc-o,html.phone #assocScreen .sc-o{min-width:0;text-ove
 .pc-meta .cnd b{color:#fff}
 .s2ca{position:absolute;left:-12px;bottom:0;z-index:4;pointer-events:none;line-height:0}
 .sq2.ph .s2p.bn .s2ca{bottom:auto;top:-2px}
+/* 版515：相手チームの情報（試合日程から）：上の大きな見出しをたたんで、1画面に収める */
+.std.tvm .std-top{height:0;padding:0;background:none}
+.std.tvm .std-top>*:not(.std-back){display:none}
+.std.tvm .std-tabs{display:none}
+.std.tvm .std-back{top:6px;right:8px;width:60px;height:60px;z-index:6}
+.std.tvm .std-body{top:6px;left:8px;right:80px;bottom:6px;overflow:hidden!important}
+html .std.tvm .std-body>*{zoom:1!important}
+.std.tvm .std-body>.std-h{height:46px;gap:10px}
+.std.tvm .std-body>.std-h span{height:46px;line-height:46px;flex:none;max-width:44%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:44px}
+.std.tvm .std-body>.std-h em{flex:none;font-size:15px;display:flex;align-items:center;gap:6px}
+.std.tvm .std-h .tm-tabs{flex:1;background:none;padding:0;gap:6px;flex-wrap:nowrap;justify-content:center}
+.std.tvm .std-h .tm-tabs button{height:36px;font-size:17px;padding:0 14px}
+.std.tvm .tm-head{padding:6px 12px;gap:12px}
+.std.tvm .tm-head img{width:56px;height:56px}.std.tvm .tm-head b{font-size:20px}.std.tvm .tm-head p{font-size:15px;margin:2px 0 0}.std.tvm .tm-head small{font-size:12px}
+.std.tvm .tm-star{width:72px;padding:2px}.std.tvm .tm-star .tm-sf{width:52px;height:52px}
+.std.tvm .std-list{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.std.tvm .tv{flex:1;min-height:0;overflow:hidden;padding:8px;display:block}
+.std.tvm .tv-in{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+.std.tvm .tx{flex:1;min-height:0}
+.std.tvm .tx-in{position:absolute;left:0;top:0;width:1000px;height:490px;transform-origin:0 0}
+.std.tvm .tx-note{left:930px;right:auto;width:70px;top:12px;font-size:18px;font-weight:900}
+.std.tvm .tx-note small{display:block;font-size:11px;font-weight:600;opacity:.8;margin-top:6px}
+.std.tvm .tx-bench{left:800px}
+.std.tvm .tm-star{width:86px}.std.tvm .tm-star b{font-size:13px}.std.tvm .tm-star small{font-size:9px}
+.std.tvm .tm-cols,.std.tvm .tm-row{grid-template-columns:36px 44px 210px 128px repeat(12,32px) minmax(0,1fr);gap:4px;padding:0 8px}
+.std.tvm .tm-row>span:last-child,.std.tvm .tm-cols>span:last-child{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px}
