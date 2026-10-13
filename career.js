@@ -1666,10 +1666,10 @@
     }
     if ((save.gacha && save.gacha.auto || 0) >= pick.star) { const k = KAKERA_OF[pick.star] || 1; save.kakera = (save.kakera || 0) + k; return { kind: 'auto', kakera: k, star: pick.star, q, tid: pick.tid }; }   // 版509：自動放出（はじめての選手でも、その☆以下ならカケラに）
     const full = ps.length >= 25;   // チームは25人まで。あふれた選手はリザーブ（控え室）へ
-    const p = rosterPlayer(q, ps.length); delete p.topHair; delete p.role;
+    const p = rosterPlayer(q, ps.length); const topHc = p.topHair; delete p.topHair; delete p.role;
     const used = new Set(ps.map((x) => x.number)); let n = q.no; if (used.has(n)) { n = 12; while (used.has(n)) n++; } p.number = n;
     p.star = pick.star; p.totsu = 0; p.gsrc = pick.tid + '_' + pick.no; p.faceKey = faceKeyOf(pick.tid, q) || undefined;
-    { const hc = p.faceKey && root.STAR_HAIR && root.STAR_HAIR[p.faceKey]; if (hc != null) p.hairColor = hc; }
+    { const hc = topHc || (p.faceKey && root.STAR_HAIR && root.STAR_HAIR[p.faceKey]); if (hc != null) p.hairColor = hc; }   // 版555：国内屈指級はその選手だけの髪の色（CPUの時と同じ）
     p.fatigue = 10; p.cond = 0; p.injury = 0; p.games = 0; p.foot = p.foot || (Math.random() < 0.2 ? 'L' : 'R'); delete p.age; gachaWeak(p);
     if (full) save.reserve.push(p); else ps.push(p);
     return { kind: 'new', p, star: pick.star, q, tid: pick.tid, reserve: full };
@@ -1682,7 +1682,7 @@
     p.skills = []; p.totsu = p.totsu || 0;   // 版507：スキルは0から（固有スキルはそのまま）
     p.gweak = 2;
   }
-  function gachaFixOld(save) { for (const p of [...save.team.players, ...(save.reserve || [])]) if (p.gsrc && (p.gweak || 0) < 2) gachaWeak(p); }
+  function gachaFixOld(save) { for (const p of [...save.team.players, ...(save.reserve || [])]) { if (p.gsrc && (p.gweak || 0) < 2) gachaWeak(p); if (p.gsrc && p.uniq && D.UNIQ[p.uniq] && D.UNIQ[p.uniq].hair) p.hairColor = D.UNIQ[p.uniq].hair; } }   // 版555：前に来た国内屈指級の髪の色も直す
   function gachaPull(save, n, r) {
     r = r || Math.random; const bn = gachaBanner(), cost = n >= 10 ? GACHA_COST.ten : GACHA_COST.one * n;
     if ((save.coins || 0) < cost) return null;
