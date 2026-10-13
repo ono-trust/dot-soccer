@@ -67,7 +67,7 @@
   // 試合を始める（フリー試合・育成モード共通）。onDone があれば、試合後に呼ぶ
   let onMatchDone = null, mctx = null;
   const SND = () => window.DotSound || { play() {}, crowd() {}, bgm() {} };   // 版499：サウンド
-  let shownScore = '', dribOwner = -1, dribT = 0, kickAll = [], kickPtr = 0, koWhistleT = -1, chipHeard = new Map();
+  let hitAll = [], shownScore = '', dribOwner = -1, dribT = 0, kickAll = [], kickPtr = 0, koWhistleT = -1, chipHeard = new Map();
   function startWith(mine, theirs, seed, homeShort, awayShort, done, opts) {
     closePlv();
     { const dc = document.getElementById('digestCtl'); if (dc) dc.style.display = 'none'; }
@@ -85,7 +85,7 @@
         const was = playing; stop(); if (mctx.opts.confirmQuit && !(await mctx.opts.confirmQuit())) { if (was) play(); return; } closePlv(); ws.hidden = true; onMatchDone = null; SND().crowd(false); document.getElementById('half').hidden = true; const q = mctx.opts.onQuit; if (q) q(); };   /* 版481：「観戦をやめますか？」はい／いいえ */ } }   /* 版477：観戦を途中でやめる */
     match.homeShort = homeShort || match.homeShort; match.awayShort = awayShort || match.awayShort;
     prepTimeline();
-    kickAll = kickTimes.flat().map((k) => k.t).sort((x, y) => x - y); kickPtr = 0; koWhistleT = 0.05; shownScore = ''; chipHeard = new Map(); SND().bgm(null); SND().crowd(true);
+    kickAll = kickTimes.flat().map((k) => k.t).sort((x, y) => x - y); hitAll = [...(match.actions || []).filter((x) => x.a === 'head').map((x) => ({ t: x.t, n: 'header' })), ...match.events.filter((e) => e.type === 'save' || (e.type === 'gk' && e.act !== 'miss')).map((e) => ({ t: e.t, n: /parry|punch|fumble/.test(e.act || '') ? 'parry' : 'catch' }))].sort((x, y) => x.t - y.t); kickPtr = 0; koWhistleT = 0.05; shownScore = ''; chipHeard = new Map(); SND().bgm(null); SND().crowd(true);
     warmUp();
     // 育成モードは入場・対戦カードの画面を先に見せているので、すぐキックオフへ
     show = mctx.opts.noIntro ? { phase: 'kickoff', hold: true, koT: 0, start: 0, goal: null, rt: 0, walk: true } : { phase: 'preCrowd', hold: true, koT: 0, start: 0, goal: null, rt: 0 };
@@ -280,6 +280,7 @@
     // キック：t0〜t1の間に蹴った回数
     let lo = 0, hi = kickAll.length; while (lo < hi) { const m = (lo + hi) >> 1; if (kickAll[m] <= t0) lo = m + 1; else hi = m; }
     if (lo < kickAll.length && kickAll[lo] <= t1) SND().play('kick');
+    { let l2 = 0, h2 = hitAll.length; while (l2 < h2) { const m = (l2 + h2) >> 1; if (hitAll[m].t <= t0) l2 = m + 1; else h2 = m; } for (; l2 < hitAll.length && hitAll[l2].t <= t1; l2++) SND().play(hitAll[l2].n); }   // 版504：ヘディング・GKのキャッチ／はじく
     // ドリブル：ボールを持って走っている間のタッチ
     const sd = stateAt(t1);
     if (sd.owner >= 0) { const pl = sd.players[sd.owner]; const mv = pl && Math.hypot(pl.vx || 0, pl.vy || 0); if (dribOwner !== sd.owner) { dribOwner = sd.owner; dribT = t1; } else if (t1 - dribT > 0.42 && (mv == null || mv > 1.2)) { dribT = t1; SND().play('touch'); } } else dribOwner = -1;

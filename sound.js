@@ -48,6 +48,9 @@
     ok() { tone(784, 0.07, 'square', 0.09); tone(1175, 0.1, 'square', 0.09, 0.07); },
     back() { tone(660, 0.06, 'square', 0.07); tone(440, 0.08, 'square', 0.07, 0.06); },
     touch() { noise(0.035, 0.12, 'lowpass', 900); tone(110, 0.05, 'sine', 0.16, 0, 70); },
+    header() { noise(0.07, 0.25, 'bandpass', 700); tone(260, 0.1, 'sine', 0.3, 0, 120); },   // ボン（頭）
+    catch() { noise(0.12, 0.3, 'lowpass', 500); tone(95, 0.14, 'sine', 0.4, 0, 60); noise(0.04, 0.1, 'highpass', 3000, 0.01); },   // バシッ（両手で抱える）
+    parry() { noise(0.06, 0.32, 'bandpass', 1800); tone(320, 0.07, 'square', 0.08, 0, 160); },   // パンッ（はじく）
     kick() { noise(0.06, 0.32, 'lowpass', 1400); tone(150, 0.09, 'sine', 0.35, 0, 55); },
     whistle() { whistle(0.26); },
     whistle2() { whistle(0.18); whistle(0.42, 0.24); },
