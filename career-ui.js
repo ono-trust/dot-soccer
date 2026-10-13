@@ -807,13 +807,11 @@
   const starHTML = (n, totsu, cls) => { const t = Math.min(totsu || 0, 3); let h = ''; for (let k = 0; k < n; k++) h += `<i class="tz tz${t}">★</i>`;   /* 版476：無凸＝白、1凸＝銀、2凸＝金、完凸＝虹 */   /* 版467：凸の数で星全部の色が変わる（無凸＝黄、1凸＝青、2凸＝紫、完凸＝虹） */ return `<span class="stars s${n}${t ? ' t' + t : ''} ${cls || ''}" title="☆${n}${t >= 3 ? '・凸MAX' : t ? '・' + t + '凸' : ''}">${h}</span>`; };   // 版456：凸した分だけ、星に色がつく（1凸＝青、2凸＝紫、3凸＝虹）
   const capBadge = (g) => `<span class="capb">上限<b class="rk rk-${g}">${g}</b></span>`;
   const typeBadge = (t, cls) => `<span class="tbadge ${TYPE_CLS[t] || 'ty-bal'} ${cls || ''}">${esc(t)}</span>`;
-  // ポテンシャルのゲージ（本家と同じ10本の矢印）：伸び盛り＝黄→オレンジ、MAX＝全部オレンジ、下降＝青い逆向き
-  function potGauge(p, cls) {
-    const P = C.ensurePot(p), n = Math.round(P.v), down = P.phase === 'down';
-    let h = '';
-    for (let k = 0; k < 10; k++) h += `<i class="${k < n ? 'on' : ''}" style="${k < n && !down ? `--h:${Math.round(52 - (k / 9) * 40)}` : ''}"></i>`;
-    return `<span class="potg ${down ? 'down' : P.phase === 'peak' ? 'peak' : 'up'} ${cls || ''}" title="ポテンシャル">${h}</span>`;
-  }
+  // 版514：調子（ポテンシャルの代わり）：本家と同じ5段階の矢印（↑絶好調・↗好調・→普通・↘不調・↓絶不調）
+  const COND_UI = { 2: ['絶好調', -90, '#ff3d2e'], 1: ['好調', -45, '#ff9a1a'], 0: ['普通', 0, '#e8c21a'], '-1': ['不調', 45, '#3a9cff'], '-2': ['絶不調', 90, '#7a5cff'] };
+  function condArrow(p, size) { const [, deg, col] = COND_UI[C.condOf(p)]; const z = size || 22;
+    return `<svg class="cnd-a" viewBox="0 0 24 24" width="${z}" height="${z}" style="transform:rotate(${deg}deg)"><path d="M3 9h10V3l9 9-9 9v-6H3z" fill="${col}" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>`; }
+  function condGauge(p, cls) { const [nm] = COND_UI[C.condOf(p)]; return `<span class="cnd ${cls || ''}" title="調子">${condArrow(p, cls === 'sm' ? 20 : 26)}<b>${nm}</b></span>`; }
   // ================= 選手データ =================
   const POSC = { GK: 'pos-gk', DF: 'pos-df', MF: 'pos-mf', FW: 'pos-fw' };
   const condDot = (p) => (p.injury > 0 ? 'cd-inj' : p.fatigue > 70 ? 'cd-red' : p.fatigue > 45 ? 'cd-yel' : 'cd-blue');
@@ -838,8 +836,8 @@
   // ================= 選手データ（カルチョビットAの一覧表のように、詰めて見やすく） =================
   function renderData() {
     const head = D.PARAMS.map((q) => `<th title="${q.name}" class="th-ico">${ico(q.k)}</th>`).join('');
-    const rows = save.team.players.map((p, i) => { C.ensurePts(p); return `<tr data-i="${i}" class="${i >= 11 ? 'sub' : ''}"><td><span class="pos ${POSC[p.position]}">${p.position}</span></td><td class="no">${p.number}</td><td class="s-nm">${esc(p.name)}${starHTML(C.ensureStar(p), p.totsu, 'sm')}</td><td><i class="cdot ${condDot(p)}"></i></td>${D.PARAMS.map((q) => { const ri = C.rankInfo(p.pts[q.k]); return `<td class="gd" title="${q.name} ${Math.floor(p.pts[q.k])}（次のランクまであと${Math.max(0, Math.ceil(ri.next - p.pts[q.k]))}）"><b class="rk rk-${ri.g}">${ri.g}</b></td>`; }).join('')}<td>${typeBadge(p.type)}</td><td>${potGauge(p, 'sm')}</td></tr>`; }).join('');
-    $('#clubLayer').innerHTML = `<div class="dpanel dp2"><h2><img class="emb" src="${emblemURL(save.team.name, 48)}" alt="">${esc(save.team.name)}　［${lgBadge(save.league.id)}］</h2><div class="dscroll"><table class="dtbl dtbl2"><thead><tr><th>Pos.</th><th>No.</th><th colspan="2">所属選手</th>${head}<th>タイプ</th><th>ポテンシャル</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    const rows = save.team.players.map((p, i) => { C.ensurePts(p); return `<tr data-i="${i}" class="${i >= 11 ? 'sub' : ''}"><td><span class="pos ${POSC[p.position]}">${p.position}</span></td><td class="no">${p.number}</td><td class="s-nm">${esc(p.name)}${starHTML(C.ensureStar(p), p.totsu, 'sm')}</td><td><i class="cdot ${condDot(p)}"></i></td>${D.PARAMS.map((q) => { const ri = C.rankInfo(p.pts[q.k]); return `<td class="gd" title="${q.name} ${Math.floor(p.pts[q.k])}（次のランクまであと${Math.max(0, Math.ceil(ri.next - p.pts[q.k]))}）"><b class="rk rk-${ri.g}">${ri.g}</b></td>`; }).join('')}<td>${typeBadge(p.type)}</td><td>${condGauge(p, 'sm')}</td></tr>`; }).join('');
+    $('#clubLayer').innerHTML = `<div class="dpanel dp2"><h2><img class="emb" src="${emblemURL(save.team.name, 48)}" alt="">${esc(save.team.name)}　［${lgBadge(save.league.id)}］</h2><div class="dscroll"><table class="dtbl dtbl2"><thead><tr><th>Pos.</th><th>No.</th><th colspan="2">所属選手</th>${head}<th>タイプ</th><th>調子</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
     $('#clubLayer').querySelectorAll('tr[data-i]').forEach((tr) => tr.onclick = () => playerDetail(+tr.dataset.i));
   }
   // ================= 選手カード（カルチョビットAの選手カードに寄せる）：タップでページ切り替え・◀▶で前後の選手 =================
@@ -878,7 +876,7 @@
           <div class="pc-photo">${facePic(p, '', i >= 11)}<div class="pc-rare">${starHTML(C.ensureStar(p), p.totsu)}${capBadge(C.capGrade(p))}</div></div>
           <b class="pc-num">${p.number}</b>
           <div class="pc-meta"><span>タイプ</span>${typeBadge(p.type)}</div>
-          <div class="pc-meta"><span>ポテンシャル</span>${potGauge(p, 'sm')}</div>
+          <div class="pc-meta"><span>調子</span>${condGauge(p)}</div>
         </div>
         <div class="pc-right">
           <div class="pc-icons">${icons}</div>
@@ -1306,7 +1304,7 @@
       if (q.injury > 0) return '<i class="s2b inj">＋</i>';
       if (q.suspend > 0) return '<i class="s2b sus"></i>';
       if (sqShow === 'type') return `<i class="s2b cdot ${condDot(q)}"></i><span class="s2ty tbadge ${TYPE_CLS[q.type] || 'ty-bal'}">${esc(q.type || '')}</span>`;
-      return `<i class="s2b cdot ${condDot(q)}"></i>`;
+      return `<i class="s2b cdot ${condDot(q)}"></i><span class="s2ca">${condArrow(q, 22)}</span>`;
     };
     const chip = (q, i, x, y, cls) => `<div class="s2p ${cls || ''}${i === pick ? ' sel' : ''}${q.injury > 0 ? ' inj' : ''}" data-i="${i}" style="left:${x}px;top:${y}px"><b class="s2n ${POSC[q.position]}">${esc(q.name)}</b><span class="s2tags">${tagsOf(q)}</span>${facePic(q, 's2f', i >= 11)}${badge(q)}${i > 0 && i < 11 && q.position !== roles[i] && q.position !== 'GK' ? '<em class="s2mis" title="本来のポジションとちがう">!</em>' : ''}</div>`;
     let dots = chip(ps[0], 0, PX0 + PW / 2, PY0 + R * CH + CH * 1.05, 'gk');

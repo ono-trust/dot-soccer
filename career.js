@@ -187,7 +187,7 @@
       p.fatigue = clamp(p.fatigue + fat - 26, 0, 100);   // 週の自然回復を差し引く
       // 疲れすぎていると、ケガをすることがある
       if (p.fatigue > 75 && r() < (p.fatigue - 70) * 0.006) { p.injury = 1 + Math.floor(r() * 3); out.injured = true; }
-      p.cond = clamp((p.cond || 0) + (r() < 0.3 ? (r() < 0.5 ? -1 : 1) : 0) * 0.5, -2, 2);
+      condTick(p, r);
       const nt = decideType(p); if (nt !== p.type) { out.typeTo = nt; p.type = nt; }
       report.push(out);
     });
@@ -1389,34 +1389,14 @@
     if (!m || (m.gk && p.position !== 'GK')) return null;
     return m;
   }
-  // ---------- ポテンシャル（本家と同じ考え方）----------
-  // カルチョビットAと同じく「成長度」。引退はなく、選手はずっとチームに残る（愛着・NFTとしての価値）。
-  // 0〜10のゲージ。加入してから上がり続け、MAX(10)で一定期間とどまり、そのあと少しずつ下がる（最低1、能力は下がらない）。
-  // 早熟：早くMAXになり、早く下がる / 晩成：ゆっくり上がって、長く続く。高いほど特訓が効く。
-  // 6以上だと試合に出なくても能力が上がることがある（高いほどよく上がる）。ケガで下がる。
-  const POT_TYPES = {
-    // 1年（48週）で動くのは矢印1〜2本ぶん。MAXは何年も続く（本家のペース）
-    early: { name: '早熟', rise: 2.0 / 48, hold: 72, fall: 1.5 / 48 },
-    normal: { name: '普通', rise: 1.5 / 48, hold: 96, fall: 1.0 / 48 },
-    late: { name: '晩成', rise: 1.0 / 48, hold: 144, fall: 0.75 / 48 },
-  };
-  function ensurePot(p, r) {
-    if (p.pot) return p.pot;
-    const rnd = r || Math.random;
-    const u = rnd(), type = u < 0.28 ? 'early' : u < 0.75 ? 'normal' : 'late';
-    const v0 = rnd() < 0.05 ? 10 : 3 + Math.round(rnd() * 50) / 10;          // まれに最初からMAXの選手（早く下がる）
-    p.pot = { v: v0, type, phase: v0 >= 10 ? 'peak' : 'up', hold: v0 >= 10 ? Math.round(POT_TYPES[type].hold * 0.5) : 0 };
-    return p.pot;
-  }
-  const POT_MIN = 1;   // 下がっても1は残る（成長が止まりきらない）
-  const potV = (p) => (p.pot ? p.pot.v : 5);
-  const potMul = (p) => 0.45 + 0.11 * potV(p);          // 0→0.45倍、5→1倍、10→1.55倍
-  function potTick(p, r) {
-    const P = ensurePot(p, r), T = POT_TYPES[P.type];
-    if (P.phase === 'up') { P.v += T.rise * (0.8 + 0.4 * r()); if (P.v >= 10) { P.v = 10; P.phase = 'peak'; P.hold = T.hold; } }
-    else if (P.phase === 'peak') { if (--P.hold <= 0) P.phase = 'down'; }
-    else P.v = Math.max(POT_MIN, P.v - T.fall * (0.8 + 0.4 * r()));
-    P.v = Math.round(P.v * 1000) / 1000;
+  // ---------- 調子（版514：ポテンシャルの代わり）----------
+  // 5段階：絶好調(2)・好調(1)・普通(0)・不調(-1)・絶不調(-2)。毎週ゆらぐ（ふつうに戻りやすい）。年をとって下がり続けることはない。
+  // 調子が良いほど特訓が効く（0.6〜1.4倍）。好調以上だと、試合に出なくても能力が少し伸びることがある。ケガで1段下がる。
+  const COND_NAME = { 2: '絶好調', 1: '好調', 0: '普通', '-1': '不調', '-2': '絶不調' };
+  const condOf = (p) => clamp(Math.round(p.cond || 0), -2, 2);
+  function condTick(p, r) {
+    const c = condOf(p);
+    if (r() < 0.4) { const downP = c > 0 ? 0.65 : c < 0 ? 0.35 : 0.5; p.cond = clamp(c + (r() < downP ? -1 : 1), -2, 2); } else p.cond = c;
   }
   const INJURIES = [
     { name: '打撲', w: [2, 2], p: 0.35 }, { name: '捻挫', w: [3, 3], p: 0.30 }, { name: '肉離れ', w: [4, 6], p: 0.21 },
@@ -1427,14 +1407,13 @@
     let u = r(), it = INJURIES[INJURIES.length - 1];
     for (const x of INJURIES) { if (u < x.p) { it = x; break; } u -= x.p; }
     const weeks = it.w[0] + Math.floor(r() * (it.w[1] - it.w[0] + 1));
-    p.injury = weeks; potHurt(p, r);
-    if (weeks >= 8) { for (let k = 0; k < 3; k++) addPts(p, KEYS[Math.floor(r() * KEYS.length)], -(4 + Math.floor(r() * 6))); potHurt(p, r); }   // 長いケガは能力も少し落ちる
+    p.injury = weeks; p.cond = clamp(condOf(p) - 1, -2, 2);
+    if (weeks >= 8) { for (let k = 0; k < 3; k++) addPts(p, KEYS[Math.floor(r() * KEYS.length)], -(4 + Math.floor(r() * 6))); }   // 長いケガは能力も少し落ちる
     const n = { name: p.name, number: p.number, kind: it.name, weeks, where };
     save.news = save.news || []; save.news.push(n);
     return n;
   }
-  function potHurt(p, r) { const P = ensurePot(p, r); P.v = Math.max(POT_MIN, Math.round((P.v - (0.4 + r() * 0.8)) * 100) / 100); }
-  const condMul = (p) => (p.fatigue > 75 ? 0.6 : p.fatigue > 55 ? 0.85 : 1) * (1 + (p.cond || 0) * 0.1) * potMul(p);
+  const condMul = (p) => (p.fatigue > 75 ? 0.6 : p.fatigue > 55 ? 0.85 : 1) * (1 + condOf(p) * 0.2);   // 絶不調0.6倍〜絶好調1.4倍
   // セットしたカードで、どの能力が何ポイント上がるか（予想）
   function previewCards(p, cards, mult) {
     ensurePts(p);
@@ -1516,11 +1495,9 @@
       if (p.injury > 0) { p.injury--; p.fatigue = clamp(p.fatigue - 25, 0, 100); out.rest = true; }
       else { for (const k of KEYS) addPts(p, k, teamAll || TEAM_AUTO.all); p.fatigue = clamp(p.fatigue + TEAM_AUTO.fat - 30, 0, 100); }
       if (!(p.injury > 0) && p.fatigue > 70 && r() < (p.fatigue - 65) * 0.004) injure(save, p, r, 'practice');
-      potTick(p, r);
-      // ポテンシャルが高いと、試合に出なくても少し伸びる
-      // 6で10%、8で20%、10で30%の確率で、どれか1つが少しだけ
-      if (potV(p) >= 6 && !(p.injury > 0) && r() < 0.1 + (potV(p) - 6) * 0.05) { addPts(p, KEYS[Math.floor(r() * KEYS.length)], 1); out.natural = true; }
-      p.cond = clamp((p.cond || 0) + (r() < 0.3 ? (r() < 0.5 ? -1 : 1) : 0) * 0.5, -2, 2);
+      // 調子が良いと、試合に出なくても少し伸びる（好調10%・絶好調20%で、どれか1つが少しだけ）
+      if (condOf(p) >= 1 && !(p.injury > 0) && r() < 0.1 * condOf(p)) { addPts(p, KEYS[Math.floor(r() * KEYS.length)], 1); out.natural = true; }
+      condTick(p, r);
       const nt = decideType(p); if (nt !== p.type) { out.typeTo = nt; p.type = nt; }
       report.push(out);
     });
@@ -1633,8 +1610,8 @@
       save.cupRemade = true;
     }
     const r0 = rng(save);
-    if (save.potVer !== 2) { for (const p of save.team.players) delete p.pot; save.potVer = 2; }   // ポテンシャルの進み方を本家のペースに直したので、付け直す
-    for (const p of save.team.players) { ensurePts(p); ensurePot(p, r0); }
+    if (save.potVer !== 3) { for (const p of save.team.players.concat(save.reserve || [])) { delete p.pot; p.cond = condOf(p); } save.potVer = 3; }   // 版514：ポテンシャルをやめて調子に   // ポテンシャルの進み方を本家のペースに直したので、付け直す
+    for (const p of save.team.players) { ensurePts(p); }
     if (save.cardsVer !== 4) { save.cards = starterCards(); save.cardsVer = 4; if (save.plan) save.plan.cards = {}; }
     if (save.coins == null || save.coinsVer !== 2) { save.coins = 0; save.coinsVer = 2; }
     if (TEST_MAX_CARDS) for (const c of CARD_POOL) save.cards[c] = CARD_MAX;
@@ -1690,7 +1667,7 @@
     const used = new Set(ps.map((x) => x.number)); let n = q.no; if (used.has(n)) { n = 12; while (used.has(n)) n++; } p.number = n;
     p.star = pick.star; p.totsu = 0; p.gsrc = pick.tid + '_' + pick.no; p.faceKey = faceKeyOf(pick.tid, q) || undefined;
     { const hc = p.faceKey && root.STAR_HAIR && root.STAR_HAIR[p.faceKey]; if (hc != null) p.hairColor = hc; }
-    p.fatigue = 10; p.cond = 0; p.injury = 0; p.games = 0; p.foot = p.foot || (Math.random() < 0.2 ? 'L' : 'R'); delete p.age; gachaWeak(p); ensurePot(p);
+    p.fatigue = 10; p.cond = 0; p.injury = 0; p.games = 0; p.foot = p.foot || (Math.random() < 0.2 ? 'L' : 'R'); delete p.age; gachaWeak(p);
     if (full) save.reserve.push(p); else ps.push(p);
     return { kind: 'new', p, star: pick.star, q, tid: pick.tid, reserve: full };
   }
@@ -1710,5 +1687,5 @@
     const picks = []; for (let i = 0; i < n; i++) picks.push(gachaOne(save, bn, r, n >= 10 && i === n - 1 && !picks.some((x) => x.star >= 3) ? 3 : 0));   // 10連は☆3以上を1人確定
     return { banner: bn, results: picks.map((pk) => gachaApply(save, pk)) };
   }
-  root.DotCareer = { gachaBanner, gachaPull, gachaPoolAll, ensureGacha, GACHA_RATE, GACHA_COST, GACHA_PITY, KAKERA_OF, oppKits, BENCH_N, kitsPair, d1Round, pinWatch, faceKeyOf, cpuTeam, ensureStar, starOf, totsuOf, capGrade, capPts, capIdx, GRADES, rosterAt, lvlAt, retiredAt, titleOf, ensureTitles, evalTitles, CUP_LABELS, cupIn, ensureClub, renameClub, kitsFor, KIT_DEFAULT, EMB_DEFAULT, TEAMS, TEAM_BY_ID, ROSTERS, rosterOfTeam, leagueTable, prevOrder, goalRank, recordGoals, CUP_WEEKS_ALL: CUP_WEEKS, leagueWeeksOf: leagueWeeks, POST_WEEKS, CARDS, CAT_NAME, SP, findSpecial, previewCards, trainCards, trainOne, weekTick, GRID_R, GRID_C, zoneOf, cellsFor, formationLabel, FORMATIONS, TACTIC_ITEMS, STYLES, SITU_DEFAULT, SITU_ACTS, SITU_ROWS, SITU_FROM, ensureTactics, slotRoles, applyTactics, skillRate, endWeek, SEASON_WEEKS, INJURIES, TYPE_TUNE, POT_TYPES, ensurePot, potMul, trainedThisWeek, trainsDone, trainLimit, trainMult, campState, campAdvance, CAMP, slotInfo, SLOT_MAX, SKILL_RATE, rewardCards, newLeague, newCup, playFixture, peekRound, afterOfficial, playPractice, practiceOpponent, practiceOptions, teamLook, recordStats, teamLevel, findTeam, CUP_WEEKS, CAMPS, LG, rankInfo, PMAX, PRICE, buyCard, buyPack, toEng, toPts, migrate, ensurePts, TEAM_MENUS: TEAM_PTS, MENUS, SPECIAL, LEAGUES, PNAME, newCareer, menusFor, train, learnSkill, slots, skillChance, nextFixture, finishRound, standings, endSeason, opponentTeam, matchTeam, avgParam, decideType };
+  root.DotCareer = { gachaBanner, gachaPull, gachaPoolAll, ensureGacha, GACHA_RATE, GACHA_COST, GACHA_PITY, KAKERA_OF, oppKits, BENCH_N, kitsPair, d1Round, pinWatch, faceKeyOf, cpuTeam, ensureStar, starOf, totsuOf, capGrade, capPts, capIdx, GRADES, rosterAt, lvlAt, retiredAt, titleOf, ensureTitles, evalTitles, CUP_LABELS, cupIn, ensureClub, renameClub, kitsFor, KIT_DEFAULT, EMB_DEFAULT, TEAMS, TEAM_BY_ID, ROSTERS, rosterOfTeam, leagueTable, prevOrder, goalRank, recordGoals, CUP_WEEKS_ALL: CUP_WEEKS, leagueWeeksOf: leagueWeeks, POST_WEEKS, CARDS, CAT_NAME, SP, findSpecial, previewCards, trainCards, trainOne, weekTick, GRID_R, GRID_C, zoneOf, cellsFor, formationLabel, FORMATIONS, TACTIC_ITEMS, STYLES, SITU_DEFAULT, SITU_ACTS, SITU_ROWS, SITU_FROM, ensureTactics, slotRoles, applyTactics, skillRate, endWeek, SEASON_WEEKS, INJURIES, TYPE_TUNE, COND_NAME, condOf, trainedThisWeek, trainsDone, trainLimit, trainMult, campState, campAdvance, CAMP, slotInfo, SLOT_MAX, SKILL_RATE, rewardCards, newLeague, newCup, playFixture, peekRound, afterOfficial, playPractice, practiceOpponent, practiceOptions, teamLook, recordStats, teamLevel, findTeam, CUP_WEEKS, CAMPS, LG, rankInfo, PMAX, PRICE, buyCard, buyPack, toEng, toPts, migrate, ensurePts, TEAM_MENUS: TEAM_PTS, MENUS, SPECIAL, LEAGUES, PNAME, newCareer, menusFor, train, learnSkill, slots, skillChance, nextFixture, finishRound, standings, endSeason, opponentTeam, matchTeam, avgParam, decideType };
 })(typeof window !== 'undefined' ? window : globalThis);
