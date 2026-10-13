@@ -364,9 +364,9 @@
     let el = document.getElementById('digestCtl');
     if (!el) {
       el = document.createElement('div'); el.id = 'digestCtl';
-      el.innerHTML = `<div class="dg-bar"><button class="dg-prev" title="前の場面・巻き戻し">|◀◀</button><button class="dg-back" title="5秒もどす">↺5</button><button class="dg-pause" title="一時停止">❚❚</button><div class="dg-track"><i class="dg-dot"></i></div><button class="dg-skip" title="次の場面">▶▶|</button></div><button class="dg-next ui-img" title="試合結果へ"><img src="icons/ui_next.png" alt="次へ"></button>`;
+      el.innerHTML = `<div class="dg-bar"><button class="dg-prev dg-ic" title="前の場面・巻き戻し"><img src="icons/ui_rpprev.png" alt="前の場面"></button><button class="dg-back dg-ic" title="5秒もどす"><img src="icons/ui_back5.png" alt="5秒もどす"></button><button class="dg-pause dg-ic" title="一時停止"><img src="icons/ui_pause.png" alt="一時停止"></button><div class="dg-track"><i class="dg-dot"></i></div><button class="dg-skip dg-ic" title="次の場面"><img src="icons/ui_rpnext.png" alt="次の場面"></button></div><button class="dg-next ui-img" title="試合結果へ"><img src="icons/ui_next.png" alt="次へ"></button>`;
       ($('#pitch').parentElement || document.body).appendChild(el);
-      el.querySelector('.dg-pause').onclick = (ev) => { ev.stopPropagation(); if (!show || show.phase !== 'digest') return; show.paused = !show.paused; el.querySelector('.dg-pause').textContent = show.paused ? '▶' : '❚❚'; };
+      el.querySelector('.dg-pause').onclick = (ev) => { ev.stopPropagation(); if (!show || show.phase !== 'digest') return; show.paused = !show.paused; el.querySelector('.dg-pause img').src = show.paused ? 'icons/ui_play.png' : 'icons/ui_pause.png'; };
       // 版464：巻き戻し。|◀◀＝場面の頭へ（頭なら前の場面へ）、↺5＝5秒もどす、バーをタップ・ドラッグ＝好きな所へ
       el.querySelector('.dg-prev').onclick = (ev) => { ev.stopPropagation(); if (!show || show.phase !== 'digest') return; const it = show.list[show.k]; if (simT - it.t0 > 1.5) { simT = it.t0; show.tr = DG_TR; cam.init = false; lastBall = null; ballTrail.length = 0; } else digestGo(show.k - 1); };
       el.querySelector('.dg-back').onclick = (ev) => { ev.stopPropagation(); if (!show || show.phase !== 'digest') return; const it = show.list[show.k]; if (simT - it.t0 < 1) { digestGo(show.k - 1); const j = show.list[show.k]; simT = Math.max(j.t0, j.t1 - 5); } else simT = Math.max(it.t0, simT - 5 * RATE / RATE); show.tr = DG_TR; cam.init = false; lastBall = null; ballTrail.length = 0; };
@@ -380,7 +380,7 @@
     }
     el.style.display = on ? 'block' : 'none';
     document.body.classList.toggle('in-digest', !!on);
-    if (on) { el.querySelector('.dg-pause').textContent = '❚❚'; }
+    if (on) { el.querySelector('.dg-pause img').src = 'icons/ui_pause.png'; }
   }
   function digestAdvance(dt) {
     const it = show.list[show.k];

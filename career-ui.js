@@ -3306,29 +3306,29 @@
     const effText = (c) => { const cd = C.CARDS[c]; return `${Object.entries(cd.up).map(([k, v]) => `${C.PNAME[k]}+${v}`).join('・')}${cd.fat ? `（疲労${cd.fat > 0 ? '+' : ''}${cd.fat}）` : ''}`; };
     const draw = () => {
       const S = shopSt; let h = '';
+      // 版527：3つの画面で、上の帯（もどる・ショップ・コイン）とタブを同じ形に（監督の4枚目の絵）
+      const head = `<span class="sh3-coin">${coins()}<small>コイン</small></span>${hit('', 34, 12, 72, 70, 'data-go="back"', 'もどる')}
+        <div class="sh3-tabs">${[['rec', 'おすすめ'], ['cards', '特訓カード'], ['prem', 'プレミアムパス']].map(([k, l]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
       if (S.tab === 'rec') {
         const bn = C.gachaBanner(), U = bn.uniq, q = C.rosterAt(bn.tid, 1).players.find((x) => x.no === bn.no), cc = U.chip || ['#c8141e', '#ffd23a', '#ffe45a'];
-        h = `<div class="sh3 sh3-rec"><img class="sh3-bgimg" src="img/shop_m1.jpg" alt="">
-          <span class="sh3-coin c1">${coins()}</span>
-          <div class="sh3-ban" style="--c0:${cc[0]}"><div class="sh3-ban-bg"></div><div class="sh3-ban-fc">${gcFace(bn.tid, q, 'sh3-ban-face')}</div>
+        h = `<div class="sh3 sh3-rec"><img class="sh3-bgimg" src="img/shop_rec.jpg" alt="">${head}
+          <button class="sh3-ban" data-go="scout" style="--c0:${cc[0]}"><div class="sh3-ban-bg"></div><div class="sh3-ban-fc">${gcFace(bn.tid, q, 'sh3-ban-face')}</div>
             <i class="sh3-ban-rib">今月のピックアップ</i><b class="sh3-ban-nm" style="font-size:${Math.min(96, Math.round(360 / Math.max(3, U.who.length)))}px">${esc(U.who)}</b><em class="sh3-ban-sk">${esc(U.name)}</em>
-            <button class="sh3-ban-go" data-go="scout">スカウトを見る<span>›</span></button></div>
-          ${hit('', 27, 9, 67, 66, 'data-go="back"', 'もどる')}${hit('', 34, 88, 398, 44, 'data-tab="rec"')}${hit('', 442, 88, 397, 44, 'data-tab="cards"', '特訓カード')}${hit('', 847, 88, 397, 44, 'data-tab="prem"', 'プレミアムパス')}
-          ${hit('', 847, 142, 397, 272, 'data-tab="prem"', 'プレミアムパス')}
-          ${hit('', 52, 573, 201, 41, 'data-info="5"', 'パック内容を見る')}${hit('sh3-buy', 345, 555, 266, 63, 'data-pack="5"', 'カードパックを買う')}
-          ${hit('', 666, 573, 199, 41, 'data-info="12"', 'パック内容を見る')}${hit('sh3-buy', 984, 555, 239, 63, 'data-pack="12"', 'カードパック（大）を買う')}
-          ${hit('', 398, 642, 488, 57, 'data-tab="cards"', '特訓カードを1枚ずつ選ぶ')}</div>`;
+            <span class="sh3-ban-go">スカウトを見る<span>›</span></span></button>
+          ${hit('', 843, 142, 391, 270, 'data-tab="prem"', 'プレミアムパス')}
+          ${hit('sh3-area', 46, 419, 586, 206, 'data-ask="5"', 'カードパック')}${hit('sh3-area', 640, 419, 594, 206, 'data-ask="12"', 'カードパック（大）')}
+          ${hit('', 63, 571, 198, 42, 'data-info="5"', 'パック内容を見る')}${hit('sh3-buy', 351, 553, 262, 64, 'data-pack="5"', 'カードパックを買う')}
+          ${hit('', 646, 571, 196, 42, 'data-info="12"', 'パック内容を見る')}${hit('sh3-buy', 977, 553, 236, 64, 'data-pack="12"', 'カードパック（大）を買う')}
+          ${hit('', 46, 631, 1188, 66, 'data-tab="cards"', '特訓カードを1枚ずつ選ぶ')}</div>`;
       } else if (S.tab === 'prem') {
-        h = `<div class="sh3 sh3-prem"><img class="sh3-bgimg" src="img/shop_m3.jpg" alt=""><span class="sh3-coin c3">${coins()}<small>コイン</small></span>
-          ${hit('', 46, 8, 69, 69, 'data-go="back"', 'もどる')}${hit('', 86, 80, 366, 58, 'data-tab="rec"')}${hit('', 459, 80, 356, 58, 'data-tab="cards"')}${hit('', 823, 80, 387, 58, 'data-tab="prem"')}${hit('', 467, 635, 345, 60, 'data-soon="1"', '近日公開')}</div>`;
+        h = `<div class="sh3 sh3-prem"><img class="sh3-bgimg" src="img/shop_prem.jpg" alt="">${head}${hit('', 44, 140, 1192, 560, 'data-soon="1"', 'プレミアムパス（近日公開）')}</div>`;
       } else {
         const list = Object.keys(C.CARDS).filter((c) => S.cat === 'all' || C.CARDS[c].cat === S.cat);
         if (!S.sel || !list.includes(S.sel)) { S.sel = list[0]; S.qty = 1; }
         const c = S.sel, cd = C.CARDS[c], pr = price(c), tot = pr * S.qty, lack = Math.max(0, tot - (save.coins || 0));
-        h = `<div class="sh3 sh3-cards"><img class="sh3-bgimg" src="img/shop_m2.jpg" alt=""><span class="sh3-coin c2">${coins()}<small>コイン</small></span>
-          ${hit('', 34, 15, 69, 67, 'data-go="back"', 'もどる')}${hit('', 527, 27, 214, 50, 'data-tab="rec"')}${hit('', 750, 27, 224, 50, 'data-tab="cards"')}${hit('', 984, 27, 240, 50, 'data-tab="prem"')}
+        h = `<div class="sh3 sh3-cards"><img class="sh3-bgimg" src="img/shop_cards.jpg" alt="">${head}
           <div class="sh3-sub">${SH_CATS.map(([k, l]) => `<button data-cat="${k}" class="${S.cat === k ? 'on' : ''}">${l}</button>`).join('')}</div>
-          <div class="sh3-grid">${list.map((k) => { const d = C.CARDS[k]; return `<button class="sh3-card${k === c ? ' on' : ''}" data-c="${k}" style="--cc:${SH_CATCOL[d.cat]}"><b style="font-size:${d.name.length > 7 ? 15 : d.name.length > 5 ? 18 : 21}px">${esc(d.name)}</b><img src="cards/${k}.jpg" alt="" draggable="false"><span class="sh3-cf"><small>所持 ${save.cards[k] || 0}枚</small><em>${COIN}${price(k)}</em></span></button>`; }).join('')}</div>
+          <div class="sh3-grid">${list.map((k) => { const d = C.CARDS[k]; return `<button class="sh3-card${k === c ? ' on' : ''}" data-c="${k}" style="--cc:${SH_CATCOL[d.cat]}"><b style="font-size:${d.name.length > 7 ? 18 : d.name.length > 5 ? 22 : 26}px">${esc(d.name)}</b><img src="cards/${k}.jpg" alt="" draggable="false"><span class="sh3-cf"><small>所持 ${save.cards[k] || 0}枚</small><em>${COIN}${price(k)}</em></span></button>`; }).join('')}</div>
           <div class="sh3-det"><h3>${esc(cd.name)}</h3><img src="cards/${c}.jpg" alt=""><p class="sh3-eff">${esc(effText(c))}</p>
             <div class="sh3-one">1枚 ${COIN}<b>${pr}</b><small>コイン</small></div>
             <div class="sh3-qty"><button data-q="-1" class="m"${S.qty <= 1 ? ' disabled' : ''}>−</button><span>${S.qty}</span><button data-q="1" class="p"${S.qty >= 99 ? ' disabled' : ''}>＋</button></div>
@@ -3342,6 +3342,10 @@
       box.querySelectorAll('[data-go="scout"]').forEach((b) => b.onclick = () => { el.hidden = true; openGacha(); });
       box.querySelectorAll('[data-soon]').forEach((b) => b.onclick = () => toast('プレミアムパスは近日公開です'));
       box.querySelectorAll('[data-info]').forEach((b) => b.onclick = () => coachAsk(`<b>カードパック${b.dataset.info === '12' ? '（大）' : ''}</b><br>特訓カード（戦術・テクニック・フィジカル・サポート）から<br>ランダムで <b>${b.dataset.info}枚</b> 入っています。<br><small>1枚ずつ買うより、1枚あたりがお得です。</small>`, [{ label: 'とじる', value: true }], 'sec'));
+      box.querySelectorAll('[data-ask]').forEach((b) => b.onclick = async () => { const n = +b.dataset.ask, pr = n >= 12 ? C.PRICE.pack12 : C.PRICE.pack5;
+        if ((save.coins || 0) < pr) { toast('コインが足りません'); return; }
+        if (!(await coachAsk(`カードパック${n >= 12 ? '（大）' : ''}（${n}枚）を<br>${pr}コインで買いますか？`))) return;
+        const got = C.buyPack(save, n); store(); draw(); toast(got ? `${got.map((k) => C.CARDS[k].name).join('・')}<br>を手に入れた！` : 'コインが足りません'); });
       box.querySelectorAll('[data-pack]').forEach((b) => b.onclick = () => { const got = C.buyPack(save, +b.dataset.pack); store(); draw(); toast(got ? `${got.map((k) => C.CARDS[k].name).join('・')}<br>を手に入れた！` : 'コインが足りません'); });
       box.querySelectorAll('[data-cat]').forEach((b) => b.onclick = () => { shopSt.cat = b.dataset.cat; shopSt.sel = null; draw(); });
       box.querySelectorAll('.sh3-card').forEach((b) => b.onclick = () => { if (shopSt.sel !== b.dataset.c) shopSt.qty = 1; shopSt.sel = b.dataset.c; const g = box.querySelector('.sh3-grid'), st = g ? g.scrollTop : 0; draw(); const g2 = box.querySelector('.sh3-grid'); if (g2) g2.scrollTop = st; });
