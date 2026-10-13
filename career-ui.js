@@ -1289,10 +1289,11 @@
     let PX0 = 20, PY0 = 64, CW = 46, CH = 46, BX1 = 776, BX2 = 882, BY0 = 116, BDY = 77, boardCss = '', benchCss = ['', ''];
     if (PHN) {
       const Lw = $('#clubLayer').clientWidth || 1040, Lh = $('#clubLayer').clientHeight || 520;
-      const BW = 96, bh = Lh - 12;
-      CH = Math.floor((bh - 54) / (R + 2)); CW = Math.max(40, Math.min(50, Math.floor((Lw - 104 - 96 - BW * 2 - 44) / COLS)));
+      // 版530：左は104（フォーメーション・リザーブ）、右は104（もどる・切りかえ・戦術）を必ず空けて、その間に板を収める
+      const GL = 104, GR = 104, BW = Lw < 1060 ? 84 : 96, bh = Lh - 12;
+      CH = Math.floor((bh - 54) / (R + 2)); CW = Math.max(28, Math.min(50, CH + 6, Math.floor((Lw - GL - GR - BW * 2 - 40) / COLS)));
       PX0 = 12; PY0 = 44;
-      const bw = PX0 + CW * COLS + 12 + BW * 2 + 6 + 10, bl = Math.max(104, Math.round(104 + (Lw - 104 - 96 - bw) / 2));
+      const bw = PX0 + CW * COLS + 12 + BW * 2 + 6 + 10, bl = Math.max(GL, Math.round(GL + (Lw - GL - GR - bw) / 2));
       boardCss = ` style="left:${bl}px;top:6px;width:${bw}px;height:${bh}px"`;
       const bx = PX0 + CW * COLS + 12, btop = 38, bH = bh - btop - 10;
       benchCss = [` style="left:${bx}px;top:${btop}px;width:${BW}px;height:${bH}px"`, ` style="left:${bx + BW + 6}px;top:${btop}px;width:${BW}px;height:${bH}px"`];
