@@ -950,8 +950,8 @@
     { const card = el.querySelector('.pc-card'); if (card) { card.style.transform = ''; const W = el.clientWidth, H = el.clientHeight, cw = card.offsetWidth, ch = card.offsetHeight, avail = W - 96 - 12 - 24 - 16; const k = Math.min(1, avail / cw, (H - 16) / ch); card.style.position = 'absolute'; card.style.left = Math.max(12, (avail - cw * k) / 2 + 12) + 'px'; card.style.top = ((H - ch * k) / 2) + 'px'; card.style.transform = `scale(${k.toFixed(3)})`; card.style.transformOrigin = '0 0'; } }
     const done = () => { store(); playerDetail(i, o); if (o.onChange) o.onChange(); };
     const dlg = (title, body, bind) => {
-      const d = document.createElement('div'); d.className = 'pc-edit'; d.innerHTML = `<div class="pe-in"><h3>${title}</h3>${body}<div class="pe-btns"><button class="pe-no">やめる</button></div></div>`;
-      el.appendChild(d); d.onclick = (e) => { e.stopPropagation(); if (e.target === d) d.remove(); }; d.querySelector('.pe-no').onclick = () => d.remove(); bind(d);
+      const d = document.createElement('div'); d.className = 'pc-edit'; d.innerHTML = `<div class="pe-in"><h3>${title}</h3>${body}<div class="pe-btns"><button class="pe-no ib ib-no ib-img">やめる</button></div></div>`;
+      el.appendChild(d); d.onclick = (e) => { e.stopPropagation(); if (e.target === d) d.remove(); }; { const okb = d.querySelector('.pe-ok'), nob = d.querySelector('.pe-no'); if (okb && nob) { okb.parentElement.appendChild(nob); } }   /* 版528：決定とやめるを横に並べる */ d.querySelector('.pe-no').onclick = () => d.remove(); bind(d);
     };
     side.querySelectorAll('[data-ed]').forEach((b) => b.onclick = async (e) => { e.stopPropagation(); const a = b.dataset.ed;
       if (a === 'rel') { releasePlayer(i, () => { el.hidden = true; if (o.onChange) o.onChange(); }); return; }   // 版512：放出
@@ -963,7 +963,7 @@
         const POS = [['GK', 'ゴールキーパー'], ['DF', 'ディフェンダー'], ['MF', 'ミッドフィルダー'], ['FW', 'フォワード']];
         dlg(`${esc(p.name)}の登録ポジション`, `<div class="pe-pos">${POS.map(([k, l]) => `<button data-p="${k}" class="${p.position === k ? 'me' : ''}"><i class="pos ${POSC[k]}">${k}</i><span>${l}</span></button>`).join('')}</div><p class="pe-note">試合で出るポジションは、スタメン画面のマスで決まります。</p>`, (d) => d.querySelectorAll('[data-p]').forEach((x) => x.onclick = () => { p.position = x.dataset.p; done(); }));
       } else {
-        dlg(`${esc(p.name)}の登録名`, `<input class="pe-name" maxlength="6" value="${esc(p.name)}"><p class="pe-note">6文字まで。チームのほかの選手と同じ名前は使えません。</p><p class="pe-err" hidden></p><div class="pe-btns"><button class="pe-ok primary">決定</button></div>`, (d) => {
+        dlg(`${esc(p.name)}の登録名`, `<input class="pe-name" maxlength="6" value="${esc(p.name)}"><p class="pe-note">6文字まで。チームのほかの選手と同じ名前は使えません。</p><p class="pe-err" hidden></p><div class="pe-btns"><button class="pe-ok primary ib ib-ok ib-img">決定</button></div>`, (d) => {
           const inp = d.querySelector('.pe-name'); setTimeout(() => inp.focus(), 50);
           d.querySelector('.pe-ok').onclick = () => { const v = inp.value.trim(), er = d.querySelector('.pe-err');
             if (!v) { er.textContent = '名前を入れてください。'; er.hidden = false; return; }
@@ -1684,7 +1684,7 @@
 
   // ---------- モーダル ----------
   function modal(html, buttons) {
-    $('#crModalBody').innerHTML = html + `<div class="cr-mbtns">${buttons.map((b, k) => `<button data-k="${k}" class="${b.primary ? 'primary' : ''}">${esc(b.label)}</button>`).join('')}</div>`;
+    $('#crModalBody').innerHTML = html + `<div class="cr-mbtns">${buttons.map((b, k) => `<button data-k="${k}" class="${b.primary ? 'primary ' : ''}${ibCls(b.label, !!b.primary || buttons.length === 1)}">${esc(b.label)}</button>`).join('')}</div>`;
     $('#crModal').hidden = false;
     return new Promise((res) => { $('#crModalBody').querySelectorAll('.cr-mbtns button').forEach((el) => el.onclick = () => { $('#crModal').hidden = true; res(buttons[+el.dataset.k].value); }); });
   }
@@ -1778,13 +1778,15 @@
 
   $('#hmNext').onclick = advance;
   // ================= コーチの声かけ（カルチョビットAのように、コーチが出てきて はい／いいえ） =================
+  // 版528：監督の作った「決定／やめる」ボタン（青＝進む・白＝もどる）。文字が「決定」「やめる」の時はその絵、ほかは同じ形の無地に文字
+  const ibCls = (label, go) => { const t = String(label).replace(/\s|　/g, ''); return go ? (t === '決定' ? 'ib ib-ok ib-img' : 'ib ib-ok') : (t === 'やめる' ? 'ib ib-no ib-img' : 'ib ib-no'); };
   function coachAsk(html, buttons, who) {
     const sec = who === 'sec';
     buttons = buttons || [{ label: 'は　い', value: true }, { label: 'いいえ', value: false }];
     coachFace();
     let el = document.getElementById('coachTalk');
     if (!el) { el = document.createElement('div'); el.id = 'coachTalk'; (document.getElementById('app') || $('#career')).appendChild(el); }
-    el.innerHTML = `<div class="ct-bust">${sec ? `<img class="art" src="${staffFace('sec')}" alt="秘書">` : staffImg.coach ? `<img class="art" src="${staffImg.coach}" alt="コーチ">` : `<img src="${coachURL}" alt="コーチ">`}</div><div class="ct-btns">${buttons.map((b, k) => `<button data-k="${k}">${b.label}</button>`).join('')}</div><div class="ct-box"><b class="ct-name">${sec ? '秘書' : 'コーチ'}</b><p>${html}</p></div>`;
+    el.innerHTML = `<div class="ct-bust">${sec ? `<img class="art" src="${staffFace('sec')}" alt="秘書">` : staffImg.coach ? `<img class="art" src="${staffImg.coach}" alt="コーチ">` : `<img src="${coachURL}" alt="コーチ">`}</div><div class="ct-btns">${buttons.map((b, k) => `<button data-k="${k}" class="${ibCls(String(b.label).replace(/<[^>]*>/g, ''), b.value !== false)}">${b.label}</button>`).join('')}</div><div class="ct-box"><b class="ct-name">${sec ? '秘書' : 'コーチ'}</b><p>${html}</p></div>`;
     el.hidden = false; requestAnimationFrame(() => el.classList.add('on'));
     { const bx = el.querySelector('.ct-box'), bt = el.querySelector('.ct-btns'); if (bx && bt) bt.style.bottom = Math.max(178, bx.offsetHeight + 30 + 14) + 'px'; }   // 版510：文が長い時も、ボタンが文の上に出る（押せるように）
     return new Promise((res) => el.querySelectorAll('.ct-btns button').forEach((b) => b.onclick = () => { el.classList.remove('on'); el.hidden = true; res(buttons[+b.dataset.k].value); }));

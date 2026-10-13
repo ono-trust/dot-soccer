@@ -2259,3 +2259,14 @@ html.phone #digestCtl .dg-bar{bottom:34px}
 .sh3-ban-fc{left:430px!important;top:4px!important;width:290px!important;height:362px!important}
 .sh3-ban-face{width:290px!important;height:362px!important}
 .sh3-card img,.sh3-det>img{object-position:50% 62%}
+/* 版528：監督の「決定／やめる」ボタン */
+button.ib{min-width:0!important;width:200px;height:72px!important;padding:0 0 8px!important;border:0!important;border-radius:0!important;box-shadow:none!important;background:url(icons/btn_blue.png) center/100% 100% no-repeat!important;color:#fff!important;font:900 26px/1 "M PLUS 1p","Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif!important;text-shadow:none!important;letter-spacing:1px;cursor:pointer}
+button.ib.ib-no{background-image:url(icons/btn_white.png)!important;color:#0f1f4a!important}
+button.ib.ib-img{font-size:0!important;color:transparent!important}
+button.ib.ib-ok.ib-img{background-image:url(icons/btn_ok.png)!important}
+button.ib.ib-no.ib-img{background-image:url(icons/btn_no.png)!important}
+button.ib:active{transform:translateY(2px) scale(.98);filter:brightness(.95)}
+button.ib:disabled{filter:grayscale(1) opacity(.6)}
+.ct-btns{gap:14px}.ct-btns button.ib{width:210px;height:76px!important}
+.pe-btns{gap:18px}.pe-btns button.ib{width:190px;height:68px!important}
+.cr-mbtns button.ib{width:180px;height:64px!important;font-size:22px!important}
