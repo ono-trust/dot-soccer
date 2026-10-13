@@ -31,7 +31,7 @@
     const pre = (u) => { const im = new Image(); im.decoding = 'async'; im.src = u; warmKeep.push(im); };
     const CARD_IDS = Object.keys(C.CARDS || {});
     CARD_IDS.forEach((c) => pre(`cards/${c}.jpg`));
-    ['btn_players', 'btn_status', 'btn_change', 'off_kit', 'off_emblem', 'off_name', 'off_retire', 'off_setting', 'off_biz', 'off_team', 'ui_back', 'ui_change', 'ui_next', 'coin', 'dash', 'defense', 'dribble', 'jump', 'kick', 'mental', 'pass', 'physical', 'speed', 'stamina', 'technique', 'top_mark', 'vision'].forEach((k) => pre(`icons/${k}.png`));
+    ['btn_players', 'btn_status', 'btn_change', 'off_kit', 'off_emblem', 'off_name', 'off_retire', 'off_setting', 'off_biz', 'off_team', 'ui_back', 'ui_change', 'ui_next', 'pc_number', 'pc_pos', 'pc_name', 'coin', 'dash', 'defense', 'dribble', 'jump', 'kick', 'mental', 'pass', 'physical', 'speed', 'stamina', 'technique', 'top_mark', 'vision'].forEach((k) => pre(`icons/${k}.png`));
     ['d1', 'd2', 'd3', 'reg1', 'reg2', 'regE1', 'regE2', 'regW1', 'regW2'].forEach((k) => pre(`icons/lg/${k}.png`));
     ['coach', 'secretary'].forEach((k) => pre(`staff/${k}.png`));
     // 自分のチームの顔は、顔の元絵が読めたら少しずつ作っておく
@@ -913,10 +913,43 @@
     el.innerHTML = playerCardHTML(i, null, false);
     { const ov = [...document.querySelectorAll('.lk-wrap')].some((w) => !w.hidden && w.id !== 'pcModal'); const host = ov ? document.getElementById('app') : $('#career'); if (el.parentElement !== host) host.appendChild(el); el.style.zIndex = ov ? 60 : ''; }   /* 版477：クラブ事務所（z 45）より前に */
     el.hidden = false;
-    bindCard(el, i, playerDetail, () => playerDetail(i, o));
+    bindCard(el, i, (k) => playerDetail(k, o), () => playerDetail(i, o));
+    el.classList.toggle('pc-office', !!o.office);
+    if (o.office) officeSide(el, i, o);   /* 版480：クラブ事務所のチーム編成から開いた時は、右に「背番号・登録ポジション・登録名」 */
     if (o.noNav) el.querySelectorAll('.pc-nav').forEach((b) => b.remove());   /* 版470：ランキングから開いた時は、前後の選手への矢印なし */
     el.querySelector('.pc-close').onclick = () => { el.hidden = true; };
     el.onclick = (e) => { if (e.target === el) el.hidden = true; };
+  }
+
+  // 版480：選手カードの右の3つ（カルチョビットAのクラブ事務所 → チーム編成 → 選手と同じ）
+  function officeSide(el, i, o) {
+    const p = save.team.players[i];
+    const side = document.createElement('div'); side.className = 'pc-side';
+    side.innerHTML = [['num', 'pc_number', '背番号'], ['pos', 'pc_pos', '登録ポジション'], ['name', 'pc_name', '登録名']].map(([a, f, l]) => `<button data-ed="${a}" title="${l}"><img src="icons/${f}.png" alt="${l}"></button>`).join('');
+    el.appendChild(side);
+    const done = () => { store(); playerDetail(i, o); if (o.onChange) o.onChange(); };
+    const dlg = (title, body, bind) => {
+      const d = document.createElement('div'); d.className = 'pc-edit'; d.innerHTML = `<div class="pe-in"><h3>${title}</h3>${body}<div class="pe-btns"><button class="pe-no">やめる</button></div></div>`;
+      el.appendChild(d); d.onclick = (e) => { e.stopPropagation(); if (e.target === d) d.remove(); }; d.querySelector('.pe-no').onclick = () => d.remove(); bind(d);
+    };
+    side.querySelectorAll('[data-ed]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); const a = b.dataset.ed;
+      if (a === 'num') {
+        const used = new Map(save.team.players.map((q) => [q.number, q]));
+        let h = '<div class="pe-nums">'; for (let n = 1; n <= 99; n++) { const q = used.get(n); h += `<button data-n="${n}" class="${q === p ? 'me' : q ? 'used' : ''}" title="${q ? esc(q.name) : ''}">${n}${q && q !== p ? `<small>${esc(q.name)}</small>` : ''}</button>`; } h += '</div><p class="pe-note">ほかの選手の番号を選ぶと、その選手と番号を入れかえます。</p>';
+        dlg(`${esc(p.name)}の背番号`, h, (d) => d.querySelectorAll('[data-n]').forEach((x) => x.onclick = () => { const n = +x.dataset.n, q = used.get(n); if (q === p) { d.remove(); return; } if (q) q.number = p.number; p.number = n; done(); }));
+      } else if (a === 'pos') {
+        const POS = [['GK', 'ゴールキーパー'], ['DF', 'ディフェンダー'], ['MF', 'ミッドフィルダー'], ['FW', 'フォワード']];
+        dlg(`${esc(p.name)}の登録ポジション`, `<div class="pe-pos">${POS.map(([k, l]) => `<button data-p="${k}" class="${p.position === k ? 'me' : ''}"><i class="pos ${POSC[k]}">${k}</i><span>${l}</span></button>`).join('')}</div><p class="pe-note">試合で出るポジションは、スタメン画面のマスで決まります。</p>`, (d) => d.querySelectorAll('[data-p]').forEach((x) => x.onclick = () => { p.position = x.dataset.p; done(); }));
+      } else {
+        dlg(`${esc(p.name)}の登録名`, `<input class="pe-name" maxlength="6" value="${esc(p.name)}"><p class="pe-note">6文字まで。チームのほかの選手と同じ名前は使えません。</p><p class="pe-err" hidden></p><div class="pe-btns"><button class="pe-ok primary">決定</button></div>`, (d) => {
+          const inp = d.querySelector('.pe-name'); setTimeout(() => inp.focus(), 50);
+          d.querySelector('.pe-ok').onclick = () => { const v = inp.value.trim(), er = d.querySelector('.pe-err');
+            if (!v) { er.textContent = '名前を入れてください。'; er.hidden = false; return; }
+            if (save.team.players.some((q) => q !== p && q.name === v)) { er.textContent = '同じ名前の選手がいます。'; er.hidden = false; return; }
+            const old = p.name; p.name = v; try { const tac = C.ensureTactics(save); for (const k in (tac.roles || {})) if (tac.roles[k] === old) tac.roles[k] = v; } catch (_) {} done(); };   // 役割（キッカーなど）の名前も合わせる
+        });
+      }
+    });
   }
 
   // ================= 特訓 =================
@@ -2964,7 +2997,7 @@
       box.querySelector('.of-back').onclick = () => { if (panel) { panel = null; draw(); return; } el.hidden = true; go('home'); };
       box.querySelectorAll('[data-s]').forEach((t) => t.onclick = () => { const k = t.dataset.s; if (sortK === k) sortDir = -sortDir; else { sortK = k; sortDir = 1; } draw(); });
       { const m = box.querySelector('.ot-mode'); if (m) m.onclick = () => { mode = mode === 'st' ? 'ab' : mode === 'ab' ? 'cd' : 'st'; draw(); }; }
-      box.querySelectorAll('.ot tr[data-i]').forEach((tr) => tr.onclick = () => playerDetail(+tr.dataset.i));
+      box.querySelectorAll('.ot tr[data-i]').forEach((tr) => tr.onclick = () => playerDetail(+tr.dataset.i, { office: true, onChange: () => draw() }));
     };
     draw(); el.hidden = false; el._fit();
   }
