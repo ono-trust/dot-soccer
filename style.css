@@ -2283,3 +2283,8 @@ button.ib:disabled{filter:grayscale(1) opacity(.6)}
 .sh3-one{margin-top:8px}.sh3-qty{margin-top:6px}.sh3-tot{margin-top:8px}.sh3-go{margin-top:8px;height:54px}
 .sh3-lack{height:22px;margin:4px 0 0}
 .sh3-pk{margin-top:auto!important;margin-bottom:10px}
+/* 版533：カードの高さを決めて、どの種類でも下の所持・値段が必ず見えるように（Safariで絵の高さが0扱いになり、下が切れていた） */
+.sh3-grid{grid-auto-rows:224px!important}
+.sh3-card{height:224px}
+.sh3-card img{height:176px!important;width:100%;aspect-ratio:auto}
+.sh3-dr img{border-width:4px}
