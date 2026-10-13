@@ -1677,3 +1677,22 @@ html.stage #match .controls{display:none}
 html.stage #match .match-shell{height:var(--lh)}
 /* 版469：秘書の立ち絵（iPhoneで出ないことがあったので、位置の指定を単純に） */
 #ttScene .sc-sec{left:0;right:0;margin:0 auto;transform:none;width:auto;display:block}
+/* 版470：クラブ事務所のアイコン（送ってもらった絵）と、試合前のユニフォームボタン */
+.of-b.of-pic{background:none;border:0;box-shadow:none;width:104px;height:104px;overflow:visible}
+.of-b.of-pic img{width:118%;height:118%;margin:-9%;filter:drop-shadow(0 4px 0 rgba(0,0,0,.35));transition:transform .1s}
+.of-b.of-pic:active img{transform:scale(.94)}
+.of-l{gap:6px;top:12px}
+.lv-btns .lv-kitimg{background:none!important;border:0!important;box-shadow:none!important;padding:0;overflow:visible}
+.lv-btns .lv-kitimg img{width:118%;height:118%;margin:-9%;filter:drop-shadow(0 4px 0 rgba(0,0,0,.35))}
+.lv-btns .lv-kitimg:active img{transform:scale(.94)}
+#mMenu{display:none!important}
+/* 版470：選手カードの称号（国内屈指の〇〇・エース・中心選手） */
+.pc-ttl{display:flex;align-items:center;gap:6px;margin-top:5px;padding:3px 10px 3px 4px;border-radius:999px;background:linear-gradient(180deg,#e9f0ff,#9fb6e0);border:2px solid #fff;box-shadow:0 2px 0 rgba(0,0,0,.35),inset 0 1px 0 #fff;width:max-content;max-width:100%}
+.pc-ttl i{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:13px;color:#fff;background:#3a64b8;box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+.pc-ttl span{font:800 10px/1 sans-serif;color:#2a3a5a;opacity:.8}
+.pc-ttl b{font:900 14px/1.1 "Hiragino Kaku Gothic ProN",sans-serif;color:#13223f;white-space:nowrap;text-shadow:0 1px 0 rgba(255,255,255,.7)}
+.pc-ttl.ace{background:linear-gradient(180deg,#ffe2dc,#f08a7a)}.pc-ttl.ace i{background:#d8202a}.pc-ttl.ace span,.pc-ttl.ace b{color:#4a0e0a}
+.pc-ttl.top{background:linear-gradient(180deg,#fff6c8,#e8b93a 60%,#c99a0e);border-color:#fff3b0}.pc-ttl.top i{background:#a8780a;color:#fff6c8}.pc-ttl.top span,.pc-ttl.top b{color:#3a2600}
+#mSheet{z-index:60}
+#mSheet [data-m="career"]{display:none}
+#mSheet .mlist button{height:auto;min-height:46px;padding:6px 10px;line-height:1.25}

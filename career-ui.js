@@ -31,7 +31,7 @@
     const pre = (u) => { const im = new Image(); im.decoding = 'async'; im.src = u; warmKeep.push(im); };
     const CARD_IDS = Object.keys(C.CARDS || {});
     CARD_IDS.forEach((c) => pre(`cards/${c}.jpg`));
-    ['btn_players', 'btn_status', 'btn_change', 'coin', 'dash', 'defense', 'dribble', 'jump', 'kick', 'mental', 'pass', 'physical', 'speed', 'stamina', 'technique', 'top_mark', 'vision'].forEach((k) => pre(`icons/${k}.png`));
+    ['btn_players', 'btn_status', 'btn_change', 'off_kit', 'off_emblem', 'off_name', 'off_retire', 'off_setting', 'coin', 'dash', 'defense', 'dribble', 'jump', 'kick', 'mental', 'pass', 'physical', 'speed', 'stamina', 'technique', 'top_mark', 'vision'].forEach((k) => pre(`icons/${k}.png`));
     ['d1', 'd2', 'd3', 'reg1', 'reg2', 'regE1', 'regE2', 'regW1', 'regW2'].forEach((k) => pre(`icons/lg/${k}.png`));
     ['coach', 'secretary'].forEach((k) => pre(`staff/${k}.png`));
     // 自分のチームの顔は、顔の元絵が読めたら少しずつ作っておく
@@ -877,13 +877,14 @@
       b.classList.add('on'); box.innerHTML = `<b>${esc((D.SKILLS[k] || {}).name || k)}</b>${esc(SKILL_DESC[k] || '試合の中で、この技を使えるようになる')}`; box.hidden = false; });
     root.querySelectorAll('.pc-uq').forEach((d) => d.addEventListener('click', (e) => e.stopPropagation()));
   }
-  function playerDetail(i) {
+  function playerDetail(i, o = {}) {
     let el = document.getElementById('pcModal');
     if (!el) { el = document.createElement('div'); el.id = 'pcModal'; el.className = 'modal pc-wrap'; $('#career').appendChild(el); }
     el.innerHTML = playerCardHTML(i, null, false);
     { const ov = [...document.querySelectorAll('.lk-wrap')].some((w) => !w.hidden && w.id !== 'pcModal'); const host = ov ? document.getElementById('app') : $('#career'); if (el.parentElement !== host) host.appendChild(el); el.style.zIndex = ov ? 40 : ''; }
     el.hidden = false;
-    bindCard(el, i, playerDetail, () => playerDetail(i));
+    bindCard(el, i, playerDetail, () => playerDetail(i, o));
+    if (o.noNav) el.querySelectorAll('.pc-nav').forEach((b) => b.remove());   /* 版470：ランキングから開いた時は、前後の選手への矢印なし */
     el.querySelector('.pc-close').onclick = () => { el.hidden = true; };
     el.onclick = (e) => { if (e.target === el) el.hidden = true; };
   }
@@ -1630,7 +1631,7 @@
           <div class="lv-head"><div class="lv-t"><b>LIVE</b><span>${title}</span></div>
             <div class="lv-m"><img src="${emblemURL(home.name, 40)}" alt="">${esc((C.findTeam(save, home.name) || {}).short || home.name.replace(/FC$/, ''))}${lgBadge(lgH)}<em>×</em><img src="${emblemURL(away.name, 40)}" alt="">${esc((C.findTeam(save, away.name) || {}).short || away.name.replace(/FC$/, ''))}${lgBadge(lgA)}</div>
             <div class="lv-s">${esc(stad)}</div></div>
-          <div class="rbtns lv-btns"><button data-a="lineup"><span>${rbLineupSVG()}</span><b>スタメン</b></button><button data-a="tac"><span>${RB_TAC_SVG}</span><b>戦術</b></button><button data-a="kit" class="lv-kit"><span><svg viewBox="0 0 60 56" class="rb-svg"><path d="M20 8l-12 8 6 11 5-3v24h22V24l5 3 6-11-12-8c-2 4-5 6-10 6s-8-2-10-6z" fill="${esc(C.kitsFor(save, op.name, meta.kitSel)[0].shirt)}" stroke="#fff" stroke-width="2.5"/></svg></span><b>ユニフォーム</b></button><button data-a="ko" class="lv-ko lv-koimg" title="試合開始"><img src="icons/btn_kickoff.png" alt="試合開始"></button></div>`;
+          <div class="rbtns lv-btns"><button data-a="lineup"><span>${rbLineupSVG()}</span><b>スタメン</b></button><button data-a="tac"><span>${RB_TAC_SVG}</span><b>戦術</b></button><button data-a="kit" class="lv-kit lv-kitimg" title="ユニフォーム"><img src="icons/off_kit.png" alt="ユニフォーム"></button><button data-a="ko" class="lv-ko lv-koimg" title="試合開始"><img src="icons/btn_kickoff.png" alt="試合開始"></button></div>`;
         el.hidden = false;
         const cv = el.querySelector('canvas'), ctx2 = cv.getContext('2d');
         const myL = save.team.players.slice(0, 11), opT = C.opponentTeam(save, op).players.slice(0, 11);
@@ -2255,8 +2256,8 @@
       box.querySelectorAll('.tm-star[data-spi]').forEach((r) => r.onclick = () => cpuCard(r.dataset.tid, +r.dataset.spi, el));
       box.querySelectorAll('.rk-row[data-rkp]').forEach((r) => r.onclick = () => {   // ランキングの選手をタップ：選手情報
         const tn = r.dataset.rkt, pn = r.dataset.rkp;
-        if (tn === save.team.name) { const i = save.team.players.findIndex((q) => q.name === pn); if (i >= 0) playerDetail(i); return; }
-        const t = C.findTeam(save, tn); if (!t) return; const pi = cpuList(t.id).findIndex((q) => q.name === pn); if (pi >= 0) cpuCard(t.id, pi, el);
+        if (tn === save.team.name) { const i = save.team.players.findIndex((q) => q.name === pn); if (i >= 0) playerDetail(i, { noNav: true }); return; }
+        const t = C.findTeam(save, tn); if (!t) return; const pi = cpuList(t.id).findIndex((q) => q.name === pn); if (pi >= 0) cpuCard(t.id, pi, el, { noNav: true });
       });
       box.querySelectorAll('[data-watch]').forEach((b) => b.onclick = () => watchD1(+b.dataset.watch, el));
       const rs = box.querySelector('#crReset2');
@@ -2535,7 +2536,7 @@
           <div class="pc-photo">${cpuFace(tid, q, ro.kit.shirt)}<div class="pc-rare">${starHTML(C.starOf(tid, q), C.totsuOf(tid, q))}${capBadge(C.GRADES[C.capIdx(C.starOf(tid, q), C.totsuOf(tid, q))])}</div></div>
           <b class="pc-num">${q.no}</b>
           <div class="pc-meta"><span>タイプ</span>${typeBadge(q.type)}</div>
-          ${role ? `<div class="pc-meta"><span>役割</span><b class="cc-role${tt ? ' top' : q.role === 'ace' ? ' ace' : ''}">${esc(role)}</b></div>` : ''}
+          ${role ? `<div class="pc-ttl${tt ? ' top' : q.role === 'ace' ? ' ace' : ''}"><i>${tt ? '♛' : q.role === 'ace' ? '★' : '◆'}</i><span>称号</span><b>${esc(role)}</b></div>` : ''}   <!-- 版470：役割ではなく「称号」 -->
         </div>
         <div class="pc-right">
           <div class="pc-icons">${icons}</div>
@@ -2547,11 +2548,11 @@
       <button class="sb-round pc-close" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button>
     </div>`;
   }
-  function cpuCard(tid, pi, host) {
+  function cpuCard(tid, pi, host, o = {}) {
     let el = document.getElementById('ccModal');
     if (!el) { el = document.createElement('div'); el.id = 'ccModal'; el.className = 'modal pc-wrap'; }
     if (el.parentNode !== host) host.appendChild(el);
-    const n = cpuList(tid).length, go = (k) => cpuCard(tid, (k + n) % n, host), redraw = () => cpuCard(tid, pi, host);
+    const n = cpuList(tid).length, go = (k) => cpuCard(tid, (k + n) % n, host), redraw = () => cpuCard(tid, pi, host, o);
     el.innerHTML = cpuCardHTML(tid, pi); el.hidden = false;
     bindSkillDesc(el);
     el.querySelectorAll('[data-pg]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); ccPage = +b.dataset.pg; redraw(); });
@@ -2559,6 +2560,7 @@
     el.querySelector('.pc-nav.next').onclick = (e) => { e.stopPropagation(); go(pi + 1); };
     el.querySelector('.pc-close').onclick = () => { el.hidden = true; };
     el.onclick = (e) => { if (e.target === el) el.hidden = true; };
+    if (o.noNav) el.querySelectorAll('.pc-nav').forEach((b) => b.remove());   /* 版470 */
   }
   // ---- チームの情報：監督・方針・フォーメーションと、固定の25人 ----
   function teamHTML(name) {
@@ -2743,6 +2745,7 @@
     const drawRoom = () => { const c = cvs.getContext('2d'); c.drawImage(officeBg, 0, 0); const S = A().SPR, sc = 2.4;
       OFF_PEOPLE.forEach(([x, y, v, fl], k) => { const img = dressed('of' + k, { hair: k % 4, hairColor: k % 3, skin: k % 3 }, v, 0, k % 3 === 2 ? SHIRT : k % 2 ? SUIT_GRAY : SUIT_NAVY); c.save(); c.imageSmoothingEnabled = false; c.translate(x, 0); if (fl) c.scale(-1, 1); c.drawImage(img, -S.W * sc / 2, y - (S.H - 4) * sc, S.W * sc, S.H * sc); c.restore(); }); };
     const BTN = (a, ico, label) => `<button class="of-b" data-a="${a}"><span>${ico}</span><b>${label}</b></button>`;
+    const PIC = (a, f, label) => `<button class="of-b of-pic" data-a="${a}" title="${label}"><img src="icons/${f}.png" alt="${label}"></button>`;   /* 版470：送ってもらったアイコンの絵 */
     const I = {
       kit: '<svg viewBox="0 0 40 40"><path d="M12 6l-9 6 4 8 4-2v16h18V18l4 2 4-8-9-6c-1 3-4 5-8 5s-7-2-8-5z" fill="#2f6fd6" stroke="#fff" stroke-width="2"/></svg>',
       emb: `<svg viewBox="0 0 40 40"><path d="M20 3l14 5v11c0 9-6 15-14 18C12 34 6 28 6 19V8z" fill="#d83a3a" stroke="#fff" stroke-width="2.5"/><text x="20" y="25" font-size="14" font-weight="900" text-anchor="middle" fill="#fff">A</text></svg>`,
@@ -2774,13 +2777,14 @@
     };
     const draw = () => {
       box.innerHTML = `<div class="off"><div class="of-room"></div>
-        <div class="of-l">${BTN('kit', I.kit, 'ユニフォーム')}${BTN('emb', I.emb, 'エンブレム')}${BTN('name', I.name, 'クラブ名')}${BTN('bye', I.bye, '退任')}</div>
+        <div class="of-l">${PIC('kit', 'off_kit', 'ユニフォーム')}${PIC('emb', 'off_emblem', 'エンブレム')}${PIC('name', 'off_name', 'チーム名変更')}${PIC('bye', 'off_retire', '退任')}${PIC('set', 'off_setting', '設定')}</div>
         <div class="of-r">${BTN('biz', I.biz, '経営状況')}${BTN('team', I.team, 'チーム編成')}</div>
         <button class="std-back of-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button>
         ${panel === 'biz' ? bizHTML() : panel === 'team' ? teamHTML() : ''}</div>`;
       box.querySelector('.of-room').appendChild(cvs); drawRoom();
       box.querySelectorAll('.of-b').forEach((b) => b.onclick = async () => { const a = b.dataset.a;
         if (a === 'biz' || a === 'team') { panel = panel === a ? null : a; draw(); return; }
+        if (a === 'set') { if (window.__openMenu) window.__openMenu(); return; }   /* 版470：設定（チュートリアル・全画面など。右上のメニューの代わり） */
         if (a === 'kit' || a === 'emb' || a === 'name') { clubTab = a; el.hidden = true; openClub({ onDone: () => { el.hidden = false; draw(); } }); return; }
         if (a === 'bye') {
           const ok = await coachAsk('え、退任…？<br>このクラブの監督をやめる、ということでしょうか？<br><small>（育てた選手・順位など、セーブデータがすべて消えます）</small>', null, 'sec');
@@ -2845,7 +2849,7 @@
     runMatch('練習試合', '', op, (score, ev, played) => { const got = C.playPractice(save, score, played); afterRound(got, { practice: true }); if (onDone) onDone(); }, { comp: '練習試合', label: '', home: true, practice: true, tut: 'practice' });
     return true;
   }
-  window.__career = { venueTalk: (se) => venueTalk(se), matchFace, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
+  window.__career = { venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====
@@ -2898,6 +2902,7 @@
   const fsOk = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
   if (!fsOk) $('#mFull').hidden = true;
   if (!inFrame && $('#mTab')) $('#mTab').hidden = true;
+  window.__openMenu = () => $('#mMenu').onclick();
   $('#mMenu').onclick = () => { $('#mFull').textContent = document.fullscreenElement ? '全画面をやめる' : '全画面にする'; if ($('#mGap')) $('#mGap').textContent = topGap ? '画面の上を空けない（上までゲームを広げる）' : '画面の上を空ける（上がさわれない時）'; sheet.hidden = false; };
   addEventListener('fullscreenchange', refit); addEventListener('webkitfullscreenchange', refit);
   sheet.addEventListener('click', async (e) => {
@@ -2907,7 +2912,7 @@
     sheet.hidden = true;
     if (m === 'career') window.__career.open();
     else if (m === 'free') $('#newGame').click();
-    else if (m === 'tut') { if (window.__tut) { if ($('#career').hidden) window.__career.open(); setTimeout(() => window.__tut.replay(), 300); } }
+    else if (m === 'tut') { if (window.__tut) { const of = $('#officeScreen'); if (of) { of.hidden = true; go('home'); } if ($('#career').hidden) window.__career.open(); setTimeout(() => window.__tut.replay(), 300); } }
     else if (m === 'gap') { topGap = topGap ? 0 : 1; try { localStorage.setItem('dotTopGap', String(topGap)); } catch (_) {} refit(); }
     else if (m === 'tab') { try { window.open(location.href, '_blank'); } catch (_) {} }
     else if (m === 'fs') {
@@ -2921,7 +2926,7 @@
   // 試合中はメニューを隠す（結果画面や育成で出す）
   // メニューはホーム・フリー試合の設定・結果画面だけに出す（試合中やクラブハウスの中では出さない）
   const mm = $('#mMenu'), mt = $('#match'), club = $('#cv-club'), car = $('#career');
-  const upd = () => { mm.hidden = !mt.hidden || (!car.hidden && !club.hidden); };
+  const upd = () => { mm.hidden = true; };   /* 版470：右上のメニューはなし（クラブ事務所の「設定」から） */
   const mo = new MutationObserver(upd);
   for (const el of [mt, club, car]) mo.observe(el, { attributes: true, attributeFilter: ['hidden'] });
   // 開いたらいきなり育成ホーム
