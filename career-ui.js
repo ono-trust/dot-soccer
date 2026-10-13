@@ -3227,8 +3227,8 @@
         <div class="gc2-bg"></div>
         <div class="gc3-fc">${gcFace(bn.tid, q, 'gc3-face')}</div>
         <div class="gc3-ttl"><b>スカウト</b></div>
-        <span class="gc3-coin">${COIN}<b>${(save.coins || 0).toLocaleString()}</b></span>
-        <span class="gc3-kk"><i>◆</i>覚醒のカケラ<b>${(save.kakera || 0).toLocaleString()}</b></span>
+        <div class="gc3-pills"><span class="gc3-coin">${COIN}<b>${(save.coins || 0).toLocaleString()}</b></span>
+        <span class="gc3-kk"><i>◆</i>覚醒のカケラ<b>${(save.kakera || 0).toLocaleString()}</b></span></div>
         <button class="std-back gc-back gc3-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button>
         <div class="gc3-rib"><span>今月のピックアップ</span><span>${esc(bn.until)}まで</span></div>
         <div class="gc3-star">${'<i>★</i>'.repeat(5)}</div>

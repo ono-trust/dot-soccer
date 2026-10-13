@@ -2165,3 +2165,7 @@ html .std.tvm .std-body>*{zoom:1!important}
 .gc3-title{font-style:normal;transform:skewX(-8deg);transform-origin:0 100%}
 .gc3-pos i{font-style:normal}
 .gc3-kk{width:200px;white-space:nowrap;font-size:16px}
+/* 版525：コイン・覚醒のカケラの札は中身に合わせた幅で、必ず1行 */
+.gc3-pills{left:272px;top:21px;display:flex;gap:13px;white-space:nowrap}
+.gc3-pills>span{position:static;width:auto!important;flex:none;white-space:nowrap}
+.gc3-coin{min-width:90px}.gc3-kk{min-width:189px;gap:8px}.gc3-kk b{margin-left:12px}
