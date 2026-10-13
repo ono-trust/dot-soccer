@@ -247,10 +247,22 @@
   function play() { playing = true; $('#pause').textContent = '一時停止'; lastNow = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); }
   function stop() { playing = false; cancelAnimationFrame(raf); $('#pause').textContent = '再生'; }
 
+  // 版583：試合の画面で何かエラーが起きても、止まったままにならないように（エラーの内容を小さく出して、試合の結果へ進む）
+  let loopErr = 0;
   function loop(now) {
+    try { loop0(now); } catch (err) {
+      console.error(err); loopErr++;
+      try { let t = document.getElementById('errTip'); if (!t) { t = document.createElement('p'); t.id = 'errTip'; document.body.appendChild(t); } t.textContent = 'エラー：' + (err && err.message || err) + '（' + (show ? show.phase : '-') + '）'; t.hidden = false; setTimeout(() => { t.hidden = true; }, 8000); } catch (_) {}
+      try { champEnd(); } catch (_) {}
+      if (loopErr < 4 && show && (show.phase === 'champ' || show.phase === 'endOut')) { try { show = null; simT = match.duration; digestCtl(false); finish(); return; } catch (_) {} }
+      if (playing) raf = requestAnimationFrame(loop);
+    }
+  }
+  function loop0(now) {
     if (!playing || !match) return;
     const dt = Math.min(0.1, (now - lastNow) / 1000);
     lastNow = now;
+    window.__showPh = show ? show.phase : '';
     if (show && show.hold) advanceShow(dt);
     else {
       const simT0 = simT;
@@ -367,7 +379,7 @@
       const fit = () => { const bx = el.querySelector('.lk-box'), k = Math.min((el.clientWidth || innerWidth) / 1280, (el.clientHeight || innerHeight) / 720); bx.style.transform = `translate(-50%,-50%) scale(${k.toFixed(4)})`; };
       addEventListener('resize', fit); el._fit = fit;
       el.onclick = () => { if (show && show.phase === 'champ' && show.rt > 0.8) champNext(); };
-      el.querySelector('.ch-skip').onclick = (e) => { e.stopPropagation(); if (show && show.phase === 'champ') { champEnd(); startDigest(); } };
+      el.querySelector('.ch-skip').onclick = (e) => { e.stopPropagation(); if (show && show.phase === 'champ') { champEnd(); try { startDigest(); } catch (err) { console.error(err); show = null; simT = match.duration; finish(); } } };
     }
     return el;
   }
@@ -379,7 +391,7 @@
     champStage(0);
   }
   function champEnd() { { const m = document.getElementById('match'); if (m) m.classList.remove('champing'); } const el = document.getElementById('champOv'); if (el) { el.hidden = true; el.querySelector('.lk-box').innerHTML = ''; } }
-  function champNext() { if (show.stage >= 4) { champEnd(); startDigest(); return; } champStage(show.stage + 1); }
+  function champNext() { try { if (show.stage >= 4) { champEnd(); startDigest(); return; } champStage(show.stage + 1); } catch (err) { console.error(err); champEnd(); try { startDigest(); } catch (_) { show = null; simT = match.duration; finish(); } } }
   function champStage(k) {
     show.stage = k; show.rt = 0;
     const el = champEl(), box = el.querySelector('.lk-box'), c = champ, E = (s) => plvEsc(String(s));
