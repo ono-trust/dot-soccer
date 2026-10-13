@@ -595,7 +595,7 @@
   let replayYaw = null;                  // リプレイ中はゴールの方へ大きく振る
   const DIST = 72;             // 注目点までの距離（m）
   // 画面の寄り：カルチョビットAと同じく3段階（近い・ふつう・遠い）
-  const VIEWS = { near: { w: 22, pitch: 0.46 }, normal: { w: 38, pitch: 0.49 }, far: { w: 62, pitch: 0.58 } };   // 版492：ふつうを少し寄せる
+  const VIEWS = { near: { w: 22, pitch: 0.46 }, normal: { w: 41, pitch: 0.47 }, far: { w: 62, pitch: 0.58 } };   // 版492：ふつうを少し寄せる
   let viewMode = 'normal';
   let VIEW_W = VIEWS.normal.w;           // 注目点で横に見える幅（m）
   let FOCAL = 1900, baseFocal = 1900;
