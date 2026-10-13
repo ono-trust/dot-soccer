@@ -85,7 +85,7 @@
         const was = playing; stop(); if (mctx.opts.confirmQuit && !(await mctx.opts.confirmQuit())) { if (was) play(); return; } closePlv(); ws.hidden = true; onMatchDone = null; SND().crowd(false); document.getElementById('half').hidden = true; const q = mctx.opts.onQuit; if (q) q(); };   /* 版481：「観戦をやめますか？」はい／いいえ */ } }   /* 版477：観戦を途中でやめる */
     match.homeShort = homeShort || match.homeShort; match.awayShort = awayShort || match.awayShort;
     prepTimeline();
-    kickAll = kickTimes.flat().map((k) => k.t).sort((x, y) => x - y); hitAll = [...(match.actions || []).filter((x) => x.a === 'head').map((x) => ({ t: x.t, n: 'header' })), ...match.events.filter((e) => e.type === 'save' || (e.type === 'gk' && e.act !== 'miss')).map((e) => ({ t: e.t, n: /parry|punch|fumble/.test(e.act || '') ? 'parry' : 'catch' }))].sort((x, y) => x.t - y.t); kickPtr = 0; koWhistleT = 0.05; oohT = -1; shownScore = ''; chipHeard = new Map(); SND().bgm(null); SND().crowd(mctx && mctx.opts && mctx.opts.noIntro ? true : 'far');   /* 版558：本家は入場前の画面では、観客の声が遠く小さい */
+    kickAll = kickTimes.flat().map((k) => k.t).sort((x, y) => x - y); hitAll = [...(match.actions || []).filter((x) => x.a === 'head').map((x) => ({ t: x.t, n: 'header' })), ...match.events.filter((e) => e.type === 'save' || (e.type === 'gk' && e.act !== 'miss')).map((e) => ({ t: e.t, n: /parry|punch|fumble/.test(e.act || '') ? 'parry' : 'catch' }))].sort((x, y) => x.t - y.t); kickPtr = 0; koWhistleT = 0.05; oohT = -1; champTried = false; champEnd(); shownScore = ''; chipHeard = new Map(); SND().bgm(null); SND().crowd(mctx && mctx.opts && mctx.opts.noIntro ? true : 'far');   /* 版558：本家は入場前の画面では、観客の声が遠く小さい */
     warmUp();
     // 育成モードは入場・対戦カードの画面を先に見せているので、すぐキックオフへ
     show = mctx.opts.noIntro ? { phase: 'kickoff', hold: true, koT: 0, start: 0, goal: null, rt: 0, walk: true } : { phase: 'preCrowd', hold: true, koT: 0, start: 0, goal: null, rt: 0 };
@@ -268,6 +268,7 @@
     }
     sndTick();
     draw();
+    if (show && show.phase === 'champ' && show.stage === 1) drawConfetti(show.t);
     if (mctx && mctx.opts.tut && mctx.opts.tut.tick && playing && !(show && show.hold)) mctx.opts.tut.tick(simT, tutApi());   // チュートリアル：決まった時間に試合を止めて説明
     if (playing) raf = requestAnimationFrame(loop);
   }
@@ -349,6 +350,92 @@
     return out;
   }
   const DG_TR = 0.4;   // 場面の切り替え（画面が小さくなって、次の場面が広がる）
+  // ================= 版580：優勝の演出（本家の流れ）=================
+  //  0 白く光る → 観客席：秘書「決まりました！！」と観客の声（吹き出し）・紙吹雪（タップで次へ）
+  //  1 ピッチ：選手がセンターサークルに集まって、両手を上げて跳ねる
+  //  2 電光掲示板：赤い画面に大会名・チーム名・「優勝」・トロフィー
+  //  3 「WE ARE THE CHAMPIONS」選手みんなの顔
+  //  4 観客席：チームの旗がゆれて、チーム名のコール → ダイジェストへ
+  let champTried = false, champ = null;
+  const CHAMP_T = [12, 7.5, 6.5, 5, 7.5];
+  const CHAMP_SHOUT = ['この日を待ってた', 'やったやった', '涙で見えない', '監督、ありがとう', 'えっ？本当に？', '優勝だーー！', '良くやった！最高'];
+  function champEl() {
+    let el = document.getElementById('champOv');
+    if (!el) {
+      el = document.createElement('div'); el.id = 'champOv'; el.className = 'lk-wrap ch-wrap'; el.hidden = true; el.innerHTML = '<div class="lk-box"></div><button class="ch-skip">スキップ ▶▶</button>';
+      document.getElementById('app').appendChild(el);
+      const fit = () => { const bx = el.querySelector('.lk-box'), k = Math.min((el.clientWidth || innerWidth) / 1280, (el.clientHeight || innerHeight) / 720); bx.style.transform = `translate(-50%,-50%) scale(${k.toFixed(4)})`; };
+      addEventListener('resize', fit); el._fit = fit;
+      el.onclick = () => { if (show && show.phase === 'champ' && show.rt > 0.8) champNext(); };
+      el.querySelector('.ch-skip').onclick = (e) => { e.stopPropagation(); if (show && show.phase === 'champ') { champEnd(); startDigest(); } };
+    }
+    return el;
+  }
+  function startChamp(ch) {
+    champ = ch; closePlv(); show = { phase: 'champ', hold: true, rt: 0, t: 0, stage: -1 };
+    SND().crowd(true); SND().play('cheer'); SND().bgm('champ');
+    const el = champEl(); el.hidden = false; el._fit(); $('#match').classList.add('champing');
+    champStage(0);
+  }
+  function champEnd() { { const m = document.getElementById('match'); if (m) m.classList.remove('champing'); } const el = document.getElementById('champOv'); if (el) { el.hidden = true; el.querySelector('.lk-box').innerHTML = ''; } }
+  function champNext() { if (show.stage >= 4) { champEnd(); startDigest(); return; } champStage(show.stage + 1); }
+  function champStage(k) {
+    show.stage = k; show.rt = 0;
+    const el = champEl(), box = el.querySelector('.lk-box'), c = champ, E = (s) => plvEsc(String(s));
+    el.className = 'lk-wrap ch-wrap ch-s' + k;
+    if (k === 0) {
+      const head = c.kind === 'cup' ? `${E(c.title)}優勝です！` : `${c.n > 1 ? `${c.n}回目の` : ''}${E(c.title)}制覇です！`;
+      box.innerHTML = `<div class="ch-flash"></div><div class="ch-shouts"></div>${c.sec ? `<img class="ch-sec" src="${c.sec}" alt="">` : ''}<div class="ch-band"><b>秘書</b><p>決まりました！！<br>${head}</p><i>▶</i></div>`;
+      const sh = box.querySelector('.ch-shouts'); let n = 0;
+      const pop = () => { if (!show || show.phase !== 'champ' || show.stage !== 0) return; const b = document.createElement('span'); b.className = 'ch-shout'; b.textContent = CHAMP_SHOUT[n++ % CHAMP_SHOUT.length]; b.style.left = (420 + Math.random() * 700) + 'px'; b.style.top = (40 + Math.random() * 330) + 'px'; sh.appendChild(b); setTimeout(() => b.remove(), 1500); setTimeout(pop, 950); };
+      setTimeout(pop, 700);
+    } else if (k === 1) {
+      box.innerHTML = '<div class="ch-black"></div>'; cam.init = false;
+      const st = stateAt(simT); show.p0 = st.players.map((p) => ({ x: p.x, y: p.y }));
+    } else if (k === 2) {
+      SND().play('reveal5');
+      box.innerHTML = `<div class="ch-board"><div class="ch-sky"></div><div class="ch-frame"><i class="ch-lamp a"></i><i class="ch-lamp b"></i><div class="ch-screen"><div class="ch-wipe"></div>
+        <div class="ch-txt"><small>${E(c.small)}</small><em>${E(c.title)}</em><span>${E(c.team)}</span></div><div class="ch-trophy">${CH_TROPHY}</div><b class="ch-win">優勝</b></div></div><div class="ch-rail"></div></div>`;
+      setTimeout(() => SND().play('uniq'), 2600);
+    } else if (k === 3) {
+      SND().play('cheer');
+      const f = (c.faces || []).slice(0, 18);
+      box.innerHTML = `<div class="ch-team"><div class="ch-faces">${f.map((u, i) => `<img src="${u}" alt="" style="--i:${i}">`).join('')}</div><div class="ch-champs"><small>WE ARE THE</small><b>CHAMPIONS</b></div></div>`;
+    } else if (k === 4) {
+      const flags = Array.from({ length: 11 }, (_, i) => `<i class="ch-flag" style="left:${70 + (i % 6) * 200 + (i >= 6 ? 100 : 0)}px;top:${i >= 6 ? 250 : 70}px;--d:${(i * 0.37) % 1.2}s"><img src="${c.emb}" alt=""></i>`).join('');
+      box.innerHTML = `<div class="ch-flags">${flags}</div><div class="ch-chants"></div>`;
+      const ct = box.querySelector('.ch-chants'); let n = 0;
+      const pop = () => { if (!show || show.phase !== 'champ' || show.stage !== 4) return; const b = document.createElement('span'); b.className = 'ch-shout'; b.textContent = c.short; b.style.left = (120 + ((n * 397) % 900)) + 'px'; b.style.top = (60 + ((n * 211) % 320)) + 'px'; n++; ct.appendChild(b); setTimeout(() => b.remove(), 1400); setTimeout(pop, 650); };
+      setTimeout(pop, 300);
+    }
+  }
+  function champStep(dt) {
+    show.rt += dt; show.t += dt;
+    if (show.rt > CHAMP_T[show.stage]) champNext();
+  }
+  // ピッチ：自分のチームの選手は、センターサークルの輪に向かって走り、着いたら跳ねる。相手はその場で立ち止まる
+  function champField(st) {
+    if (!show.p0) return;
+    const ring = st.players.map((p, i) => i).filter((i) => i < 11 && !(st.players[i].off));
+    ring.forEach((i, k) => {
+      const p = st.players[i], o = show.p0[i], a = (k / ring.length) * Math.PI * 2 + 0.3, tx = 52.5 + Math.cos(a) * 6.5, ty = 34 + Math.sin(a) * 6.5;
+      const dx = tx - o.x, dy = ty - o.y, L = Math.hypot(dx, dy) || 0.001, d = Math.min(L, Math.max(0, show.rt - 0.3) * 7.5);
+      p.x = o.x + dx / L * d; p.y = o.y + dy / L * d; p.moving = d < L - 0.05; p.sp = p.moving ? 7.5 : 0; p.vx = p.moving ? dx / L * 7.5 : 0; p.vy = p.moving ? dy / L * 7.5 : 0; p.champ = true;
+    });
+    for (let i = 11; i < 22; i++) { const p = st.players[i]; if (p) { p.moving = false; p.sp = 0; p.vx = p.vy = 0; } }
+    st.ball.x = 52.5; st.ball.y = 34; st.ball.z = 0;
+    drawConfettiLater = true;
+  }
+  let drawConfettiLater = false;
+  // 紙吹雪：色とりどりの紙が、ひらひら回りながら降ってくる
+  const CONF = Array.from({ length: 170 }, (_, i) => ({ x: (i * 0.6180339) % 1, y: (i * 0.3819) % 1, v: 70 + (i * 37) % 80, w: 8 + (i % 5) * 2, c: ['#ff4a4a', '#ffd23a', '#3ad06a', '#3a8bff', '#ffffff', '#ff8ad0', '#b07aff'][i % 7], s: (i % 9) * 0.7 }));
+  function drawConfetti(t) {
+    for (const p of CONF) {
+      const y = ((p.y * (CH + 60) + t * p.v) % (CH + 60)) - 30, x = p.x * CW + Math.sin(t * 1.6 + p.s) * 30, r = Math.sin(t * 4 + p.s);
+      ctx.save(); ctx.translate(x, y); ctx.rotate(t * 2 + p.s); ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.w * 0.35 * Math.abs(r) - 1, p.w, p.w * 0.7 * Math.abs(r) + 2); ctx.restore();
+    }
+  }
+  const CH_TROPHY = '<svg viewBox="0 0 120 170"><defs><linearGradient id="chtg" x1="0" x2="1"><stop offset="0" stop-color="#7d8590"/><stop offset=".45" stop-color="#fff"/><stop offset=".6" stop-color="#cfd5dc"/><stop offset="1" stop-color="#6d747e"/></linearGradient></defs><path d="M14 18h92c0 34-14 58-38 66v26h-16V84C28 76 14 52 14 18z" fill="url(#chtg)" stroke="#444" stroke-width="2"/><path d="M14 26C2 26 2 52 22 58M106 26c12 0 12 26-8 32" fill="none" stroke="#c9cfd6" stroke-width="7" stroke-linecap="round"/><path d="M44 110h32l8 30H36z" fill="url(#chtg)" stroke="#444" stroke-width="2"/><rect x="28" y="140" width="64" height="24" rx="3" fill="#2a2a2a" stroke="#777" stroke-width="2"/></svg>';
   function startDigest() {
     const list = digestItems();
     show = { phase: 'digest', hold: true, rt: 0, list, k: 0, tr: 0, paused: false };
@@ -468,6 +555,7 @@
     show = { phase: 'judge', off, e, rt: 0, cx, cy, from: off ? Math.max(0.2, (e.passT ?? e.t - 1) - 2.2) : Math.max(0.2, e.t - 2.4), key: off ? (e.passT ?? e.t - 1) : e.t };
   }
   function advanceShow(dt) {
+    if (show.phase === 'champ') { champStep(dt); return; }
     if (show.phase === 'sub') { subShowStep(dt); return; }
     if (show.phase === 'judge') {
       show.rt += dt * Math.min(speed, 4);
@@ -525,6 +613,7 @@
       closePlv(); openLocker();
       if (mctx && mctx.opts.tut && mctx.opts.tut.onHalf) mctx.opts.tut.onHalf(tutApi());   // チュートリアル：ハーフタイムの説明
     } else if (show.phase === 'endOut' && show.rt > END_T.digest) {
+      if (!champTried) { champTried = true; let ch = null; try { ch = mctx && mctx.opts && mctx.opts.champCheck ? mctx.opts.champCheck(match.score.slice()) : null; } catch (_) {} if (ch) { startChamp(ch); return; } }
       startDigest();
     } else if (show.phase === 'endOut' && show.rt > END_T.fade0 && !show.cOff) {
       show.cOff = 1; SND().crowd(false);   // 暗転といっしょに観客の声も消える   // 笛 → 選手が止まる → 暗転 → ダイジェスト（観客席は映さない）
@@ -2188,6 +2277,7 @@
       if (t < 0.35) { ctx.fillStyle = `rgba(0,0,0,${1 - t / 0.35})`; ctx.fillRect(0, 0, CW, CH); }
       return;
     }
+    if (chant === false) return;   // 版580：優勝の演出では、吹き出しはHTMLで出す
     // 吹き出し
     const lines = team === 0 ? ['いいぞっ！', 'よっしゃー！', 'ナイスゴール！'] : ['やられた…', 'まだまだ！', 'ほっ…'];
     const msg = lines[Math.min(lines.length - 1, Math.floor(t / 1.0))];
@@ -2279,7 +2369,12 @@
       return;
     }
     if (show && show.phase === 'preCrowd') { drawCrowd(0, show.rt, match.home); return; }
+    if (show && show.phase === 'champ' && show.stage !== 1) {   // 版580：優勝の演出（観客席・紙吹雪）
+      if (show.stage === 0 || show.stage === 4) drawCrowd(0, show.rt + show.stage * 3 + 1, false); else { ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, CW, CH); }
+      drawConfetti(show.t); return;
+    }
     const st = stateAt(simT);
+    if (show && show.phase === 'champ') champField(st);
     // 入場：手前のタッチラインから2列で走ってセンターサークルへ → 一度そろって並ぶ → それぞれのポジションへ走る
     // 動く速さは試合と同じくらい（ジョグ6.5・ダッシュ最大8.5）にして、足の動きと進む距離をそろえる
     animT = simT;
@@ -2328,6 +2423,7 @@
     const sadCam = show && show.phase === 'gkSad' && celebInfo;
     if (sadCam) { const gk = st.players[celebInfo.team === 0 ? 11 : 0], gx = gk.x < 52.5 ? 0 : 105; fx = gk.x * 0.7 + (gx ? gx - 3 : 3) * 0.3; fy = gk.y * 0.75 + 34 * 0.25; }
     if (celeb) { const sc = st.players[celebInfo.idx]; fx = sc.x; fy = sc.y; }
+    if (show && show.phase === 'champ') { fx = 52.5; fy = 34; }
     const koShow = show && (show.phase === 'kickoff' || show.phase === 'preVs');
     const cornerMode = simT >= cornerT && simT - cornerT < 3.5;
     if (cornerMode) {
@@ -2606,6 +2702,7 @@
           cheer = true; hop = Math.abs(Math.sin(simT * 9 + i)) * 5 * q.s;
         }
       }
+      if (show && show.phase === 'champ' && show.stage === 1 && p.champ) { cheer = !p.moving; hop = cheer ? Math.abs(Math.sin(show.t * 7 + i * 1.7)) * 7 * q.s : 0; }   // 版580：優勝：センターサークルに集まって、両手を上げて跳ねる
       // 走りのコマ：速いほど足の回転が速い
       const cad = 1.6 + p.sp * 0.62;
       const f4 = Math.floor((animT * cad + i * 0.37) * 2) % 4;

@@ -2265,7 +2265,7 @@
         const played = mt.played.slice();
         for (const nm of subsIn) { const i = save.team.players.findIndex((q) => q.name === nm); if (i >= 0 && !played.includes(i)) played.push(i); }
         done(score, (A().match || {}).events || [], played);
-      }, { venue: venueNow, kits: C.kitsFor(save, opTeamInfo.name, (meta || {}).kitSel, (meta || {}).oppSel), tut: window.__tut ? window.__tut.matchOpts(meta || {}) : null, onSub: (info) => subSheet(mt, info, ms), noIntro: true, comp: (meta || {}).comp || title, label: (meta || {}).label || '', absent: save.team.players.filter((q) => q.injury > 0 || q.suspend > 0).map((q) => ({ name: q.name, pos: q.position, number: q.number, weeks: q.injury, why: q.suspend > 0 ? '出場停止' : `ケガ（あと${q.injury}週）` })), homeName: save.team.name, awayName: opTeamInfo.name, halfOthers: (meta || {}).practice ? null : (my, minute) => halfOthers(my, minute), oneHalf: !!((meta || {}).practice && !(meta || {}).tut), embH: emblemURL(save.team.name, 48), embA: emblemURL(opTeamInfo.name, 48), grade: (q, k, tm) => { const sp = tm ? null : save.team.players.find((x) => x.name === q.name); if (sp) { C.ensurePts(sp); return C.rankInfo(sp.pts[k]).g; } return C.rankInfo(C.toPts((q.params || q)[k])).g; } });
+      }, { venue: venueNow, kits: C.kitsFor(save, opTeamInfo.name, (meta || {}).kitSel, (meta || {}).oppSel), tut: window.__tut ? window.__tut.matchOpts(meta || {}) : null, onSub: (info) => subSheet(mt, info, ms), noIntro: true, comp: (meta || {}).comp || title, label: (meta || {}).label || '', absent: save.team.players.filter((q) => q.injury > 0 || q.suspend > 0).map((q) => ({ name: q.name, pos: q.position, number: q.number, weeks: q.injury, why: q.suspend > 0 ? '出場停止' : `ケガ（あと${q.injury}週）` })), homeName: save.team.name, awayName: opTeamInfo.name, champCheck: (meta || {}).fx ? (sc) => champView((meta || {}).fx, sc) : null, halfOthers: (meta || {}).practice ? null : (my, minute) => halfOthers(my, minute), oneHalf: !!((meta || {}).practice && !(meta || {}).tut), embH: emblemURL(save.team.name, 48), embA: emblemURL(opTeamInfo.name, 48), grade: (q, k, tm) => { const sp = tm ? null : save.team.players.find((x) => x.name === q.name); if (sp) { C.ensurePts(sp); return C.rankInfo(sp.pts[k]).g; } return C.rankInfo(C.toPts((q.params || q)[k])).g; } });
       return;
     }
     const r = D.simulateMatch(mt.team, opp, seed, { frames: false });
@@ -2286,7 +2286,7 @@
       return;
     }
     if (!afterTrain) { advance(); return; }
-    runMatch('試合の日！', `${esc(fx.comp)}　${esc(fx.label)}（${fx.home ? 'ホーム' : 'アウェイ'}）`, fx.opp, (score, ev, played) => officialDone(fx, score, ev, played), { comp: fx.comp, label: fx.label, home: !!fx.home });
+    runMatch('試合の日！', `${esc(fx.comp)}　${esc(fx.label)}（${fx.home ? 'ホーム' : 'アウェイ'}）`, fx.opp, (score, ev, played) => officialDone(fx, score, ev, played), { comp: fx.comp, label: fx.label, home: !!fx.home, fx });
   }
   // 練習試合申し込み（カルチョビットAの黒板）：相手を選ぶ
   const LG_BADGE = { regE2: ['東2', 'b-e2'], regW2: ['西2', 'b-w2'], regE1: ['東1', 'b-e1'], regW1: ['西1', 'b-w1'], d3: ['D3', 'b-d3'], d2: ['D2', 'b-d2'], d1: ['D1', 'b-d1'] };
@@ -2315,7 +2315,11 @@
   function officialDone(fx, score, ev, played) {
     const before = save.league ? C.standings(save).map((t) => t.name) : null;
     const injBefore = new Set(save.team.players.filter((q) => q.injury > 0).map((q) => q.name));
+    const champ = C.champPeek(save, fx, score);   // 版580：この試合で優勝が決まったか（記録する前に調べる）
     const res = C.playFixture(save, fx, score, played);
+    if (!champ && res.champion) Object.assign(res, { champNow: { kind: 'cup', title: '国内カップ', n: (save.history || []).filter((h) => h.cup).length + 1 } });   // PK戦で優勝
+    if (champ) res.champNow = champ;
+    if (res.champNow) { (save.titles = save.titles || []).push({ season: save.season, kind: res.champNow.kind, title: res.champNow.title }); }
     C.recordStats(save, ev, played);
     C.recordGoals(save, fx, ev);
     const got = C.rewardCards(save, score, ev);
@@ -2331,6 +2335,7 @@
       store(); open();
       await postComp(res, info);
       store(); open();
+      if (res.champNow) { await champAfter(res.champNow); store(); open(); }   // 版580：優勝のあと（選手のひとこと → トロフィー → 秘書）
       await blackClear(350);   // 版561：順位表のあとの暗転を明ける（前は秘書の画面が明けていたが、支持率をなくしたので真っ暗のまま止まっていた）
       await endWeek();
       return;
@@ -2358,7 +2363,7 @@
     const [a, b] = info.score, w = a > b, d = a === b;
     const lines = [];
     let t1 = w ? `監督、${a}−${b}で勝利です！` : d ? `監督、${a}−${b}の引き分けでした。` : `監督、${a}−${b}で負けてしまいました…。`;
-    if (res.champion) t1 = `監督、優勝です！！\n${a}−${b}、本当におめでとうございます！`;
+    if (res.champion || res.champNow) t1 = `監督、優勝です！！\n${a}−${b}、本当におめでとうございます！`;
     else if (res.kind === 'cup' || res.kind === 'post') t1 += res.win ? `\n${res.label}突破です！` : '\nここで敗退です…。';
     const iss = (info.ev || []).some((e) => e.type === 'issue' && e.team === 0);
     const t2 = iss ? '新しい課題も見つかりましたね。効率良く練習しましょう。' : w ? 'この調子でいきましょう！' : d ? '次は勝ち点3をとりにいきましょう。' : '切りかえて、次の試合に向けて練習しましょう。';
@@ -2946,6 +2951,59 @@
     c.fillStyle = 'rgba(24,22,40,0.42)'; c.fillRect(0, 0, 1280, 720);
     const g = c.createRadialGradient(780, 380, 80, 780, 380, 760); g.addColorStop(0, 'rgba(255,220,150,0.10)'); g.addColorStop(1, 'rgba(0,0,0,0.35)'); c.fillStyle = g; c.fillRect(0, 0, 1280, 720);
     return (clubBg = cv.toDataURL());
+  }
+  // ================= 版580：優勝 =================
+  // 試合の最後に出す演出のための情報（app.js の優勝演出が使う）
+  function champView(fx, sc) {
+    const ch = C.champPeek(save, fx, sc); if (!ch) return null;
+    const ps = save.team.players.slice(0, 18);
+    return { ...ch, team: save.team.name, short: save.team.short || save.team.name, faces: ps.map((p) => faceOf(p)).filter(Boolean), emb: emblemURL(save.team.name, 96),
+      sec: staffImg.sec || '', small: ch.kind === 'cup' ? 'DOT SOCCER CUP' : 'DOT SOCCER LEAGUE' };
+  }
+  // だれかが話す画面（背景・顔・名前・文）。タップで次へ
+  function talkScreen(lines, bg) {
+    const el = fullScreen('talkScreen', 'sec-wrap2'), box = el.querySelector('.lk-box');
+    return new Promise(async (res) => {
+      let k = 0;
+      const draw = () => { const L = lines[k]; box.innerHTML = `${bg}${L.face ? `<img class="sec-face${L.art ? ' art' : ''}" src="${L.face}" alt="">` : ''}<div class="sec-band"><b class="sec-name">${esc(L.name || '')}</b><p>${esc(L.text).replace(/\n/g, '<br>')}</p><i class="lk-more">▶</i></div>`; };
+      draw(); el.hidden = false; el._fit();
+      await blackClear(350);
+      el.onclick = async () => { k++; if (k >= lines.length) { el.onclick = null; await blackFade(300); el.hidden = true; res(); } else draw(); };
+    });
+  }
+  // トロフィーの部屋：台の上にトロフィーが光って出てくる
+  const TROPHY_SVG = (c1, c2) => `<svg viewBox="0 0 120 170" class="tr-cup"><defs><linearGradient id="tg${c1.slice(1)}" x1="0" x2="1"><stop offset="0" stop-color="${c2}"/><stop offset=".45" stop-color="#fff"/><stop offset=".6" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
+    <path d="M14 18h92c0 34-14 58-38 66v26h-16V84C28 76 14 52 14 18z" fill="url(#tg${c1.slice(1)})" stroke="#555" stroke-width="2"/><path d="M14 26C2 26 2 52 22 58M106 26c12 0 12 26-8 32" fill="none" stroke="${c1}" stroke-width="7" stroke-linecap="round"/>
+    <path d="M44 110h32l8 30H36z" fill="url(#tg${c1.slice(1)})" stroke="#555" stroke-width="2"/><rect x="28" y="140" width="64" height="24" rx="3" fill="#2a2a2a" stroke="#777" stroke-width="2"/><rect x="40" y="146" width="40" height="10" rx="2" fill="${c1}"/></svg>`;
+  function trophyHTML(ch, anim) {
+    const lgName = (C.LG[save.league.id] || {}).name || 'リーグ', got = (save.titles || []).filter((t) => t.season === save.season);
+    const slots = [{ kind: 'league', label: lgName, c: ['#d9dde3', '#7d8590'] }, { kind: 'cup', label: '国内カップ', c: ['#ffd84a', '#a86f00'] }];
+    return `<div class="tr-bg"></div><div class="tr-floor"></div>${slots.map((s, i) => { const has = got.some((g) => g.kind === s.kind), now = anim && s.kind === ch.kind;
+      return `<div class="tr-slot${has ? ' has' : ''}${now ? ' now' : ''}" style="left:${300 + i * 560}px"><i class="tr-spot"></i>${TROPHY_SVG(s.c[0], s.c[1])}<b>${esc(s.label)}</b></div>`; }).join('')}`;
+  }
+  function trophyRoom(ch) {
+    const el = fullScreen('trophyScreen', 'tr-wrap'), box = el.querySelector('.lk-box');
+    const lgName = (C.LG[save.league.id] || {}).name || 'リーグ', got = (save.titles || []).filter((t) => t.season === save.season);
+    const slots = [{ kind: 'league', label: lgName, c: ['#d9dde3', '#7d8590'] }, { kind: 'cup', label: '国内カップ', c: ['#ffd84a', '#a86f00'] }];
+    box.innerHTML = trophyHTML(ch, true);
+    el.hidden = false; el._fit();
+    try { DotSound.play('reveal5'); setTimeout(() => DotSound.play('uniq'), 900); } catch (_) {}
+    return new Promise(async (res) => { await blackClear(350); const go = async () => { el.onclick = null; await blackFade(300); el.hidden = true; res(); }; el.onclick = go; setTimeout(() => { if (el.onclick) go(); }, 4200); });
+  }
+  async function champAfter(ch) {
+    await facesReady();
+    const ps = save.team.players.slice(0, 11).filter((p) => !p.gk && p.position !== 'GK'), p = ps[Math.floor(Math.random() * ps.length)] || save.team.players[0];
+    const name = save.team.name, title = ch.kind === 'cup' ? '国内カップ' : ch.title;
+    const lines = [];
+    if (ch.kind === 'league' && ch.last) lines.push({ name: p.name, face: faceOf(p), text: 'リーグ戦の全日程が終了しました。' });
+    lines.push({ name: p.name, face: faceOf(p), text: `監督、${title}を制覇しましたね！\n${name}でプレーできて幸せです。` });
+    await talkScreen(lines, `<img class="sec-bg" src="${clubhouseBg()}" alt="">`);
+    await trophyRoom(ch);
+    const k = (save.titles || []).filter((t) => t.season === save.season).length;
+    const sec = { name: '秘書', face: staffFace('sec'), art: !!staffImg.sec };
+    const lines2 = [{ ...sec, text: k >= 2 ? `監督、今期${k}つ目のタイトルです！\n二冠達成、おめでとうございます！` : `監督、今期1つ目のタイトルを獲得しましたね！` },
+      { ...sec, text: k >= 2 ? 'このチームなら、どこまでも行けそうですね。\n来シーズンも、もっと上を目指しましょう。' : 'このタイトルを自信にして、\n来シーズンはもっと上を目指しましょう。' }];
+    await talkScreen(lines2, `<div class="tr-dim">${trophyHTML(ch, false)}</div>`);
   }
   async function postSecretary(info) {
     await facesReady();
@@ -3557,7 +3615,7 @@
   }
   // 版570：コインの数が出ているところ（スカウト・ホーム）を押しても、コイン購入へ
   document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('.gc3-coin, .hm-next .coin'); if (!t) return; e.stopPropagation(); coinShop(() => { const b = document.querySelector('.gc3-coin b'); if (b) b.textContent = (save.coins || 0).toLocaleString(); try { renderHome(); } catch (_) {} }); }, true);
-  window.__career = { coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
+  window.__career = { champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====
