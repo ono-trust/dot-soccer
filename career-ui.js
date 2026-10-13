@@ -3222,23 +3222,26 @@
       const cc = U.chip || ['#c8141e', '#ffd23a', '#ffe45a'];
       const tp = U.type || q.type || '';
       // 版519：監督の作ったスカウト画面（夜のスタジアム・大きな選手・右に操作パネル）に合わせた
-      box.innerHTML = `<div class="gc gc2" style="--c0:${cc[0]};--c1:${cc[1]};--c2:${cc[2]}">
+      // 版523：監督のデザイン案（1672×940）を、1280×720の画面にそのままの位置・大きさで写した
+      box.innerHTML = `<div class="gc gc2 gc3" style="--c0:${cc[0]};--c1:${cc[1]};--c2:${cc[2]}">
         <div class="gc2-bg"></div>
-        <div class="gc2-fc">${gcFace(bn.tid, q, 'gc2-face')}</div>
-        <div class="gc-top"><b>スカウト</b><span class="gc-coin">${COIN}${(save.coins || 0).toLocaleString()}</span><span class="gc-kk">◆ 覚醒のカケラ ${(save.kakera || 0).toLocaleString()}</span><button class="std-back gc-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
-        <div class="gc2-tx">
-          <div class="gc2-rib"><span>今月のピックアップ</span><span>${esc(bn.until)}まで</span></div>
-          <div class="gc2-star">★★★★★</div>
-          <h2 class="gc2-nm">${esc(U.who)}</h2>
-          <div class="gc2-tm"><i>${esc(q.pos)}</i><span>${esc(gcTeamShort(bn.tid))}</span><s></s><span>${esc(tp)}</span></div>
-          <p class="gc2-ttl">国内屈指の${esc(tp)}</p>
-          <div class="gc2-un"><i>固有スキル</i><b>${esc(U.name)}</b><small>${esc(U.se || '')}</small></div>
-        </div>
-        <div class="gc2-side">
-          <div class="gc2-pity"><span>ピックアップ確定まで</span><b>あと<em>${left}</em>回</b><i><s style="width:${Math.round((1 - left / C.GACHA_PITY) * 100)}%"></s></i></div>
-          <button class="gc2-btn ten" data-n="10"><b>10回スカウト</b><span>${COIN}${C.GACHA_COST.ten.toLocaleString()}</span><small>★3以上 1人確定</small></button>
-          <button class="gc2-btn one" data-n="1"><b>1回スカウト</b><span>${COIN}${C.GACHA_COST.one}</span></button>
-          <div class="gc2-row"><button class="gc-rate">出る確率 ›</button><button class="gc-rule">獲得ルール ›</button><button class="gc-auto${g.auto ? ' on' : ''}"><span>自動放出<small>${['しない', '★1', '★2以下'][g.auto || 0]}</small></span><i class="gc2-sw"></i></button></div>
+        <div class="gc3-fc">${gcFace(bn.tid, q, 'gc3-face')}</div>
+        <div class="gc3-ttl"><b>スカウト</b></div>
+        <span class="gc3-coin">${COIN}<b>${(save.coins || 0).toLocaleString()}</b></span>
+        <span class="gc3-kk"><i>◆</i>覚醒のカケラ<b>${(save.kakera || 0).toLocaleString()}</b></span>
+        <button class="std-back gc-back gc3-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button>
+        <div class="gc3-rib"><span>今月のピックアップ</span><span>${esc(bn.until)}まで</span></div>
+        <div class="gc3-star">${'<i>★</i>'.repeat(5)}</div>
+        <div class="gc3-nm"><i class="gc3-brush"></i><b>${esc(U.who)}</b></div>
+        <div class="gc3-pos"><i>${esc(q.pos)}</i><span>${esc(gcTeamShort(bn.tid))}</span><s></s><span>${esc(tp)}</span></div>
+        <div class="gc3-line"></div>
+        <p class="gc3-title">国内屈指の${esc(tp)}</p>
+        <div class="gc3-un"><i class="gc3-lbl">固有スキル</i><i class="gc3-brush2"></i><b>${esc(U.name)}</b><small>${esc(U.se || '')}</small></div>
+        <div class="gc3-side">
+          <div class="gc3-pity"><span>ピックアップ確定まで</span><b>あと<em>${left}</em>回</b><i><s style="width:${Math.max(4, Math.round((1 - left / C.GACHA_PITY) * 100))}%"></s></i></div>
+          <button class="gc2-btn gc3-btn ten" data-n="10"><b>10回スカウト</b><span>${COIN}${C.GACHA_COST.ten.toLocaleString()}</span><small>★3以上 1人確定</small></button>
+          <button class="gc2-btn gc3-btn one" data-n="1"><b>1回スカウト</b><span>${COIN}${C.GACHA_COST.one}</span></button>
+          <button class="gc-rate gc3-sb s1">出る確率<em>›</em></button><button class="gc-rule gc3-sb s2">獲得ルール<em>›</em></button><button class="gc-auto gc3-sb s3${g.auto ? ' on' : ''}"><span>自動放出<small>${['しない', '★1', '★2以下'][g.auto || 0]}</small></span><i class="gc2-sw"></i></button>
         </div></div>`;
       { const bgEl = box.querySelector('.gc2-bg'); gcBgFor(U.chip, (u) => { bgEl.style.backgroundImage = `url(${u})`; bgEl.classList.add('on'); }); }
       box.querySelector('.gc-rule').onclick = () => coachAsk('<b>獲得ルール</b><br><small>同じ選手が出たら凸（最大3凸）。完凸のあとは覚醒のカケラになります。<br>自動放出をオンにすると、はじめて出た選手のうち、その★以下はカケラになります（持っている選手は凸）。<br>チームが25人の時は、リザーブ（控え室）に入ります。</small>', [{ label: 'とじる', value: true }], 'sec');

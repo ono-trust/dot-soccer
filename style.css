@@ -2100,3 +2100,63 @@ html .std.tvm .std-body>*{zoom:1!important}
 .shp .acard .ac-cnt{display:none}
 .shp-msg{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);margin:0;z-index:5;background:rgba(20,30,20,.92);color:#ffe14a;font-weight:900;font-size:18px;padding:10px 22px;border-radius:999px;border:3px solid #ffe14a;pointer-events:none;transition:opacity .4s;max-width:90%;text-align:center}
 .shp-msg.out{opacity:0}
+/* 版523：スカウト画面（監督のデザイン案を 1672→1280 で 0.766倍にして、同じ位置・大きさで） */
+.gc3{font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic",sans-serif}
+.gc3>*{position:absolute}
+.gc3 .gc2-bg{inset:0}
+.gc3-fc{left:-30px;top:58px;width:640px;height:800px;pointer-events:none}
+.gc3-face{width:640px;height:800px;object-fit:contain;object-position:top center;filter:drop-shadow(0 8px 18px rgba(0,0,0,.55))}
+.gc3-ttl{left:46px;top:17px;width:214px;height:50px;background:linear-gradient(90deg,rgba(0,0,0,.85),rgba(20,24,40,.75));transform:skewX(-14deg);border-right:4px solid rgba(255,255,255,.75);display:flex;align-items:center;justify-content:center}
+.gc3-ttl b{transform:skewX(14deg);font-size:41px;font-weight:900;color:#fff;letter-spacing:2px;text-shadow:0 2px 0 #000}
+.gc3-coin,.gc3-kk{top:21px;height:40px;display:flex;align-items:center;gap:8px;padding:0 16px;border-radius:999px;background:rgba(6,10,26,.78);border:2px solid rgba(255,255,255,.18);color:#fff;font-weight:800}
+.gc3-coin{left:272px;width:90px}.gc3-coin .coin-ico{width:26px;height:26px}.gc3-coin b{font-size:20px}
+.gc3-kk{left:375px;width:189px;font-size:17px;color:#cfeaff}.gc3-kk i{font-style:normal;color:#3ad0ff;font-size:18px}.gc3-kk b{font-size:19px;color:#fff;margin-left:auto}
+.gc3-back{left:1200px!important;top:9px!important;right:auto!important;width:60px!important;height:60px!important}
+.gc3-rib{left:459px;top:122px;width:375px;height:36px;display:flex;align-items:center;justify-content:space-around;font-size:19px;font-weight:900;color:#1a1000;background:linear-gradient(#ffe46a,#f2b41e);clip-path:polygon(2% 8%,40% 0,100% 6%,97% 50%,100% 94%,60% 100%,0 92%,3% 50%);filter:drop-shadow(0 2px 0 rgba(0,0,0,.5))}
+.gc3-rib::after{content:"";position:absolute;right:-30px;top:6px;width:40px;height:22px;background:linear-gradient(90deg,#f2b41e,transparent)}
+.gc3-star{left:487px;top:166px;display:flex;gap:2px}
+.gc3-star i{font-style:normal;font-size:47px;line-height:1;background:linear-gradient(#fff7b0,#ffd21a 45%,#e48a00);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 2px 0 rgba(0,0,0,.55)) drop-shadow(0 0 6px rgba(255,200,40,.5))}
+.gc3-nm{left:470px;top:212px;width:380px;height:96px}
+.gc3-nm b{position:relative;display:block;font-size:82px;line-height:96px;font-weight:900;letter-spacing:2px;white-space:nowrap;transform:skewX(-6deg);background:linear-gradient(#ffffff 40%,#d8dde6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(3px 4px 0 #111) drop-shadow(0 0 8px rgba(0,0,0,.6))}
+.gc3-brush{position:absolute;left:150px;top:44px;width:230px;height:46px;background:linear-gradient(90deg,transparent,var(--c0) 25%,rgba(80,0,0,.9) 70%,transparent);clip-path:polygon(0 60%,30% 20%,100% 0,85% 55%,100% 90%,20% 100%);opacity:.9}
+.gc3-pos{left:463px;top:314px;height:28px;display:flex;align-items:center;gap:14px;font-size:23px;font-weight:900;color:#fff;text-shadow:0 2px 0 #000}
+.gc3-pos i{font-style:italic;width:84px;height:28px;display:grid;place-items:center;background:var(--c0);clip-path:polygon(10% 0,100% 0,90% 100%,0 100%)}
+.gc3-pos s{width:2px;height:22px;background:rgba(255,255,255,.7);margin:0 -6px}
+.gc3-line{left:463px;top:350px;width:370px;height:3px;background:linear-gradient(90deg,var(--c0),var(--c0) 80%,transparent)}
+.gc3-title{left:466px;top:364px;margin:0;font-size:28px;font-weight:900;font-style:italic;color:#fff;letter-spacing:1px;text-shadow:0 0 2px #000,2px 3px 0 #000}
+.gc3-un{left:452px;top:415px;width:380px;height:194px;border:3px solid #e8b52a;border-radius:14px;background:linear-gradient(135deg,rgba(10,10,14,.9),rgba(24,20,16,.88));box-shadow:0 0 14px rgba(232,181,42,.45),inset 0 0 0 1px rgba(255,220,120,.25);overflow:visible}
+.gc3-lbl{position:absolute;left:21px;top:14px;width:132px;height:30px;font-style:normal;display:grid;place-items:center;font-size:17px;font-weight:900;color:#1a1000;background:linear-gradient(#ffe46a,#e8a812);clip-path:polygon(8% 0,100% 0,92% 100%,0 100%)}
+.gc3-brush2{position:absolute;left:120px;top:58px;width:230px;height:44px;background:linear-gradient(90deg,transparent,var(--c0) 30%,rgba(70,0,0,.85) 75%,transparent);clip-path:polygon(0 55%,25% 15%,100% 0,90% 60%,100% 100%,15% 90%);opacity:.85}
+.gc3-un b{position:absolute;left:33px;top:52px;font-size:49px;line-height:1.1;font-weight:900;font-style:italic;white-space:nowrap;background:linear-gradient(#fff3a0,#ffcc2a 50%,#e07a00);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(2px 3px 0 #000)}
+.gc3-un small{position:absolute;left:30px;right:22px;top:120px;font-size:17.5px;line-height:1.5;font-weight:700;color:#fff}
+.gc3-side{left:854px;top:96px;width:402px;height:530px;border-radius:20px;background:rgba(10,18,40,.78);border:2px solid rgba(160,190,255,.35);box-shadow:0 8px 24px rgba(0,0,0,.45);backdrop-filter:blur(3px)}
+.gc3-side>*{position:absolute}
+.gc3-pity{left:15px;top:15px;width:368px;height:117px;border-radius:12px;background:rgba(255,255,255,.05);border:2px solid rgba(160,190,255,.3)}
+.gc3-pity span{position:absolute;left:15px;top:14px;font-size:17px;font-weight:800;color:#fff}
+.gc3-pity b{position:absolute;left:15px;top:40px;font-size:31px;font-weight:900;color:#fff;line-height:1}.gc3-pity b em{font-style:normal;font-size:45px;margin:0 2px}
+.gc3-pity i{position:absolute;left:14px;right:14px;top:89px;height:13px;border-radius:999px;background:rgba(255,255,255,.18);overflow:hidden}.gc3-pity i s{display:block;height:100%;background:linear-gradient(90deg,#ffb04a,#ff5ad2)}
+.gc3-btn{left:15px;width:368px;padding:0;gap:0;justify-content:flex-start;border:3px solid rgba(255,255,255,.75);border-radius:16px;box-shadow:0 0 12px rgba(255,255,255,.25)}
+.gc3-btn.ten{top:153px;height:149px;background:linear-gradient(#ffa437,#ec6a12)}
+.gc3-btn.one{top:318px;height:113px;background:linear-gradient(#3ea6ff,#1f6ad6)}
+.gc3-btn b{position:absolute;left:0;right:0;top:20px;text-align:center;font-size:38px;line-height:1;font-weight:900;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.gc3-btn span{position:absolute;left:0;right:0;justify-content:center;font-size:30px;line-height:1;font-weight:800}
+.gc3-btn.ten span{top:70px}.gc3-btn.one span{top:66px}
+.gc3-btn .coin-ico{width:33px!important;height:33px!important}
+.gc3-btn small{position:absolute;left:90px;width:203px;top:107px;height:30px;display:grid;place-items:center;font-size:16px;font-weight:900;background:rgba(80,30,0,.35);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:0}
+.gc3-btn::after{right:-36px;bottom:-40px;width:130px;height:130px;opacity:.35}
+.gc3-sb{top:454px;height:60px;padding:0 10px!important;border-radius:12px!important;background:rgba(255,255,255,.06)!important;border:2px solid rgba(160,190,255,.3)!important;color:#fff;font-size:17px!important;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:none}
+.gc3-sb em{font-style:normal;font-size:22px;opacity:.85}
+.gc3-sb.s1{left:15px;width:103px}.gc3-sb.s2{left:132px;width:116px}.gc3-sb.s3{left:262px;width:121px;justify-content:space-between}
+.gc3-sb.s3 span{display:flex;flex-direction:column;align-items:flex-start;font-size:15px;line-height:1.25}.gc3-sb.s3 small{font-size:13px;opacity:.9}
+.gc3-sb .gc2-sw{width:40px;height:24px}.gc3-sb .gc2-sw::after{width:20px;height:20px}.gc3-sb.on .gc2-sw{background:#3aa0ff}.gc3-sb.on .gc2-sw::after{left:18px}
+.gc3{font-family:"M PLUS 1p","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
+.gc3 button{font-family:inherit}
+.gc3-fc{left:45px;top:60px;width:490px;height:612px}
+.gc3-face{width:490px;height:612px}
+.gc3-sb{padding:0 6px!important;white-space:nowrap;font-size:16px!important;gap:2px}
+.gc3-sb.s3{padding:0 8px!important}
+.gc3-sb.s3 span{font-size:14px;white-space:nowrap}
+.gc3-pos span{white-space:nowrap}
+.gc3-btn b,.gc3-btn span{letter-spacing:0}
+.gc3-fc{left:22px;top:48px;width:540px;height:680px}
+.gc3-face{width:540px;height:680px}
