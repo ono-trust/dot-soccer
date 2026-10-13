@@ -1773,3 +1773,5 @@ button.ui-img:active img{transform:scale(.93)}
 .kp2 .kp-c{width:170px}
 .kp2 .kp-cv canvas{width:66px!important;height:88px!important}
 .kp{background:rgba(0,0,0,.25)}
+/* 版483：チュートリアルの秘書の立ち絵は、画面の高さに合わせる（頭が切れないように） */
+#ttScene .sc-sec{height:66%;bottom:24%;max-height:470px}

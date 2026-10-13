@@ -31,7 +31,7 @@
     if (spot.left != null && spot.width != null && !(spot instanceof Element)) return local(spot);
     const els = typeof spot === 'string' ? [...document.querySelectorAll(spot)].filter((e) => e.offsetParent !== null || e.getClientRects().length) : Array.isArray(spot) ? spot : [spot];
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-    for (const e of els) { if (!e) continue; const r = e.getBoundingClientRect(); if (!r.width && !r.height) continue; x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom); }
+    for (const e of els) { if (!e) continue; for (const q of [e, ...e.querySelectorAll('img,canvas,svg')]) { const r = q.getBoundingClientRect(); if (!r.width && !r.height) continue; x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom); } }   // 版483：はみ出した絵（ボタンの画像など）も含めて囲む
     if (x1 < x0) return null;
     return local({ left: x0, top: y0, width: x1 - x0, height: y1 - y0 });
   }
@@ -63,6 +63,7 @@
     };
     place();
     const re = () => place(); window.addEventListener('stagefit', re);
+    const follow = setInterval(place, 300);   // 版483：ボタンが動いて出てくる・画面の大きさが変わる時も、囲いがずれないように追いかける
     // 文字送り
     const html = text; let n = 0; const plain = html.replace(/<[^>]+>/g, '');
     clearInterval(typing); tx.innerHTML = ''; nx.hidden = true;
@@ -70,7 +71,7 @@
     typing = setInterval(() => { n += 1; show(n); if (n >= plain.length) { clearInterval(typing); typing = null; nx.hidden = !!(o.tap || o.choices || o.input); } }, o.fast ? 10 : 34);
     const finishType = () => { if (typing) { clearInterval(typing); typing = null; show(1e9); nx.hidden = !!(o.tap || o.choices || o.input); return true; } return false; };
     return new Promise((res) => {
-      const done = (v) => { window.removeEventListener('stagefit', re); r.onclick = null; r.onpointerdown = null; res(v); };
+      const done = (v) => { clearInterval(follow); window.removeEventListener('stagefit', re); r.onclick = null; r.onpointerdown = null; res(v); };
       if (o.choices) {
         ui.innerHTML = `<div class="tt-ch">${o.choices.map((c, k) => `<button data-k="${k}" class="${k === 0 ? 'pri' : ''}">${esc(c)}</button>`).join('')}</div>`;
         ui.querySelectorAll('button').forEach((b) => b.onclick = (e) => { e.stopPropagation(); finishType(); done(+b.dataset.k); });
