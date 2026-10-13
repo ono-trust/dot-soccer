@@ -1971,3 +1971,31 @@ html .std.tvm .std-body>*{zoom:1!important}
 .std.tvm .tm-star{width:86px}.std.tvm .tm-star b{font-size:13px}.std.tvm .tm-star small{font-size:9px}
 .std.tvm .tm-cols,.std.tvm .tm-row{grid-template-columns:36px 44px 210px 128px repeat(12,32px) minmax(0,1fr);gap:4px;padding:0 8px}
 .std.tvm .tm-row>span:last-child,.std.tvm .tm-cols>span:last-child{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px}
+/* 版516：表示の切りかえ（名前・調子／タイプ／星）と、リザーブの帯 */
+.s2n.s2n-ty{transform:translateX(-50%) scaleX(var(--sx,1));transform-origin:50% 50%;padding:2px 8px!important;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;font-weight:900}
+.s2n.s2n-st{background:#1b2230;border-color:#000;padding:1px 6px;line-height:1}
+.s2n.s2n-st .stars{font-size:13px;letter-spacing:-1px;white-space:nowrap}
+.s2rc .s2n.s2n-ty,.s2sc .s2n{transform:none}
+.s2toast{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);z-index:40;background:rgba(10,20,10,.88);color:#fff;font:900 22px/1 "Hiragino Kaku Gothic ProN",sans-serif;padding:12px 22px;border-radius:999px;border:3px solid #ffe14a;pointer-events:none;animation:s2t 1.3s ease forwards}
+@keyframes s2t{0%{opacity:0}12%{opacity:1}75%{opacity:1}100%{opacity:0}}
+.sq2.resopen .s2nb,.sq2.resopen .s2tb,.sq2.resopen .s2rb,.sq2.resopen .s2db{display:none}
+.s2strip{position:absolute;left:14px;top:14px;bottom:14px;width:146px;z-index:20;background:rgba(36,20,70,.95);border:3px solid #b9a6ff;border-radius:14px;display:flex;flex-direction:column;color:#fff;box-shadow:0 6px 0 rgba(0,0,0,.3)}
+.s2st-h{flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 4px 4px 10px;border-bottom:2px solid #fff3}
+.s2st-h b{font:900 16px/1 "Hiragino Kaku Gothic ProN",sans-serif}
+.s2strip .s2res-x{width:34px;height:34px;font-size:18px}
+.s2st-l{flex:1;min-height:0;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding:4px 0}
+.s2sc{position:relative;height:74px;display:flex;flex-direction:column;align-items:center;cursor:pointer;border-radius:10px;margin:2px 6px}
+.s2sc .s2sf{width:58px;height:56px;object-fit:contain;pointer-events:none}
+.s2sc .s2n{position:relative;left:auto;bottom:auto;top:-8px;font-size:13px;padding:0 6px;line-height:1.4;z-index:2;max-width:126px;overflow:hidden;text-overflow:ellipsis}
+.s2sc.on{background:#ffe14a55;box-shadow:inset 0 0 0 3px #ffe14a}
+.s2st-hint{flex:none;margin:0;padding:4px 6px;font:800 11px/1.3 "Hiragino Kaku Gothic ProN",sans-serif;color:#ffe14a;text-align:center;border-top:2px solid #fff3}
+.s2strip .s2rel{position:absolute;right:-22px;bottom:-14px;width:56px;height:56px}
+.sq2.ph .s2strip{left:6px;top:6px;bottom:6px;width:92px}
+.sq2.ph .s2sc{margin:2px 3px}
+.sq2.ph .s2sc .s2n{max-width:84px;font-size:12px}
+.sq2.ph .s2strip .s2rel{right:-14px;bottom:-8px;width:50px;height:50px}
+.s2strip .s2rel{top:auto}
+.sq2.ph .s2strip{width:100px}
+.sq2.ph .s2st-h b{font-size:13px;white-space:nowrap}
+.sq2.ph .s2strip .s2res-x{width:28px;height:28px;font-size:15px}
+.sq2.ph .s2st-hint{font-size:10px}

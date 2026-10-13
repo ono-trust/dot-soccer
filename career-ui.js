@@ -1274,6 +1274,13 @@
     pp.style.left = Math.max(6, Math.min(W - pp.offsetWidth - 6, x)) + 'px'; pp.style.top = Math.max(6, Math.min(H - pp.offsetHeight - 6, y)) + 'px';
   }
   addEventListener('stagefit', () => { const L = $('#clubLayer'); if (L && L.querySelector('.sq2') && !$('#cv-club').hidden) renderLineup2(); });
+  // 版516：名前の札の中身を、表示の切りかえ（名前・調子／タイプ／星）で変える。長いタイプ名は横に縮めて1行に
+  const SQ_SHOW = ['cond', 'type', 'star'], SQ_SHOW_NAME = { cond: '名前・調子', type: 'タイプ', star: 'レア度（星）' };
+  function sqTag(q) {
+    if (sqShow === 'type') { const t = q.type || 'バランス', k = Math.min(1, 6 / Math.max(1, t.length)); return `<b class="s2n s2n-ty tbadge ${TYPE_CLS[t] || 'ty-bal'}" style="--sx:${k.toFixed(2)}">${esc(t)}</b>`; }
+    if (sqShow === 'star') return `<b class="s2n s2n-st">${starHTML(C.ensureStar(q), q.totsu)}</b>`;
+    return `<b class="s2n ${POSC[q.position]}">${esc(q.name)}</b>`;
+  }
   function renderLineup2() {
     const ps = save.team.players, tac = C.ensureTactics(save), cells = tac.cells, roles = C.slotRoles(cells);
     const R = C.GRID_R, COLS = C.GRID_C;
@@ -1303,10 +1310,10 @@
     const badge = (q) => {
       if (q.injury > 0) return '<i class="s2b inj">＋</i>';
       if (q.suspend > 0) return '<i class="s2b sus"></i>';
-      if (sqShow === 'type') return `<i class="s2b cdot ${condDot(q)}"></i><span class="s2ty tbadge ${TYPE_CLS[q.type] || 'ty-bal'}">${esc(q.type || '')}</span>`;
+      if (sqShow !== 'cond') return `<i class="s2b cdot ${condDot(q)}"></i>`;
       return `<i class="s2b cdot ${condDot(q)}"></i><span class="s2ca">${condArrow(q, 22)}</span>`;
     };
-    const chip = (q, i, x, y, cls) => `<div class="s2p ${cls || ''}${i === pick ? ' sel' : ''}${q.injury > 0 ? ' inj' : ''}" data-i="${i}" style="left:${x}px;top:${y}px"><b class="s2n ${POSC[q.position]}">${esc(q.name)}</b><span class="s2tags">${tagsOf(q)}</span>${facePic(q, 's2f', i >= 11)}${badge(q)}${i > 0 && i < 11 && q.position !== roles[i] && q.position !== 'GK' ? '<em class="s2mis" title="本来のポジションとちがう">!</em>' : ''}</div>`;
+    const chip = (q, i, x, y, cls) => `<div class="s2p ${cls || ''}${i === pick ? ' sel' : ''}${q.injury > 0 ? ' inj' : ''}" data-i="${i}" style="left:${x}px;top:${y}px">${sqTag(q)}<span class="s2tags">${tagsOf(q)}</span>${facePic(q, 's2f', i >= 11)}${badge(q)}${i > 0 && i < 11 && q.position !== roles[i] && q.position !== 'GK' ? '<em class="s2mis" title="本来のポジションとちがう">!</em>' : ''}</div>`;
     let dots = chip(ps[0], 0, PX0 + PW / 2, PY0 + R * CH + CH * 1.05, 'gk');
     for (let i = 1; i < 11; i++) { const c = cells[i]; if (c) dots += chip(ps[i], i, cx(c.c), cy(c.r)); }
     // 控え：1列目（ベンチ入り）・2列目（灰色）
@@ -1324,19 +1331,18 @@
         <div class="s2pt"><span class="tbadge ${TYPE_CLS[sel.type] || 'ty-bal'}">${esc(sel.type || '')}</span><i class="cdot ${condDot(sel)}"></i><small>疲労 ${Math.round(sel.fatigue || 0)}%</small></div>
         <div class="s2rl">${Object.keys(ROLE_NAME).map((k) => `<button data-role="${k}" class="${tac.roles[k] === sel.name ? 'on' : ''}"><i class="s2rt rt-${k}">${ROLE_TAG[k]}</i>${ROLE_NAME[k]}</button>`).join('')}</div>
         <button class="s2pd" data-pd="${sqPop}">選手データを見る</button></div>`; }
-    $('#clubLayer').innerHTML = `<div class="sq2${PHN ? ' ph' : ''}"><div class="s2board"${boardCss}>
-        <div class="s2head"${sqResOpen && sqRes >= 0 ? ' style="visibility:hidden"' : ''}><img src="${emblemURL(save.team.name, 40)}" alt=""><b>${esc(save.team.name)}</b><em>［${esc(label)}］</em></div>
+    $('#clubLayer').innerHTML = `<div class="sq2${PHN ? ' ph' : ''}${sqResOpen && (save.reserve || []).length ? ' resopen' : ''}"><div class="s2board"${boardCss}>
+        <div class="s2head"><img src="${emblemURL(save.team.name, 40)}" alt=""><b>${esc(save.team.name)}</b><em>［${esc(label)}］</em></div>
         <div class="s2pitch" style="left:${PX0}px;top:${PY0}px;width:${PW}px;height:${PH}px"><i class="s2gk" style="top:${R * CH}px;height:${CH * 2}px"></i><i class="s2box" style="left:${PW * 0.22}px;width:${PW * 0.56}px;top:${R * CH - CH * 0.15}px;height:${CH * 2.15}px"></i><i class="s2box2" style="left:${PW * 0.34}px;width:${PW * 0.32}px;top:${R * CH + CH * 0.85}px;height:${CH * 1.15}px"></i></div>
         ${grid}${zl}
         <div class="s2bench"${benchCss[0]}><b class="s2bh">ベンチ入り</b></div><div class="s2bench g"${benchCss[1]}><b class="s2bh">ベンチ外</b></div>
         ${Array.from({ length: C.BENCH_N }, (_, k) => `<i class="s2e" style="left:${BX1}px;top:${BY0 + k * BDY}px"></i><i class="s2e" style="left:${BX2}px;top:${BY0 + k * BDY}px"></i>`).join('')}${dots}${col(b1, 11, BX1, false)}${col(b2, 11 + C.BENCH_N, BX2, true)}
         ${pop}</div>
       <button class="s2btn s2nb" data-a="note"><span>${formMini(tac.formation === 'custom' ? '4-4-2' : tac.formation)}</span><b>フォーメーション</b></button>
-      <button class="s2btn s2db" data-a="show" title="${sqShow === 'type' ? '選手タイプ' : '調子'}（切りかえ）"><span><img class="s2chg" src="icons/ui_change.png" alt="切りかえ"></span></button>
+      <button class="s2btn s2db" data-a="show" title="表示の切りかえ（名前・調子／タイプ／星）"><span><img class="s2chg" src="icons/ui_change.png" alt="切りかえ"></span></button>
       <button class="s2btn s2tb" data-a="tac"><span>${RB_TAC_SVG}</span><b>戦術</b></button>
       ${(save.reserve || []).length ? `<button class="s2btn s2rb" data-a="res"><span>${(save.reserve || []).length}</span><b>リザーブ</b></button>` : ''}
-      ${sqResOpen && sqRes >= 0 ? `<div class="s2resbar">${facePic(save.reserve[sqRes], 's2rf')}<b>${esc(save.reserve[sqRes].name)}</b><span>と入れかえる選手をタップ</span><button class="s2res-back">やめる</button></div>` : ''}
-      ${sqResOpen && sqRes < 0 ? `<div class="s2res"><div class="s2res-h"><b>リザーブ（控え室）</b><small>${sqRes >= 0 ? '入れかえるチームの選手をタップ' : '入れる選手をタップ → チームの選手をタップで入れかえ'}</small><button class="s2res-x">×</button></div><div class="s2res-l">${save.reserve.map((q, k) => `<div class="s2rc${k === sqRes ? ' on' : ''}" data-r="${k}">${facePic(q, 's2rf')}<b class="s2n ${POSC[q.position]}">${esc(q.name)}</b><span>${starHTML(C.ensureStar(q), q.totsu)}</span><small>${esc(q.type || '')}</small><button class="s2rel" data-rel="${k}" title="放出"><img src="icons/pc_release.png" alt="放出"></button></div>`).join('')}</div></div>` : ''}
+      ${sqResOpen && (save.reserve || []).length ? `<div class="s2strip"><div class="s2st-h"><b>リザーブ</b><button class="s2res-x" title="とじる">×</button></div><div class="s2st-l">${save.reserve.map((q, k) => `<div class="s2sc${k === sqRes ? ' on' : ''}" data-r="${k}">${facePic(q, 's2sf')}${sqTag(q)}</div>`).join('')}</div><p class="s2st-hint">${sqRes >= 0 ? 'チームの選手をタップで入れかえ' : '入れる選手をタップ'}</p>${sqRes >= 0 ? `<button class="s2rel" data-rel="${sqRes}" title="放出"><img src="icons/pc_release.png" alt="放出"></button>` : ''}</div>` : ''}
       ${forms}
       <p class="s2hint">選手をドラッグして、マスに置く・ほかの選手（控えとも）と入れ替える。タップでくわしく。</p></div>`;
     const L = $('#clubLayer'), board = L.querySelector('.s2board'); fitSq2();
@@ -1344,13 +1350,13 @@
     const done = () => { store(); renderLineup2(); };
     L.querySelectorAll('.s2btn').forEach((b) => b.onclick = () => { const a = b.dataset.a;
       if (a === 'note') { sqNote = !sqNote; renderLineup2(); }
-      else if (a === 'show') { sqShow = sqShow === 'type' ? 'cond' : 'type'; renderLineup2(); }
+      else if (a === 'show') { sqShow = SQ_SHOW[(SQ_SHOW.indexOf(sqShow) + 1) % SQ_SHOW.length]; renderLineup2(); const bd = $('#clubLayer .s2board'); if (bd) { const t = document.createElement('div'); t.className = 's2toast'; t.textContent = '表示：' + SQ_SHOW_NAME[sqShow]; bd.appendChild(t); setTimeout(() => t.remove(), 1300); } }
       else if (a === 'tac') { sqTab = 'tac'; renderLineup(); }
       else if (a === 'res') { sqResOpen = !sqResOpen; sqRes = -1; renderLineup2(); }
       else if (a === 'club') openClub({ onDone: () => renderLineup() }); });
     { const rb = L.querySelector('.s2res-back'); if (rb) rb.onclick = () => { sqRes = -1; renderLineup2(); }; }
     { const rx = L.querySelector('.s2res-x'); if (rx) rx.onclick = () => { sqResOpen = false; sqRes = -1; renderLineup2(); }; }
-    L.querySelectorAll('.s2rc').forEach((c) => c.onclick = (e) => { if (e.target.closest('.s2rel')) return; const k = +c.dataset.r; sqRes = sqRes === k ? -1 : k; pick = -1; sqPop = -1; renderLineup2(); });
+    L.querySelectorAll('.s2sc').forEach((c) => c.onclick = (e) => { if (e.target.closest('.s2rel')) return; const k = +c.dataset.r; sqRes = sqRes === k ? -1 : k; pick = -1; sqPop = -1; renderLineup2(); });
     L.querySelectorAll('.s2rel').forEach((b) => b.onclick = async (e) => { e.stopPropagation(); const k = +b.dataset.rel, q = save.reserve[k]; const kk = (C.KAKERA_OF[C.ensureStar(q)] || 1) * (1 + (q.totsu || 0));
       if (!(await coachAsk(`${esc(q.name)}を放出しますか？<br><small>ほかのクラブへ移籍します（戻ってきません）。<br>覚醒のカケラ <b>${kk}</b> をもらえます。</small>`))) return;
       save.reserve.splice(k, 1); save.kakera = (save.kakera || 0) + kk; sqRes = -1; if (!save.reserve.length) sqResOpen = false; done(); });   // 版508：放出（覚醒のカケラになる）
@@ -1381,7 +1387,7 @@
             if (i === 0 && r.position !== 'GK') { coachAsk('GKの所には、GKの選手しか入れられません。', [{ label: 'OK', value: true }]); return; }
             const out = ps[i]; ps[i] = r; save.reserve[sqRes] = out; { const pc = save.plan && save.plan.cards; if (pc) delete pc[i]; }
             { const tac = C.ensureTactics(save); for (const k in (tac.roles || {})) if (tac.roles[k] === out.name) tac.roles[k] = null; }
-            sqRes = -1; pick = -1; sqPop = -1; if (!save.reserve.length) sqResOpen = false; done(); return;
+            sqRes = -1; pick = -1; sqPop = -1; done(); return;   // 版516：リザーブを開いたまま、続けて入れかえられる
           }
           if (pick >= 0 && pick !== i) { swapPlayers(pick, i); pick = -1; sqPop = -1; done(); return; }
           if (sqPop === i) { sqPop = -1; pick = -1; } else { sqPop = i; pick = i; }
