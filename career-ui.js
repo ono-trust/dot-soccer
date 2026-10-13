@@ -3411,6 +3411,57 @@
       later(1300, () => { if (!stage) box.classList.add('wait'); });
     });
   }
+  // ================= 版570：コイン購入（課金）の画面 =================
+  // いまはテスト版：本当のお金はかからない（あとでアプリの課金につなぐ）。買った記録は save.buys に残す
+  const COIN_PACKS = [
+    { id: 'c1', coins: 250, yen: 120 },
+    { id: 'c2', coins: 800, yen: 370 },
+    { id: 'c3', coins: 1400, yen: 610, tag: '人気' },
+    { id: 'c4', coins: 3000, yen: 1220 },
+    { id: 'c5', coins: 8000, yen: 3060 },
+    { id: 'c6', coins: 17000, yen: 6100, tag: 'いちばんお得' },
+  ];
+  const COIN_BASE = 250 / 120;   // いちばん小さいパックの「1円あたりのコイン」を基準に、お得さを出す
+  function coinShop(onClose) {
+    const el = fullScreen('coinScreen', 'cs-wrap'), box = el.querySelector('.lk-box');
+    const draw = () => {
+      box.innerHTML = `<div class="cs-bg"></div>
+        <div class="cs-head"><button class="cs-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button><b>コイン購入</b>
+          <span class="cs-have">${COIN}<em>${(save.coins || 0).toLocaleString()}</em><small>コイン</small></span></div>
+        <p class="cs-test">テスト版：いまは本当のお金はかかりません</p>
+        <div class="cs-grid">${COIN_PACKS.map((p, i) => { const ex = Math.round((p.coins / p.yen / COIN_BASE - 1) * 100), n = Math.min(7, 1 + i);
+          return `<button class="cs-item${p.tag ? ' hot' : ''}" data-id="${p.id}">${p.tag ? `<i class="cs-tag">${p.tag}</i>` : ''}
+            <div class="cs-pile">${Array.from({ length: n }, (_, k) => `<img class="coin-ico" src="icons/coin.png" alt="" style="--k:${k};--n:${n}">`).join('')}</div>
+            <b class="cs-n">${p.coins.toLocaleString()}<small>コイン</small></b>${ex > 0 ? `<span class="cs-ex">${ex}%おトク</span>` : '<span class="cs-ex none">　</span>'}
+            <span class="cs-yen">¥${p.yen.toLocaleString()}</span></button>`; }).join('')}</div>
+        <p class="cs-note">コインは、スカウト・特訓カード・カードパックに使えます。</p>`;
+      box.querySelector('.cs-back').onclick = () => { el.hidden = true; if (onClose) onClose(); };
+      box.querySelectorAll('.cs-item').forEach((b) => b.onclick = async () => {
+        const p = COIN_PACKS.find((x) => x.id === b.dataset.id);
+        if (!(await coachAsk(`<b>${p.coins.toLocaleString()} コイン</b>を <b>¥${p.yen.toLocaleString()}</b> で購入しますか？<br><small>（テスト版のため、本当のお金はかかりません）</small>`, [{ label: '購入する', value: true }, { label: 'やめる', value: false }], 'sec'))) return;
+        const from = save.coins || 0; save.coins = from + p.coins; (save.buys = save.buys || []).push({ id: p.id, coins: p.coins, yen: p.yen, at: Date.now(), test: true }); store();
+        coinGain(box, b, from, save.coins, draw);
+      });
+    };
+    draw(); el.hidden = false; el._fit();
+  }
+  // 買ったあとの演出：押したところからコインが飛び出して、上の数字へ吸い込まれ、数字が増えていく
+  function coinGain(box, from, c0, c1, redraw) {
+    const S = (n) => { try { DotSound.play(n); } catch (_) {} };
+    const br = box.getBoundingClientRect(), k = br.width / 1280, fr = from.getBoundingClientRect(), to = box.querySelector('.cs-have .coin-ico').getBoundingClientRect();
+    const fx = (fr.left + fr.width / 2 - br.left) / k, fy = (fr.top + fr.height / 2 - br.top) / k, tx = (to.left + to.width / 2 - br.left) / k, ty = (to.top + to.height / 2 - br.top) / k;
+    const fl = document.createElement('div'); fl.className = 'cs-flash'; box.appendChild(fl);
+    S('uniq');
+    for (let i = 0; i < 14; i++) {
+      const c = document.createElement('img'); c.src = 'icons/coin.png'; c.className = 'cs-fly'; const a = Math.random() * Math.PI * 2, r = 60 + Math.random() * 90;
+      c.style.cssText = `left:${fx}px;top:${fy}px;--mx:${Math.cos(a) * r}px;--my:${Math.sin(a) * r}px;--tx:${tx - fx}px;--ty:${ty - fy}px;animation-delay:${i * 40}ms`;
+      box.appendChild(c); setTimeout(() => { c.remove(); S('reveal'); }, 900 + i * 40);
+    }
+    const em = box.querySelector('.cs-have em'), t0 = performance.now() + 700, dur = 900;
+    const tick = (now) => { const u = Math.max(0, Math.min(1, (now - t0) / dur)), e = 1 - Math.pow(1 - u, 3); em.textContent = Math.round(c0 + (c1 - c0) * e).toLocaleString(); if (u < 1) requestAnimationFrame(tick); else { em.parentElement.classList.add('pop'); S('ok'); setTimeout(() => { fl.remove(); }, 400); } };
+    requestAnimationFrame(tick);
+    const msg = document.createElement('p'); msg.className = 'cs-got'; msg.innerHTML = `${COIN}<b>+${(c1 - c0).toLocaleString()}</b> コイン`; box.appendChild(msg); setTimeout(() => msg.remove(), 2400);
+  }
   function shop(tab) {
     const el = fullScreen('shopScreen', 'std-wrap sh3-wrap'), box = el.querySelector('.lk-box');
     if (tab) shopSt.tab = tab;
@@ -3422,7 +3473,7 @@
     const draw = () => {
       const S = shopSt; let h = '';
       // 版527：3つの画面で、上の帯（もどる・ショップ・コイン）とタブを同じ形に（監督の4枚目の絵）
-      const head = `<span class="sh3-coin">${coins()}<small>コイン</small></span>${hit('', 34, 12, 72, 70, 'data-go="back"', 'もどる')}
+      const head = `<span class="sh3-coin">${coins()}<small>コイン</small></span><button class="sh3-coinbtn" data-go="coin" title="コインを買う"><i>＋</i></button>${hit('', 34, 12, 72, 70, 'data-go="back"', 'もどる')}
         <div class="sh3-tabs">${[['rec', 'おすすめ'], ['cards', '特訓カード'], ['prem', 'プレミアムパス']].map(([k, l]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
       if (S.tab === 'rec') {
         const bn = C.gachaBanner(), U = bn.uniq, q = C.rosterAt(bn.tid, 1).players.find((x) => x.no === bn.no), cc = U.chip || ['#c8141e', '#ffd23a', '#ffe45a'];
@@ -3456,6 +3507,7 @@
       box.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { shopSt.tab = b.dataset.tab; draw(); });
       box.querySelectorAll('[data-go="back"]').forEach((b) => b.onclick = () => { el.hidden = true; renderHome(); });
       box.querySelectorAll('[data-go="scout"]').forEach((b) => b.onclick = () => { el.hidden = true; openGacha(); });
+      box.querySelectorAll('[data-go="coin"]').forEach((b) => b.onclick = () => coinShop(() => draw()));   // 版570：左上のコインを押すと、コイン購入
       box.querySelectorAll('[data-soon]').forEach((b) => b.onclick = () => toast('プレミアムパスは近日公開です'));
       box.querySelectorAll('[data-info]').forEach((b) => b.onclick = () => coachAsk(`<b>カードパック${b.dataset.info === '10' ? '（大）' : ''}</b><br>特訓カード（戦術・テクニック・フィジカル・サポート）から<br>ランダムで <b>${b.dataset.info}枚</b> 入っています。<br><b>${b.dataset.info === '10' ? C.PRICE.pack12 : C.PRICE.pack5}</b> コイン（1枚あたり ${Math.round((b.dataset.info === '10' ? C.PRICE.pack12 : C.PRICE.pack5) / +b.dataset.info)} コイン）<br><small>1枚ずつ買う（${C.PRICE.card}コイン）より、お得です。</small>`, [{ label: 'とじる', value: true }], 'sec'));
       // 版564：カードパックは、必ず確認してから買う → 開ける演出 → 手に入れたカードを全部見せる（黄色いボタンでも、すぐには買わない）
@@ -3505,7 +3557,9 @@
     runMatch('練習試合', '', op, (score, ev, played) => { const got = C.playPractice(save, score, played); afterRound(got, { practice: true }); if (onDone) onDone(); }, { comp: '練習試合', label: '', home: true, practice: true, tut: 'practice' });
     return true;
   }
-  window.__career = { faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
+  // 版570：コインの数が出ているところ（スカウト・ホーム）を押しても、コイン購入へ
+  document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('.gc3-coin, .hm-next .coin'); if (!t) return; e.stopPropagation(); coinShop(() => { const b = document.querySelector('.gc3-coin b'); if (b) b.textContent = (save.coins || 0).toLocaleString(); try { renderHome(); } catch (_) {} }); }, true);
+  window.__career = { coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====
