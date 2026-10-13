@@ -1553,7 +1553,7 @@
     return got;
   }
   // ---------- ショップ（ゲーム内コイン） ----------
-  const PRICE = { card: 50, sup: 50, pack5: 225, pack12: 500 };   // 版568：1枚50コイン。パックも同じ割合（5枚＝1枚あたり45・12枚＝1枚あたり約42）   // コインは基本、課金で手に入る
+  const PRICE = { card: 50, sup: 50, pack5: 200, pack12: 350 };   // 版569：1枚50コイン。パック5枚＝200（1枚40）、金のパック10枚＝350（1枚35）。pack12 の名前は昔のまま（中身は10枚）   // コインは基本、課金で手に入る
   function coinsFor(myScore, events) {
     const goals = (events || []).filter((e) => e.type === 'goal' && e.team === 0).length;
     return (myScore[0] > myScore[1] ? 5 : myScore[0] === myScore[1] ? 3 : 1) + Math.min(goals, 3);   // 試合ではほんの少しだけ
@@ -1565,7 +1565,7 @@
     save.coins -= pr; save.cards[c] = (save.cards[c] || 0) + 1; return true;
   }
   function buyPack(save, n) {
-    const pr = n >= 12 ? PRICE.pack12 : PRICE.pack5;
+    const pr = n >= 10 ? PRICE.pack12 : PRICE.pack5;
     if ((save.coins || 0) < pr) return null;
     save.coins -= pr;
     const r = rng(save), got = [];
