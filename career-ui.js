@@ -774,7 +774,7 @@
   // 能力のアイコン（文字だけだと分かりにくいので、絵で見分けられるように）
   const ico = (k, cls) => `<img class="pico ${cls || ''}" src="icons/${k}.png" alt="" draggable="false">`;
   // ☆（レア度）の表示：★の数＋凸の印。cap＝育てられる上限のランク
-  const starHTML = (n, totsu, cls) => { const t = Math.min(totsu || 0, 3); let h = ''; for (let k = 0; k < n; k++) h += t ? `<i class="tz tz${t}">★</i>` : '★';   /* 版467：凸の数で星全部の色が変わる（無凸＝黄、1凸＝青、2凸＝紫、完凸＝虹） */ return `<span class="stars s${n}${t ? ' t' + t : ''} ${cls || ''}" title="☆${n}${t >= 3 ? '・凸MAX' : t ? '・' + t + '凸' : ''}">${h}</span>`; };   // 版456：凸した分だけ、星に色がつく（1凸＝青、2凸＝紫、3凸＝虹）
+  const starHTML = (n, totsu, cls) => { const t = Math.min(totsu || 0, 3); let h = ''; for (let k = 0; k < n; k++) h += `<i class="tz tz${t}">★</i>`;   /* 版476：無凸＝白、1凸＝銀、2凸＝金、完凸＝虹 */   /* 版467：凸の数で星全部の色が変わる（無凸＝黄、1凸＝青、2凸＝紫、完凸＝虹） */ return `<span class="stars s${n}${t ? ' t' + t : ''} ${cls || ''}" title="☆${n}${t >= 3 ? '・凸MAX' : t ? '・' + t + '凸' : ''}">${h}</span>`; };   // 版456：凸した分だけ、星に色がつく（1凸＝青、2凸＝紫、3凸＝虹）
   const capBadge = (g) => `<span class="capb">上限<b class="rk rk-${g}">${g}</b></span>`;
   const typeBadge = (t, cls) => `<span class="tbadge ${TYPE_CLS[t] || 'ty-bal'} ${cls || ''}">${esc(t)}</span>`;
   // ポテンシャルのゲージ（本家と同じ10本の矢印）：伸び盛り＝黄→オレンジ、MAX＝全部オレンジ、下降＝青い逆向き

@@ -1703,3 +1703,8 @@ html.stage #match .match-shell{height:var(--lh)}
 .lv-btns .lv-kitimg img{width:100%;height:100%;margin:0}
 .cl-tabs[hidden]{display:none!important}
 .of-r{gap:14px;top:110px;right:20px}
+/* 版476：星の色（凸の数）：無凸＝白、1凸＝銀、2凸＝金、完凸＝虹 */
+.stars .tz{font-style:normal}
+.stars .tz0{color:#ffffff;-webkit-text-stroke:1px #555}
+.stars .tz1{background:linear-gradient(180deg,#ffffff,#c9ced6 45%,#8a929e 60%,#e4e8ee);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:0;filter:drop-shadow(0 0 1px #3a3f48) drop-shadow(0 1px 0 rgba(0,0,0,.45))}
+.stars .tz2{background:linear-gradient(180deg,#fff6b0,#ffd23a 45%,#c98a00 60%,#ffe680);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:0;filter:drop-shadow(0 0 1px #5a3a00) drop-shadow(0 1px 0 rgba(0,0,0,.45))}
