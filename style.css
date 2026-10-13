@@ -2077,3 +2077,7 @@ html .std.tvm .std-body>*{zoom:1!important}
 .tm-row .tm-nm{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden;white-space:nowrap}
 .tm-row .tm-nm .stars{flex:none}
 .tm-row .tm-nm b.tm-top,.tm-row .tm-nm b.tm-ace,.tm-row .tm-nm b.tm-core{flex:none;font-size:11px;padding:1px 4px}
+/* 版521：スカウトの背景は監督の絵（赤い演出は選手の色に塗りかえ） */
+.gc2-bg{position:absolute;inset:0;background:#06102a center/cover no-repeat;opacity:0;transition:opacity .25s}
+.gc2-bg.on{opacity:1}
+.gc2-fc{left:0;width:600px}

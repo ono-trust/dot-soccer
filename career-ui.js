@@ -3191,6 +3191,28 @@
   const SND2 = (n) => { try { window.DotSound && DotSound.play(n); } catch (_) {} };
   function gcTeamShort(tid) { const t = (C.TEAMS || []).find((x) => x.id === tid); return t ? t.short || t.name : ''; }
   function gcFace(tid, q, cls) { const k = C.faceKeyOf(tid, q); return k ? starPic(k, '#ffffff', q.pos === 'GK', cls) : `<img class="${cls}" alt="">`; }
+  // 版521：スカウトの背景（監督の絵）。赤い斜めの演出だけを、ピックアップ選手の色に塗りかえる（スタジアムはそのまま）
+  const gcBgCache = new Map(); let gcBgImg = null;
+  function gcBgFor(chip, cb) {
+    const toHsl = (h) => { const n = parseInt(h.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+      let hh = 0; if (d) hh = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return [(hh * 60 + 360) % 360, d ? d / (1 - Math.abs(2 * l - 1)) : 0, l]; };
+    const cs = (chip || ['#c8141e']).map(toHsl), ok = (c) => c[1] > 0.45 && c[2] > 0.25 && c[2] < 0.7, best = cs.find(ok) || cs.slice().sort((a, b) => b[1] - a[1])[0];   // 選手の色（1つ目が濃すぎる・白い時は2つ目）
+    const H = best[0], Sk = Math.min(1, best[1] / 0.6), key = Math.round(H) + '|' + Sk.toFixed(2);
+    if (gcBgCache.has(key)) { cb(gcBgCache.get(key)); return; }
+    const go = () => { try {
+      const im = gcBgImg, W = im.naturalWidth, Hh = im.naturalHeight, c = document.createElement('canvas'); c.width = W; c.height = Hh; const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+      if (!(H < 12 || H > 350) || Sk < 0.9) {
+        const d = x.getImageData(0, 0, W, Hh), px = d.data;
+        for (let i = 0; i < px.length; i += 4) { const r = px[i], g = px[i + 1], b = px[i + 2], w = Math.max(0, Math.min(1, (r - Math.max(g, b) - 25) / 70)); if (!w) continue;
+          // 赤の明るさ（陰影）はそのまま、色あいだけを選手の色へ
+          const mx = r / 255, mn = Math.min(g, b) / 255, l = (mx + mn) / 2, sat = (mx - mn) / (1 - Math.abs(2 * l - 1) || 1) * Sk;
+          const C2 = (1 - Math.abs(2 * l - 1)) * sat, X = C2 * (1 - Math.abs(((H / 60) % 2) - 1)), m = l - C2 / 2;
+          const [r1, g1, b1] = H < 60 ? [C2, X, 0] : H < 120 ? [X, C2, 0] : H < 180 ? [0, C2, X] : H < 240 ? [0, X, C2] : H < 300 ? [X, 0, C2] : [C2, 0, X];
+          px[i] = r * (1 - w) + (r1 + m) * 255 * w; px[i + 1] = g * (1 - w) + (g1 + m) * 255 * w; px[i + 2] = b * (1 - w) + (b1 + m) * 255 * w; }
+        x.putImageData(d, 0, 0); }
+      const u = c.toDataURL('image/jpeg', 0.88); gcBgCache.set(key, u); cb(u); } catch (e) { cb('img/gacha_bg.jpg'); } };
+    if (gcBgImg && gcBgImg.complete && gcBgImg.naturalWidth) go(); else { if (!gcBgImg) { gcBgImg = new Image(); gcBgImg.src = 'img/gacha_bg.jpg'; } gcBgImg.addEventListener('load', go, { once: true }); }
+  }
   function openGacha() {
     const el = fullScreen('gachaScreen', 'std-wrap gc-wrap'), box = el.querySelector('.lk-box');
     const g = C.ensureGacha(save);
@@ -3201,8 +3223,7 @@
       const tp = U.type || q.type || '';
       // 版519：監督の作ったスカウト画面（夜のスタジアム・大きな選手・右に操作パネル）に合わせた
       box.innerHTML = `<div class="gc gc2" style="--c0:${cc[0]};--c1:${cc[1]};--c2:${cc[2]}">
-        <div class="gc2-sky"><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i></div><div class="gc2-stand"></div><div class="gc2-grass"></div>
-        <div class="gc2-slash"></div>
+        <div class="gc2-bg"></div>
         <div class="gc2-fc">${gcFace(bn.tid, q, 'gc2-face')}</div>
         <div class="gc-top"><b>スカウト</b><span class="gc-coin">${COIN}${(save.coins || 0).toLocaleString()}</span><span class="gc-kk">◆ 覚醒のカケラ ${(save.kakera || 0).toLocaleString()}</span><button class="std-back gc-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
         <div class="gc2-tx">
@@ -3219,6 +3240,7 @@
           <button class="gc2-btn one" data-n="1"><b>1回スカウト</b><span>${COIN}${C.GACHA_COST.one}</span></button>
           <div class="gc2-row"><button class="gc-rate">出る確率 ›</button><button class="gc-rule">獲得ルール ›</button><button class="gc-auto${g.auto ? ' on' : ''}"><span>自動放出<small>${['しない', '★1', '★2以下'][g.auto || 0]}</small></span><i class="gc2-sw"></i></button></div>
         </div></div>`;
+      { const bgEl = box.querySelector('.gc2-bg'); gcBgFor(U.chip, (u) => { bgEl.style.backgroundImage = `url(${u})`; bgEl.classList.add('on'); }); }
       box.querySelector('.gc-rule').onclick = () => coachAsk('<b>獲得ルール</b><br><small>同じ選手が出たら凸（最大3凸）。完凸のあとは覚醒のカケラになります。<br>自動放出をオンにすると、はじめて出た選手のうち、その★以下はカケラになります（持っている選手は凸）。<br>チームが25人の時は、リザーブ（控え室）に入ります。</small>', [{ label: 'とじる', value: true }], 'sec');
       box.querySelector('.gc-back').onclick = () => { el.hidden = true; go('home'); };
       box.querySelector('.gc-auto').onclick = () => { g.auto = ((g.auto || 0) + 1) % 3; store(); draw(); };
