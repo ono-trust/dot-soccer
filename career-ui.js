@@ -3318,8 +3318,8 @@
   // ================= ショップ =================
   // 版526：ショップ（監督のデザイン案3枚：おすすめ／特訓カード／プレミアムパス）。案の絵を下地にして、数字・ピックアップ・カードは中身に合わせて描く
   const SH_CATS = [['all', 'すべて'], ['tact', '戦術'], ['tech', 'テクニック'], ['phys', 'フィジカル'], ['sup', 'サポート']];
-  const SCOUT_ART = { guren: 'img/scout_guren.png' };   // 版543：スカウト画面の大きな絵（監督の素材）。ない選手は顔の絵
-  const SH_PICK_ART = { guren: 'img/pick_guren.png' };   // 版542：ピックアップの絵がある選手は、その絵を使う（ない選手は顔の絵）
+  const SCOUT_ART = { guren: 'img/scout_guren.jpg' };   // 版543：スカウト画面の大きな絵（監督の素材）。ない選手は顔の絵
+  const SH_PICK_ART = { guren: 'img/pick_guren.jpg' };   // 版542：ピックアップの絵がある選手は、その絵を使う（ない選手は顔の絵）
   const SH_CATCOL = { tact: '#1f9a45', tech: '#d81e1e', phys: '#2f6fd6', sup: '#d4a017' };
   let shopSt = { tab: 'rec', cat: 'tact', sel: null, qty: 1 };
   function shop(tab) {
