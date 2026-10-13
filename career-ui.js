@@ -2708,44 +2708,157 @@
   }
 
   // ================= クラブ事務所（カルチョビットAの事務所）：会議室の部屋。左＝ユニフォーム・エンブレム・クラブ名・退任、右＝経営状況・チーム編成 =================
+  // 版475：クラブ事務所を作り込み。ななめ見下ろし（2:1）の部屋に、テレビ・ロッカー・会議机・監督の机・作戦ボード・トロフィー棚・窓
   let officeBg = null;
+  const OFX = 640, OFY = 262, OK = 0.78;
+  const OP = (u, v, z = 0) => [OFX + (u - v) * OK, OFY + ((u + v) / 2 - z) * OK];
+  function ofPoly(c, pts, col, st, lw) { c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.closePath(); if (col) { c.fillStyle = col; c.fill(); } if (st) { c.strokeStyle = st; c.lineWidth = lw || 1.5; c.stroke(); } }
+  // 箱：上面・手前左の面（v＝v+dv）・手前右の面（u＝u+du）
+  function ofBox(c, u, v, z, du, dv, dz, top, fl, fr, st) {
+    ofPoly(c, [OP(u, v + dv, z), OP(u + du, v + dv, z), OP(u + du, v + dv, z + dz), OP(u, v + dv, z + dz)], fl, st);
+    ofPoly(c, [OP(u + du, v, z), OP(u + du, v + dv, z), OP(u + du, v + dv, z + dz), OP(u + du, v, z + dz)], fr, st);
+    ofPoly(c, [OP(u, v, z + dz), OP(u + du, v, z + dz), OP(u + du, v + dv, z + dz), OP(u, v + dv, z + dz)], top, st);
+  }
+  const wR = (u0, z0, u1, z1, v = 0) => [OP(u0, v, z0), OP(u1, v, z0), OP(u1, v, z1), OP(u0, v, z1)];   // 右の壁（v＝0）の上の四角
+  const wL = (v0, z0, v1, z1, u = 0) => [OP(u, v0, z0), OP(u, v1, z0), OP(u, v1, z1), OP(u, v0, z1)];   // 左の壁（u＝0）の上の四角
   function buildOfficeBg() {
     const W = 1280, H = 720, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
-    const poly = (pts, col) => { c.fillStyle = col; c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.closePath(); c.fill(); };
-    // 床（じゅうたん）
-    poly([[0, 330], [560, 120], [1280, 470], [1280, 720], [0, 720]], '#4f6b4a');
-    c.strokeStyle = 'rgba(0,0,0,0.06)'; c.lineWidth = 2; for (let k = -20; k < 40; k++) { c.beginPath(); c.moveTo(k * 60, 720); c.lineTo(k * 60 + 900, 270); c.stroke(); }
-    // 左の壁（木の板）とバナー
-    poly([[0, 0], [560, 0], [560, 120], [0, 330]], '#b8742e');
-    for (let k = 0; k < 9; k++) { c.strokeStyle = 'rgba(70,35,5,0.35)'; c.lineWidth = 2; c.beginPath(); c.moveTo(k * 62, 0); c.lineTo(k * 62, 330 - k * 62 * 0.375); c.stroke(); }
-    poly([[0, 300], [560, 90], [560, 120], [0, 330]], '#7a4a1c');
-    c.save(); c.translate(250, 120); c.transform(1, -0.375, 0, 1, 0, 0); c.fillStyle = '#f7f7f2'; c.fillRect(-170, -90, 340, 120); c.strokeStyle = '#3a2a1a'; c.lineWidth = 4; c.strokeRect(-170, -90, 340, 120);
-    c.fillStyle = '#1b2a20'; c.font = 'italic 900 54px "Arial Black",Arial'; c.textAlign = 'center'; c.fillText('ONE TEAM', 0, -20); c.font = '800 22px "Hiragino Kaku Gothic ProN",sans-serif'; c.fillText('〜 全員で、一つのゴールへ 〜', 0, 16); c.restore();
-    // 大きなテレビ
-    c.save(); c.translate(470, 175); c.transform(1, -0.375, 0, 1, 0, 0); c.fillStyle = '#15181c'; c.fillRect(-60, -40, 120, 70); c.fillStyle = '#28323c'; c.fillRect(-54, -34, 108, 58); c.restore();
-    // 右の壁（明るい壁と大きな窓）とドア
-    poly([[560, 0], [1280, 0], [1280, 470], [560, 120]], '#d9d6cc');
-    for (let k = 0; k < 4; k++) { const x0 = 760 + k * 130, y0 = 140 + k * 130 * 0.486; poly([[x0, y0 - 120], [x0 + 110, y0 - 120 + 53], [x0 + 110, y0 + 53], [x0, y0]], '#a9d4ea'); poly([[x0 + 6, y0 - 112], [x0 + 40, y0 - 96], [x0 + 20, y0 - 20], [x0 + 6, y0 - 26]], 'rgba(255,255,255,0.45)'); }
-    poly([[600, 40], [700, 88], [700, 230], [600, 182]], '#8b8f96'); c.strokeStyle = '#5a5e64'; c.lineWidth = 3; c.beginPath(); c.moveTo(650, 64); c.lineTo(650, 206); c.stroke();
-    poly([[560, 120], [1280, 470], [1280, 480], [560, 130]], '#9a978e');
-    // 観葉植物と棚
-    c.fillStyle = '#7a5a3a'; c.fillRect(712, 196, 26, 30); c.fillStyle = '#2f8a3a'; for (let k = 0; k < 7; k++) { c.beginPath(); c.ellipse(725 + Math.sin(k * 1.7) * 14, 176 - k * 7, 8, 16, Math.sin(k) * 0.6, 0, 7); c.fill(); }
-    poly([[60, 420], [200, 368], [200, 440], [60, 492]], '#5a3a22'); poly([[60, 410], [200, 358], [230, 372], [90, 424]], '#7a5232');
-    // 長い会議机（いす・書類）
-    const T = [[360, 380], [720, 245], [930, 345], [570, 480]];
-    poly(T.map(([x, y]) => [x, y + 16]), '#3a2414'); poly(T, '#6b4424');
-    const inner = [[440, 382], [716, 278], [852, 344], [576, 448]]; poly(inner, '#4f6b4a');
-    c.fillStyle = '#f4f4f0'; for (const [x, y] of [[420, 372], [520, 334], [620, 296], [700, 268], [800, 312], [880, 350], [760, 396], [660, 434], [560, 470]]) { c.save(); c.translate(x, y); c.rotate(-0.36); c.fillRect(-9, -6, 18, 12); c.restore(); }
+    const HW = 1100;
+    // ---- 床（木の床）と会議スペースのじゅうたん ----
+    ofPoly(c, [OP(0, 0), OP(1500, 0), OP(1500, 1500), OP(0, 1500)], '#a8794a');
+    c.strokeStyle = 'rgba(70,40,15,0.22)'; c.lineWidth = 1.5;
+    for (let v = 0; v < 1500; v += 34) { const [x0, y0] = OP(0, v), [x1, y1] = OP(1500, v); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); }
+    for (let v = 0; v < 1500; v += 34) for (let u = ((v / 34) % 3) * 70; u < 1500; u += 210) { const [x0, y0] = OP(u, v), [x1, y1] = OP(u, v + 34); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); }
+    ofPoly(c, [OP(150, 210), OP(560, 210), OP(560, 470), OP(150, 470)], '#2f5a3e');
+    ofPoly(c, [OP(162, 222), OP(548, 222), OP(548, 458), OP(162, 458)], null, 'rgba(240,220,120,0.55)', 3);
+    // ---- 左の壁（u＝0）：腰の高さまで木の板、上はクリーム色 ----
+    ofPoly(c, wL(0, 0, 1500, HW), '#e6dcc4');
+    ofPoly(c, wL(0, 0, 1500, 95), '#8a5a2c');
+    c.strokeStyle = 'rgba(40,20,5,0.35)'; c.lineWidth = 2; for (let v = 0; v < 900; v += 40) { const [x0, y0] = OP(0, v, 0), [x1, y1] = OP(0, v, 95); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); }
+    ofPoly(c, wL(0, 95, 1500, 103), '#5e3a18');
+    // ---- 右の壁（v＝0）：明るい壁 ----
+    ofPoly(c, wR(0, 0, 1500, HW), '#f1ece0');
+    ofPoly(c, wR(0, 0, 1500, 95), '#9a6a38');
+    c.strokeStyle = 'rgba(40,20,5,0.3)'; for (let u = 0; u < 900; u += 40) { const [x0, y0] = OP(u, 0, 0), [x1, y1] = OP(u, 0, 95); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); }
+    ofPoly(c, wR(0, 95, 1500, 103), '#6e4520');
+    // 壁の角の影
+    { const g = c.createLinearGradient(OFX - 40, 0, OFX + 40, 0); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, 'rgba(0,0,0,0.12)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(OFX - 40, 0, 80, OFY + 10); }
+    // ---- 右の壁：窓3つ（空と街）・ブラインド ----
+    for (const u0 of [250, 400, 550]) {
+      const q = wR(u0, 130, u0 + 120, 300);
+      ofPoly(c, wR(u0 - 8, 122, u0 + 128, 308), '#c9c3b4');
+      c.save(); ofPoly(c, q, null); c.clip();
+      const [ax, ay] = OP(u0, 0, 300); const g = c.createLinearGradient(0, ay - 20, 0, ay + 200); g.addColorStop(0, '#6fb6ef'); g.addColorStop(1, '#cfeaf8'); c.fillStyle = g; c.fillRect(ax - 10, ay - 40, 160, 320);
+      for (let k = 0; k < 6; k++) { const bu = u0 + k * 22, bh = 30 + ((k * 37 + u0) % 50); ofPoly(c, wR(bu, 130, bu + 18, 130 + bh), k % 2 ? '#8fa3b5' : '#a5b6c4'); for (let j = 0; j < 3; j++) ofPoly(c, wR(bu + 4, 140 + j * 12, bu + 8, 146 + j * 12), 'rgba(255,255,200,0.7)'); }
+      c.fillStyle = 'rgba(255,255,255,0.35)'; ofPoly(c, [OP(u0 + 10, 0, 290), OP(u0 + 40, 0, 290), OP(u0 + 20, 0, 150), OP(u0 + 6, 0, 160)], 'rgba(255,255,255,0.3)');
+      for (let z = 300; z > 266; z -= 7) ofPoly(c, wR(u0, z - 3, u0 + 120, z), 'rgba(235,235,225,0.95)');   // 上がったブラインド
+      c.restore();
+      ofPoly(c, wR(u0 + 58, 130, u0 + 62, 300), '#c9c3b4');
+      ofBox(c, u0 - 10, 0, 118, 140, 10, 6, '#ddd6c6', '#bdb5a3', '#cfc8b8');   // 窓の下の台
+    }
+    // 時計
+    { const [x, y] = OP(470, 0, 335); c.save(); c.translate(x, y); c.transform(1, 0.5, 0, 1, 0, 0); c.scale(OK, OK); c.fillStyle = '#fff'; c.strokeStyle = '#333'; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, 17, 0, 7); c.fill(); c.stroke(); c.lineWidth = 2.5; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -11); c.moveTo(0, 0); c.lineTo(8, 3); c.stroke(); c.restore(); }
+    // 作戦ボード（ホワイトボード）
+    { ofPoly(c, wR(40, 130, 200, 290), '#9aa0a8'); ofPoly(c, wR(46, 136, 194, 284), '#fbfbf8');
+      const [x, y] = OP(46, 0, 284); c.save(); c.translate(x, y); c.transform(1, 0.5, 0, 1, 0, 0); c.scale(OK, OK);
+      c.strokeStyle = '#2a7a3a'; c.lineWidth = 2; c.strokeRect(10, 10, 128, 128); c.beginPath(); c.moveTo(10, 74); c.lineTo(138, 74); c.stroke(); c.beginPath(); c.arc(74, 74, 14, 0, 7); c.stroke();
+      const dots = [[74, 126], [30, 108], [58, 112], [90, 112], [118, 108], [40, 84], [74, 88], [108, 84], [50, 52], [98, 52], [74, 34]];
+      dots.forEach(([dx, dy], i) => { c.fillStyle = i ? '#2f6fd6' : '#e8a020'; c.beginPath(); c.arc(dx, dy, 4.5, 0, 7); c.fill(); });
+      c.strokeStyle = '#d83a3a'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(98, 52); c.quadraticCurveTo(122, 34, 112, 18); c.stroke(); c.beginPath(); c.moveTo(106, 22); c.lineTo(112, 18); c.lineTo(116, 25); c.stroke();
+      c.beginPath(); c.moveTo(40, 84); c.lineTo(28, 46); c.stroke();
+      c.restore(); ofBox(c, 40, 0, 120, 160, 8, 6, '#c8ccd2', '#8a9098', '#a4aab2'); }
+    // トロフィーの飾り棚（窓の下の低い棚）
+    ofBox(c, 250, 0, 0, 290, 44, 92, '#7a4a22', '#5a3416', '#6a3e1c');
+    for (let k = 0; k < 4; k++) ofPoly(c, [OP(258 + k * 70, 44, 12), OP(318 + k * 70, 44, 12), OP(318 + k * 70, 44, 80), OP(258 + k * 70, 44, 80)], 'rgba(180,220,240,0.35)', '#3a2410', 2);
+    [[272, '#e8c34a', 1.2], [310, '#c0c4cc', 1], [350, '#e8c34a', 1.4], [395, '#cd8a4a', 1], [435, '#e8c34a', 1.1], [480, '#c0c4cc', 1], [515, '#e8c34a', 1.25]].forEach(([u, col, h]) => { const [x, y] = OP(u, 22, 92); c.fillStyle = '#3a2a1a'; c.fillRect(x - 7, y - 5, 14, 5); c.fillStyle = col; c.fillRect(x - 3, y - 5 - 10 * h, 6, 10 * h); c.beginPath(); c.moveTo(x - 9, y - 5 - 22 * h); c.lineTo(x + 9, y - 5 - 22 * h); c.lineTo(x + 5, y - 5 - 10 * h); c.lineTo(x - 5, y - 5 - 10 * h); c.closePath(); c.fill(); c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(x - 6, y - 3 - 22 * h, 3, 8); });
+    // ペナント（左の壁、奥の角の近く）
+    [[20, '#d83a3a'], [70, '#2f6fd6']].forEach(([v, col]) => ofPoly(c, [OP(0, v, 300), OP(0, v + 44, 300), OP(0, v + 22, 236)], col, '#fff', 2));
+    // ---- 左の壁：ONE TEAM の横断幕 ----
+    { const [x, y] = OP(0, 590, 320); c.save(); c.translate(x, y); c.transform(1, -0.5, 0, 1, 0, 0); c.scale(OK, OK); c.fillStyle = '#fbfaf4'; c.fillRect(0, 0, 250, 82); c.strokeStyle = '#2a6e3a'; c.lineWidth = 6; c.strokeRect(0, 0, 250, 82);
+      c.fillStyle = '#1b2a20'; c.font = 'italic 900 42px "Arial Black",Arial'; c.textAlign = 'center'; c.fillText('ONE TEAM', 125, 46); c.font = '800 15px "Hiragino Kaku Gothic ProN",sans-serif'; c.fillText('〜 全員で、一つのゴールへ 〜', 125, 70); c.restore(); }
+    // 左の壁：大きなテレビ（試合の映像）とテレビ台
+    { const v0 = 130, v1 = 290; ofPoly(c, wL(v0 - 6, 136, v1 + 6, 238), '#111418'); ofPoly(c, wL(v0, 142, v1, 232), '#3e8f3a');
+      const [x, y] = OP(0, v1, 232); c.save(); c.translate(x, y); c.transform(1, -0.5, 0, 1, 0, 0); c.scale(OK, OK);
+      c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 1.5; c.strokeRect(8, 8, 144, 74); c.beginPath(); c.moveTo(80, 8); c.lineTo(80, 82); c.stroke(); c.beginPath(); c.arc(80, 45, 12, 0, 7); c.stroke();
+      [[40, 30, '#2f6fd6'], [56, 58, '#2f6fd6'], [92, 40, '#d83a3a'], [110, 62, '#d83a3a'], [70, 50, '#2f6fd6'], [124, 30, '#d83a3a']].forEach(([px, py, col]) => { c.fillStyle = col; c.fillRect(px, py, 4, 7); });
+      c.fillStyle = '#fff'; c.fillRect(84, 46, 3, 3); c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(8, 8, 52, 12); c.fillStyle = '#fff'; c.font = '800 9px sans-serif'; c.fillText('LIVE 1-0', 12, 17);
+      c.fillStyle = 'rgba(255,255,255,0.12)'; c.beginPath(); c.moveTo(8, 8); c.lineTo(60, 8); c.lineTo(20, 82); c.lineTo(8, 82); c.fill(); c.restore();
+      ofBox(c, 0, v0 - 10, 0, 44, v1 - v0 + 20, 52, '#4a3020', '#2e1c10', '#3a2416');
+      ofPoly(c, [OP(44, v0 + 10, 12), OP(44, v0 + 70, 12), OP(44, v0 + 70, 40), OP(44, v0 + 10, 40)], '#1e120a'); ofPoly(c, [OP(44, v0 + 90, 12), OP(44, v0 + 150, 12), OP(44, v0 + 150, 40), OP(44, v0 + 90, 40)], '#1e120a');
+      { const [sx, sy] = OP(22, v0 + 40, 52); c.fillStyle = '#222'; c.fillRect(sx - 14, sy - 10, 28, 10); c.fillStyle = '#4ae04a'; c.fillRect(sx + 8, sy - 7, 3, 2); }   // レコーダー
+    }
+    // 左の壁：ロッカー（番号つき）とベンチ
+    for (let k = 0; k < 5; k++) { const v = 400 + k * 56;
+      ofBox(c, 0, v, 0, 48, 54, 200, '#7d8590', '#5f6670', '#8d96a2', 'rgba(30,35,40,0.6)');
+      ofPoly(c, [OP(48, v + 6, 14), OP(48, v + 48, 14), OP(48, v + 48, 190), OP(48, v + 6, 190)], '#9aa3ae', 'rgba(30,35,40,0.5)');
+      for (let j = 0; j < 4; j++) ofPoly(c, [OP(48, v + 14, 160 - j * 7), OP(48, v + 40, 160 - j * 7), OP(48, v + 40, 163 - j * 7), OP(48, v + 14, 163 - j * 7)], '#4e555e');
+      ofPoly(c, [OP(48, v + 16, 120), OP(48, v + 38, 120), OP(48, v + 38, 132), OP(48, v + 16, 132)], '#f4f2ea');
+      const [tx, ty] = OP(48, v + 27, 122); c.fillStyle = '#222'; c.font = '900 10px sans-serif'; c.textAlign = 'center'; c.fillText(String([7, 9, 10, 11, 14][k]), tx, ty);
+      ofPoly(c, [OP(48, v + 40, 90), OP(48, v + 44, 90), OP(48, v + 44, 110), OP(48, v + 40, 110)], '#d8dde3');
+    }
+    ofBox(c, 70, 410, 26, 46, 270, 10, '#b88a52', '#8a6236', '#9a703f'); [[76, 420], [76, 668], [108, 420], [108, 668]].forEach(([u, v]) => ofBox(c, u, v, 0, 6, 6, 26, '#555', '#333', '#444'));
+    // 奥の角：大きな観葉植物とクラブの旗
+    { ofBox(c, 20, 20, 0, 50, 50, 46, '#c8a070', '#9a7448', '#b08858'); const [x, y] = OP(45, 45, 46); c.fillStyle = '#245f2a'; for (let k = 0; k < 14; k++) { c.beginPath(); c.ellipse(x + Math.sin(k * 2.1) * 22, y - 20 - k * 6, 10, 22, Math.sin(k * 1.3) * 0.9, 0, 7); c.fill(); } c.fillStyle = '#3a9a3e'; for (let k = 0; k < 10; k++) { c.beginPath(); c.ellipse(x + Math.cos(k * 1.7) * 18, y - 28 - k * 7, 6, 16, Math.cos(k) * 0.8, 0, 7); c.fill(); } }
+    // ウォーターサーバー（左の壁ぎわ）
+    ofBox(c, 0, 330, 0, 36, 36, 95, '#f2f2f2', '#c8c8c8', '#dedede'); { const [x, y] = OP(18, 348, 95); c.fillStyle = 'rgba(120,190,240,0.85)'; c.fillRect(x - 11, y - 34, 22, 30); c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(x - 8, y - 32, 4, 24); }
     officeBg = cv;
   }
-  const OFF_PEOPLE = [[400, 360, 'b34', true], [500, 322, 'b34', true], [600, 285, 'b34', true], [700, 250, 'b34', true], [880, 330, 'b34', false], [600, 492, 'f34', false], [700, 455, 'f34', false], [800, 418, 'f34', false]];
+  // 人：u・v（床の位置）、向き（view）、左右反転、服
+  const OFF_PEOPLE = [
+    // 会議机の奥の列（手前を向く）
+    { u: 225, v: 226, view: 'f34', fl: true, cl: 'navy' }, { u: 300, v: 226, view: 'f34', fl: true, cl: 'gray' }, { u: 375, v: 226, view: 'f34', fl: true, cl: 'shirt' }, { u: 450, v: 226, view: 'f34', fl: true, cl: 'navy' },
+    // 机のはし（議長）
+    { u: 150, v: 318, view: 'f34', fl: false, cl: 'navy' },
+    // 手前の列（奥を向く）
+    { u: 262, v: 414, view: 'b34', fl: false, cl: 'gray' }, { u: 340, v: 414, view: 'b34', fl: false, cl: 'navy' }, { u: 418, v: 414, view: 'b34', fl: false, cl: 'shirt' },
+  ];
+  const OFF_CL = () => ({ navy: SUIT_NAVY, gray: SUIT_GRAY, shirt: SHIRT });
+  function drawOfficeRoom(c) {
+    c.drawImage(officeBg, 0, 0);
+    const S = A().SPR, sc = 2.7, CL = OFF_CL();
+    const person = (o, k) => { const img = dressed('of' + k, { hair: k % 4, hairColor: (k * 2) % 3, skin: k % 3 }, o.view, 0, CL[o.cl]); const [x, y] = OP(o.u, o.v); c.save(); c.imageSmoothingEnabled = false; c.translate(x, 0); if (o.fl) c.scale(-1, 1); c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(0, y, 15, 5, 0, 0, 7); c.fill(); c.drawImage(img, -S.W * sc / 2, y - (S.H - 3) * sc, S.W * sc, S.H * sc); c.restore(); };
+    const chair = (u, v, backSide) => { // backSide：'v-'＝奥に背もたれ、'v+'＝手前に背もたれ、'u-'＝左奥に背もたれ
+      ofBox(c, u - 15, v - 15, 20, 30, 30, 6, '#2a2e36', '#16181d', '#1f2228');
+      ofBox(c, u - 3, v - 3, 0, 6, 6, 20, '#444', '#222', '#333');
+      if (backSide === 'v-') ofBox(c, u - 15, v - 19, 20, 30, 6, 40, '#30343c', '#1b1e24', '#262a31');
+      if (backSide === 'u-') ofBox(c, u - 19, v - 15, 20, 6, 30, 40, '#30343c', '#1b1e24', '#262a31');
+      if (backSide === 'v+') ofBox(c, u - 15, v + 13, 20, 30, 6, 22, '#30343c', '#1b1e24', '#262a31');
+    };
+    // 監督の机（窓ぎわ）：奥に秘書、机にパソコン
+    ofBox(c, 560, 70, 0, 8, 8, 0, null, null, null);
+    person({ u: 600, v: 46, view: 'f34', fl: true, cl: 'shirt' }, 9);
+    ofBox(c, 540, 70, 0, 130, 62, 50, '#7a5232', '#4e3218', '#5e3c1e');
+    ofBox(c, 544, 74, 50, 122, 54, 4, '#8a6240', '#5a3a20', '#6a4626');
+    { ofBox(c, 590, 80, 54, 30, 6, 30, '#1a1c20', '#0e0f12', '#14161a'); const [x, y] = OP(605, 86, 66); c.fillStyle = '#5ac0ff'; c.fillRect(x - 10, y - 8, 14, 10); }
+    ofBox(c, 630, 90, 54, 24, 18, 3, '#f8f8f4', '#ddd', '#e8e8e4'); ofBox(c, 560, 96, 54, 18, 12, 10, '#d83a3a', '#a02424', '#b82a2a');
+    // 会議机：奥のいす → 奥の人 → 机 → 手前の人 → 手前のいす
+    [225, 300, 375, 450].forEach((u) => chair(u, 222, 'v-'));
+    chair(150, 318, 'u-');
+    OFF_PEOPLE.slice(0, 5).forEach((o, k) => person(o, k));
+    // 机（脚4本と天板）
+    [[186, 262], [486, 262], [186, 376], [486, 376]].forEach(([u, v]) => ofBox(c, u, v, 0, 8, 8, 32, '#3a2414', '#24160a', '#2e1c0e'));
+    ofBox(c, 180, 255, 32, 316, 132, 9, '#7a4f2a', '#4e3018', '#5e3a1e');
+    ofPoly(c, [OP(196, 270, 41), OP(480, 270, 41), OP(480, 372, 41), OP(196, 372, 41)], null, 'rgba(255,230,190,0.25)', 2);
+    // 机の上：書類・ノートPC・ペットボトル
+    [[230, 290], [305, 290], [380, 290], [455, 290], [270, 350], [345, 350], [420, 350]].forEach(([u, v], i) => { ofBox(c, u - 12, v - 9, 41, 24, 18, 1.5, i % 3 === 1 ? '#fff8d8' : '#fbfbf8', '#ccc', '#ddd'); });
+    ofBox(c, 200, 300, 41, 30, 22, 2, '#9aa0a8', '#6a7078', '#80868e'); ofPoly(c, [OP(200, 300, 43), OP(230, 300, 43), OP(230, 300, 64), OP(200, 300, 64)], '#2a2e34');
+    [[330, 318], [410, 322]].forEach(([u, v]) => { const [x, y] = OP(u, v, 41); c.fillStyle = 'rgba(150,210,250,0.85)'; c.fillRect(x - 3, y - 16, 6, 16); c.fillStyle = '#3a8ad8'; c.fillRect(x - 3, y - 19, 6, 3); });
+    OFF_PEOPLE.slice(5).forEach((o, k) => person(o, k + 5));
+    [262, 340, 418].forEach((u) => chair(u, 418, 'v+'));
+    // 手前右：ソファとローテーブル（お客さん用）
+    ofBox(c, 640, 380, 0, 60, 150, 28, '#3a5aa0', '#243a70', '#2e4a88');
+    ofBox(c, 690, 380, 28, 14, 150, 34, '#4466b0', '#284480', '#30508f');
+    ofBox(c, 560, 410, 0, 50, 90, 24, '#c8a070', '#8a6236', '#9a703f');
+    { const [x, y] = OP(585, 450, 24); c.fillStyle = '#fff'; c.beginPath(); c.ellipse(x, y - 4, 7, 4, 0, 0, 7); c.fill(); c.fillStyle = '#7a4a22'; c.fillRect(x - 5, y - 10, 10, 6); }
+    // 手前左：植木鉢
+    { ofBox(c, 150, 600, 0, 34, 34, 34, '#c8a070', '#9a7448', '#b08858'); const [x, y] = OP(167, 617, 34); c.fillStyle = '#2f8a3a'; for (let k = 0; k < 9; k++) { c.beginPath(); c.ellipse(x + Math.sin(k * 2.3) * 14, y - 10 - k * 5, 7, 15, Math.sin(k) * 0.8, 0, 7); c.fill(); } }
+  }
   function openOffice() {
     const el = fullScreen('officeScreen', 'std-wrap off-wrap'), box = el.querySelector('.lk-box');
     if (!officeBg) buildOfficeBg();
     let panel = null, sortK = 'no', sortDir = 1, mode = 'st';
     const cvs = document.createElement('canvas'); cvs.width = 1280; cvs.height = 720;
-    const drawRoom = () => { const c = cvs.getContext('2d'); c.drawImage(officeBg, 0, 0); const S = A().SPR, sc = 2.4;
-      OFF_PEOPLE.forEach(([x, y, v, fl], k) => { const img = dressed('of' + k, { hair: k % 4, hairColor: k % 3, skin: k % 3 }, v, 0, k % 3 === 2 ? SHIRT : k % 2 ? SUIT_GRAY : SUIT_NAVY); c.save(); c.imageSmoothingEnabled = false; c.translate(x, 0); if (fl) c.scale(-1, 1); c.drawImage(img, -S.W * sc / 2, y - (S.H - 4) * sc, S.W * sc, S.H * sc); c.restore(); }); };
+    const drawRoom = () => { const c = cvs.getContext('2d'); drawOfficeRoom(c); };
     const BTN = (a, ico, label) => `<button class="of-b" data-a="${a}"><span>${ico}</span><b>${label}</b></button>`;
     const PIC = (a, f, label) => `<button class="of-b of-pic" data-a="${a}" title="${label}"><img src="icons/${f}.png" alt="${label}"></button>`;   /* 版470：送ってもらったアイコンの絵 */
     const I = {
