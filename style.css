@@ -2270,3 +2270,16 @@ button.ib:disabled{filter:grayscale(1) opacity(.6)}
 .ct-btns{gap:14px}.ct-btns button.ib{width:210px;height:76px!important}
 .pe-btns{gap:18px}.pe-btns button.ib{width:190px;height:68px!important}
 .cr-mbtns button.ib{width:180px;height:64px!important;font-size:22px!important}
+/* 版529：特訓カードの絵を切らずに全部見せる（絵に名前も入っているので、上の名前の帯はなし）・右の札が縮んで見切れないように */
+.sh3-grid{grid-template-columns:repeat(5,1fr)!important;grid-auto-rows:auto!important;gap:10px!important}
+.sh3-card{border-width:4px;border-radius:12px}
+.sh3-card img{flex:none;width:100%;height:auto;aspect-ratio:180/216;object-fit:contain;object-position:center;background:#fff}
+.sh3-cf{height:38px;padding:0 4px}.sh3-cf small{font-size:12px}.sh3-cf em{font-size:17px;padding:2px 6px}.sh3-cf .coin-ico{width:16px!important;height:16px!important}
+.sh3-det>*{flex:none}
+.sh3-det h3{height:54px!important;line-height:54px!important;font-size:30px!important;margin:0!important}
+.sh3-dr{align-self:stretch;display:flex;gap:12px;align-items:center;margin:10px 16px 0;padding-bottom:10px;border-bottom:2px solid #e2dccb}
+.sh3-dr img{width:130px;height:156px;object-fit:contain;border-radius:8px;border:3px solid #2f6fd6;background:#fff;flex:none}
+.sh3-dr .sh3-eff{margin:0;padding:0;border:0;font-size:16px;line-height:1.5}
+.sh3-one{margin-top:8px}.sh3-qty{margin-top:6px}.sh3-tot{margin-top:8px}.sh3-go{margin-top:8px;height:54px}
+.sh3-lack{height:22px;margin:4px 0 0}
+.sh3-pk{margin-top:auto!important;margin-bottom:10px}
