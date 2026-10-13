@@ -3239,7 +3239,7 @@
       // 版523：監督のデザイン案（1672×940）を、1280×720の画面にそのままの位置・大きさで写した
       box.innerHTML = `<div class="gc gc2 gc3" style="--c0:${cc[0]};--c1:${cc[1]};--c2:${cc[2]}">
         <div class="gc2-bg"></div>
-        <div class="gc3-fc">${gcFace(bn.tid, q, 'gc3-face')}</div>
+        ${SCOUT_ART[bn.key] ? `<img class="gc3-art" src="${SCOUT_ART[bn.key]}" alt="">` : `<div class="gc3-fc">${gcFace(bn.tid, q, 'gc3-face')}</div>`}
         <div class="gc3-ttl"><b>スカウト</b></div>
         <div class="gc3-pills"><span class="gc3-coin">${COIN}<b>${(save.coins || 0).toLocaleString()}</b></span>
         <span class="gc3-kk"><i>◆</i>覚醒のカケラ<b>${(save.kakera || 0).toLocaleString()}</b></span></div>
@@ -3308,6 +3308,7 @@
   // ================= ショップ =================
   // 版526：ショップ（監督のデザイン案3枚：おすすめ／特訓カード／プレミアムパス）。案の絵を下地にして、数字・ピックアップ・カードは中身に合わせて描く
   const SH_CATS = [['all', 'すべて'], ['tact', '戦術'], ['tech', 'テクニック'], ['phys', 'フィジカル'], ['sup', 'サポート']];
+  const SCOUT_ART = { guren: 'img/scout_guren.jpg' };   // 版543：スカウト画面の大きな絵（監督の素材）。ない選手は顔の絵
   const SH_PICK_ART = { guren: 'img/pick_guren.jpg' };   // 版542：ピックアップの絵がある選手は、その絵を使う（ない選手は顔の絵）
   const SH_CATCOL = { tact: '#1f9a45', tech: '#d81e1e', phys: '#2f6fd6', sup: '#d4a017' };
   let shopSt = { tab: 'rec', cat: 'tact', sel: null, qty: 1 };
