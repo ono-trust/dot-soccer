@@ -1784,3 +1784,4 @@ html.short #assocScreen .std-body,html.phone #assocScreen .std-body{overflow-y:a
 html.short #assocScreen .sc-row,html.phone #assocScreen .sc-row{grid-template-columns:58px 104px 1fr auto 70px;height:44px;font-size:20px}
 html.short #assocScreen .std-tabs button,html.phone #assocScreen .std-tabs button{font-size:20px!important}
 html.short #assocScreen .sc-o,html.phone #assocScreen .sc-o{min-width:0;text-overflow:ellipsis}
+#match.watching .pv-back{display:none!important}
