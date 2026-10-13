@@ -1695,12 +1695,13 @@
   }
   // 版506：スカウトで来た選手は、育てる前の弱い状態（能力はE〜C）。得意・不得意の形（どの能力が高いか）はそのまま残す
   function gachaWeak(p) {
-    if (p.gweak) return; ensurePts(p);
+    if (p.gweak >= 2) return; if (p.gweak) { p.skills = []; p.gweak = 2; return; } ensurePts(p);
     const v = KEYS.map((k) => p.pts[k]), lo = Math.min(...v), hi = Math.max(...v), A = RANK[0][1] + 2, B = RANK[2][2] - 1;
     for (const k of KEYS) { const u = hi > lo ? (p.pts[k] - lo) / (hi - lo) : 0.5; p.pts[k] = Math.round((A + (B - A) * Math.pow(u, 1.15)) * 10) / 10; p[k] = toEng(p.pts[k]); }
-    p.gweak = 1;
+    p.skills = []; p.totsu = p.totsu || 0;   // 版507：スキルは0から（固有スキルはそのまま）
+    p.gweak = 2;
   }
-  function gachaFixOld(save) { for (const p of [...save.team.players, ...(save.reserve || [])]) if (p.gsrc && !p.gweak) gachaWeak(p); }
+  function gachaFixOld(save) { for (const p of [...save.team.players, ...(save.reserve || [])]) if (p.gsrc && (p.gweak || 0) < 2) gachaWeak(p); }
   function gachaPull(save, n, r) {
     r = r || Math.random; const bn = gachaBanner(), cost = n >= 10 ? GACHA_COST.ten : GACHA_COST.one * n;
     if ((save.coins || 0) < cost) return null;
