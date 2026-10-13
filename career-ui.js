@@ -3341,7 +3341,7 @@
         if (!S.sel || !list.includes(S.sel)) { S.sel = list[0]; S.qty = 1; }
         const c = S.sel, cd = C.CARDS[c], pr = price(c), tot = pr * S.qty, lack = Math.max(0, tot - (save.coins || 0));
         h = `<div class="sh3 sh3-cards"><img class="sh3-bgimg" src="img/shop_cards.jpg" alt="">${head}
-          <div class="sh3-sub">${SH_CATS.map(([k, l]) => `<button data-cat="${k}" class="${S.cat === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+          <div class="sh3-sub">${SH_CATS.map(([k, l]) => `<button data-cat="${k}" class="${S.cat === k ? 'on' : ''}" style="--cc:${SH_CATCOL[k] || '#ee5a12'}">${l}</button>`).join('')}</div>
           <div class="sh3-grid">${list.map((k) => { const d = C.CARDS[k]; return `<button class="sh3-card${k === c ? ' on' : ''}" data-c="${k}" style="--cc:${SH_CATCOL[d.cat]}"><img src="cards/${k}.jpg" alt="${esc(d.name)}" draggable="false"><span class="sh3-cf"><small>所持 ${save.cards[k] || 0}枚</small><em>${COIN}${price(k)}</em></span></button>`; }).join('')}</div>
           <div class="sh3-det"><h3>${esc(cd.name)}</h3><div class="sh3-dr"><img src="cards/${c}.jpg" alt="" style="border-color:${SH_CATCOL[cd.cat]}"><p class="sh3-eff">${esc(effText(c))}</p></div>
             <div class="sh3-one">1枚 ${COIN}<b>${pr}</b><small>コイン</small></div>
