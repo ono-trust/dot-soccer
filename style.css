@@ -2432,3 +2432,7 @@ html.short .rbtns{top:88px;gap:4px}html.short .rbtns button{width:72px;height:72
 html.short .sq-tabs button{font-size:13px;letter-spacing:-.5px}
 /* 版561：特訓のカード3枚が、右上のもどるボタンと重なっていた（3枚目の×が押せない）→ カードを左へ寄せる */
 .trb-set .tslots2{justify-content:flex-start;gap:8px;padding-right:78px;align-self:stretch}
+/* 版562：買った時のお知らせ：画面のまん中に、カードの絵と枚数の変化 */
+.sh3-toast{position:absolute !important;display:flex;align-items:center;gap:14px;white-space:nowrap;max-width:none !important}
+.sh3-toast .sh3-tc{width:64px;height:auto;border-radius:6px;border:2px solid #fff}
+.sh3-toast small{font-size:16px;font-weight:800;color:#cfe}.sh3-toast em{font-style:normal;color:#ffd23a;font-size:20px}

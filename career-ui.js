@@ -3401,15 +3401,16 @@
       } else {
         const list = Object.keys(C.CARDS).filter((c) => S.cat === 'all' || C.CARDS[c].cat === S.cat);
         if (!S.sel || !list.includes(S.sel)) { S.sel = list[0]; S.qty = 1; }
+        const room = Math.max(0, C.CARD_MAX - ((save.cards || {})[S.sel] || 0)); if (S.qty > Math.max(1, room)) S.qty = Math.max(1, room);   // 版562：持てるのは99枚まで
         const c = S.sel, cd = C.CARDS[c], pr = price(c), tot = pr * S.qty, lack = Math.max(0, tot - (save.coins || 0));
         h = `<div class="sh3 sh3-cards"><img class="sh3-bgimg" src="img/shop_cards.jpg" alt="">${head}
           <div class="sh3-sub">${SH_CATS.map(([k, l]) => `<button data-cat="${k}" class="${S.cat === k ? 'on' : ''}" style="--cc:${SH_CATCOL[k] || '#ee5a12'}">${l}</button>`).join('')}</div>
           <div class="sh3-grid">${list.map((k) => { const d = C.CARDS[k]; return `<button class="sh3-card${k === c ? ' on' : ''}" data-c="${k}" style="--cc:${SH_CATCOL[d.cat]}"><img src="cards/${k}.jpg" alt="${esc(d.name)}" draggable="false"><span class="sh3-cf"><small>所持 ${save.cards[k] || 0}枚</small><em>${COIN}${price(k)}</em></span></button>`; }).join('')}</div>
           <div class="sh3-det"><h3>${esc(cd.name)}</h3><div class="sh3-dr"><img src="cards/${c}.jpg" alt="" style="border-color:${SH_CATCOL[cd.cat]}"><p class="sh3-eff">${esc(effText(c))}</p></div>
             <div class="sh3-one">1枚 ${COIN}<b>${pr}</b><small>コイン</small></div>
-            <div class="sh3-qty"><button data-q="-1" class="m"${S.qty <= 1 ? ' disabled' : ''}>−</button><span>${S.qty}</span><button data-q="1" class="p"${S.qty >= 99 ? ' disabled' : ''}>＋</button></div>
+            <div class="sh3-qty"><button data-q="-1" class="m"${S.qty <= 1 ? ' disabled' : ''}>−</button><span>${S.qty}</span><button data-q="1" class="p"${S.qty >= Math.min(99, room) ? ' disabled' : ''}>＋</button></div>
             <div class="sh3-tot">合計<span>${COIN}<b>${tot}</b><small>コイン</small></span></div>
-            <button class="sh3-go"${lack ? ' disabled' : ''}>購入する</button><p class="sh3-lack">${lack ? `あと <b>${lack}</b> コイン必要` : ''}</p>
+            <button class="sh3-go"${lack || !room ? ' disabled' : ''}>${room ? '購入する' : '上限（99枚）'}</button><p class="sh3-lack">${!room ? 'もう99枚持っているので買えません' : lack ? `あと <b>${lack}</b> コイン必要` : ''}</p>
             <button class="sh3-pk" data-tab="rec">まとめ買いならカードパックへ <span>→</span></button></div></div>`;
       }
       box.innerHTML = h;
@@ -3426,7 +3427,7 @@
       box.querySelectorAll('[data-cat]').forEach((b) => b.onclick = () => { shopSt.cat = b.dataset.cat; shopSt.sel = null; draw(); });
       box.querySelectorAll('.sh3-card').forEach((b) => b.onclick = () => { if (shopSt.sel !== b.dataset.c) shopSt.qty = 1; shopSt.sel = b.dataset.c; const g = box.querySelector('.sh3-grid'), st = g ? g.scrollTop : 0; draw(); const g2 = box.querySelector('.sh3-grid'); if (g2) g2.scrollTop = st; });
       box.querySelectorAll('[data-q]').forEach((b) => b.onclick = () => { shopSt.qty = Math.max(1, Math.min(99, shopSt.qty + +b.dataset.q)); const g = box.querySelector('.sh3-grid'), st = g ? g.scrollTop : 0; draw(); const g2 = box.querySelector('.sh3-grid'); if (g2) g2.scrollTop = st; });
-      { const go = box.querySelector('.sh3-go'); if (go) go.onclick = () => { const c = shopSt.sel; let n = 0; for (let k = 0; k < shopSt.qty; k++) { if (C.buyCard(save, c)) n++; else break; } store(); const g = box.querySelector('.sh3-grid'), st = g ? g.scrollTop : 0; shopSt.qty = 1; draw(); const g2 = box.querySelector('.sh3-grid'); if (g2) g2.scrollTop = st; toast(n ? `${esc(C.CARDS[c].name)} を ${n}枚 買った！` : 'コインが足りません'); }; }
+      { const go = box.querySelector('.sh3-go'); if (go) go.onclick = () => { const c = shopSt.sel, had = (save.cards || {})[c] || 0, coin0 = save.coins || 0; let n = 0; for (let k = 0; k < shopSt.qty; k++) { if (C.buyCard(save, c)) n++; else break; } store(); const g = box.querySelector('.sh3-grid'), st = g ? g.scrollTop : 0; shopSt.qty = 1; draw(); const g2 = box.querySelector('.sh3-grid'); if (g2) g2.scrollTop = st; try { DotSound.play(n ? 'ok' : 'back'); } catch (_) {} toast(n ? `<img class="sh3-tc" src="cards/${c}.jpg" alt=""><span><b>${esc(C.CARDS[c].name)}</b> を ${n}枚 買いました！<br><small>所持 ${had}枚 → <em>${save.cards[c]}枚</em>　／　コイン ${coin0.toLocaleString()} → ${(save.coins || 0).toLocaleString()}</small></span>` : had >= C.CARD_MAX ? 'もう99枚持っているので買えません' : 'コインが足りません'); }; }   // 版562：買えたことが分かるように、枚数とコインの変化を見せる
       { const bg = box.querySelector('.sh3-ban-bg'); if (bg) { const bn = C.gachaBanner(); gcBgFor(bn.uniq.chip, (u) => { bg.style.backgroundImage = `url(${u})`; }); } }
     };
     draw(); el.hidden = false; el._fit();
