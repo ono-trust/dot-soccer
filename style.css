@@ -2024,3 +2024,52 @@ html .std.tvm .std-body>*{zoom:1!important}
 /* 版518：チーム編成の並び（スタメン→ベンチ→ベンチ外）の区切り */
 .ot tr.out td{background:rgba(0,0,0,.32);color:#c8c8c8}
 .ot tr.sep td{border-top:3px solid #e7ff62}
+/* 版519：ショップのカードの値段のコインが、カードの絵いっぱいに広がっていた */
+.acard .ac-pr .coin-ico{display:inline-block;width:14px;height:14px;vertical-align:-2px}
+/* 版519：スカウト画面（監督のデザイン案に合わせる） */
+.gc2{overflow:hidden;background:#06102a}
+.gc2-sky{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,#1b3a7a 0%,#0b1a40 45%,#050a1c 80%)}
+.gc2-sky i{position:absolute;top:40px;width:340px;height:120px;background:radial-gradient(ellipse,rgba(255,255,255,.95) 0 6%,rgba(190,220,255,.55) 14%,rgba(120,170,255,.12) 40%,transparent 65%);filter:blur(1px)}
+.gc2-sky i::after{content:"";position:absolute;left:30%;right:30%;top:42%;height:12px;background:repeating-linear-gradient(90deg,#fff 0 6px,transparent 6px 12px);opacity:.9;border-radius:4px}
+.gc2-sky .l1{left:-60px;top:20px}.gc2-sky .l2{left:300px;top:0}.gc2-sky .l3{left:660px;top:10px}.gc2-sky .l4{left:980px;top:30px}
+.gc2-stand{position:absolute;left:0;right:0;top:260px;height:340px;background:repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 3px,transparent 3px 14px),radial-gradient(ellipse at 50% 0,rgba(90,130,210,.35),rgba(10,20,50,.9) 70%);opacity:.9}
+.gc2-stand::before{content:"";position:absolute;inset:0;background:radial-gradient(circle,rgba(255,255,255,.35) 1px,transparent 1.6px) 0 0/9px 9px;opacity:.35}
+.gc2-grass{position:absolute;left:0;right:0;bottom:0;height:130px;background:repeating-linear-gradient(90deg,#2f8f2a 0 90px,#278022 90px 180px);box-shadow:inset 0 30px 40px rgba(0,0,0,.45)}
+.gc2-grass::before{content:"";position:absolute;left:-10%;right:-10%;top:28px;height:4px;background:rgba(255,255,255,.7);transform:skewX(-30deg)}
+.gc2-slash{position:absolute;left:-120px;top:70px;width:900px;height:560px;background:linear-gradient(115deg,transparent 0 18%,var(--c0) 18% 52%,transparent 52% 56%,rgba(200,20,30,.55) 56% 60%,transparent 60%);opacity:.92;clip-path:polygon(25% 0,100% 0,62% 100%,0 100%)}
+.gc2-slash::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.08) 0 2px,transparent 2px 18px)}
+.gc2-fc{position:absolute;left:-40px;bottom:0;width:640px;height:640px;display:flex;align-items:flex-end;justify-content:center;pointer-events:none}
+.gc2-face{width:600px;height:auto;max-height:660px;object-fit:contain;filter:drop-shadow(0 10px 24px rgba(0,0,0,.7))}
+.gc2 .gc-top{z-index:3;background:linear-gradient(#000c,#0000)}
+.gc2 .gc-top>b{transform:skewX(-8deg);background:linear-gradient(90deg,#000a,#0000);padding:4px 18px}
+.gc2-tx{position:absolute;left:520px;top:118px;width:500px;z-index:2}
+.gc2-rib{display:inline-flex;gap:28px;padding:8px 28px;font:900 19px/1 "Hiragino Kaku Gothic ProN",sans-serif;color:#1a1000;background:linear-gradient(100deg,transparent 0 3%,#f6c42a 3% 96%,transparent 96%),linear-gradient(#ffe066,#e8a812);clip-path:polygon(2% 0,100% 8%,97% 100%,0 92%);text-shadow:0 1px 0 rgba(255,255,255,.4)}
+.gc2-star{margin:10px 0 0;font-size:54px;line-height:1;letter-spacing:2px;color:#ffd23a;background:linear-gradient(#fff6a0,#ffc21a 55%,#e08a00);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 3px 0 rgba(0,0,0,.6))}
+.gc2-nm{margin:0;font:900 108px/1.05 "Hiragino Kaku Gothic ProN",sans-serif;color:#fff;letter-spacing:2px;text-shadow:4px 6px 0 #000,0 0 22px rgba(0,0,0,.6)}
+.gc2-tm{display:flex;align-items:center;gap:12px;margin:8px 0 0;padding-bottom:8px;border-bottom:3px solid var(--c0);font:900 26px/1 "Hiragino Kaku Gothic ProN",sans-serif}
+.gc2-tm i{font-style:normal;background:var(--c0);padding:4px 18px;clip-path:polygon(8% 0,100% 0,92% 100%,0 100%)}
+.gc2-tm s{width:2px;height:24px;background:#fff8}
+.gc2-ttl{margin:12px 0 14px;font:900 30px/1.2 "Hiragino Kaku Gothic ProN",sans-serif;text-shadow:0 3px 0 #000}
+.gc2-un{position:relative;background:rgba(0,0,0,.72);border:3px solid #e8b52a;border-radius:16px;padding:22px 20px 16px;box-shadow:0 0 18px rgba(232,181,42,.35)}
+.gc2-un i{position:absolute;left:18px;top:-16px;font-style:normal;font:900 17px/1 "Hiragino Kaku Gothic ProN",sans-serif;color:#1a1000;background:linear-gradient(#ffe066,#e8a812);padding:6px 16px;clip-path:polygon(6% 0,100% 0,94% 100%,0 100%)}
+.gc2-un b{display:block;font:900 52px/1.1 "Hiragino Kaku Gothic ProN",sans-serif;color:#ffd23a;background:linear-gradient(#fff3a0,#ffc21a 50%,#e07a00);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 3px 0 rgba(0,0,0,.7))}
+.gc2-un small{display:block;margin-top:6px;font-size:19px;line-height:1.5;font-weight:700}
+.gc2-side{position:absolute;right:20px;top:96px;width:330px;bottom:20px;z-index:3;background:rgba(14,24,48,.82);border:2px solid rgba(255,255,255,.22);border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:12px;backdrop-filter:blur(4px)}
+.gc2-pity{background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.18);border-radius:14px;padding:10px 14px 14px}
+.gc2-pity span{font-size:15px;font-weight:800}.gc2-pity b{display:block;font-size:30px;font-weight:900;margin:2px 0 8px}.gc2-pity b em{font-style:normal;font-size:46px;margin:0 2px}
+.gc2-pity i{display:block;height:10px;border-radius:999px;background:rgba(255,255,255,.18);overflow:hidden}.gc2-pity i s{display:block;height:100%;background:linear-gradient(90deg,#ffd23a,#ff5ad2);min-width:6%}
+.gc2-btn{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;border-radius:18px;border:3px solid rgba(255,255,255,.85);color:#fff;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.45)}
+.gc2-btn::after{content:"";position:absolute;right:-30px;bottom:-30px;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.18) 0 40%,transparent 41%),repeating-conic-gradient(rgba(255,255,255,.12) 0 30deg,transparent 30deg 60deg);opacity:.6}
+.gc2-btn b{font:900 32px/1 "Hiragino Kaku Gothic ProN",sans-serif;text-shadow:0 2px 0 rgba(0,0,0,.35)}.gc2-btn span{display:flex;align-items:center;gap:8px;font-size:28px;font-weight:900}.gc2-btn .coin-ico{width:30px;height:30px}
+.gc2-btn small{font-size:15px;font-weight:900;background:rgba(0,0,0,.3);padding:3px 14px;border-radius:999px}
+.gc2-btn.ten{background:linear-gradient(#ffa03a,#e8601a);padding:14px 12px}.gc2-btn.one{background:linear-gradient(#3aa0ff,#1f6ad0)}
+.gc2-btn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.45)}
+.gc2-row{margin-top:auto;display:flex;gap:6px}
+.gc2-row button{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:4px;padding:8px 6px;border-radius:12px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.25);color:#fff;font:800 14px/1.2 "Hiragino Kaku Gothic ProN",sans-serif;box-shadow:none;white-space:nowrap}
+.gc2-row .gc-auto span{display:flex;flex-direction:column;align-items:flex-start;font-size:13px}.gc2-row .gc-auto small{font-size:12px;opacity:.85}
+.gc2-sw{flex:none;width:34px;height:20px;border-radius:999px;background:#555;position:relative}.gc2-sw::after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.gc2-row .gc-auto.on .gc2-sw{background:#3aa0ff}.gc2-row .gc-auto.on .gc2-sw::after{left:16px}
+.gc2-tx{left:490px;width:420px}
+.gc2-nm{font-size:96px}
+.gc2-un b{font-size:46px}.gc2-un small{font-size:17px}
+.gc2-row button{font-size:13px;padding:8px 4px}

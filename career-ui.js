@@ -3196,25 +3196,32 @@
     const draw = () => {
       const bn = C.gachaBanner(), U = bn.uniq, q = C.rosterAt(bn.tid, 1).players.find((x) => x.no === bn.no), left = C.GACHA_PITY - (g.pity[bn.id] || 0);
       const cc = U.chip || ['#c8141e', '#ffd23a', '#ffe45a'];
-      box.innerHTML = `<div class="gc">
+      const tp = U.type || q.type || '';
+      // 版519：監督の作ったスカウト画面（夜のスタジアム・大きな選手・右に操作パネル）に合わせた
+      box.innerHTML = `<div class="gc gc2" style="--c0:${cc[0]};--c1:${cc[1]};--c2:${cc[2]}">
+        <div class="gc2-sky"><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i></div><div class="gc2-stand"></div><div class="gc2-grass"></div>
+        <div class="gc2-slash"></div>
+        <div class="gc2-fc">${gcFace(bn.tid, q, 'gc2-face')}</div>
         <div class="gc-top"><b>スカウト</b><span class="gc-coin">${COIN}${(save.coins || 0).toLocaleString()}</span><span class="gc-kk">◆ 覚醒のカケラ ${(save.kakera || 0).toLocaleString()}</span><button class="std-back gc-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
-        <div class="gc-ban" style="--c0:${cc[0]};--c1:${cc[1]};--c2:${cc[2]}">
-          <div class="gc-bg"></div>
-          <div class="gc-fc">${gcFace(bn.tid, q, 'gc-face')}</div>
-          <div class="gc-tx"><em>今月のピックアップ　〜${esc(bn.until)}まで</em><div class="gc-star">${starHTML(5, 0)}</div><h2>${esc(U.who)}</h2><p class="gc-tm">${esc(gcTeamShort(bn.tid))}　${esc(q.pos)}　${esc(U.type || q.type || '')}</p>
-            <div class="gc-un"><i>固有スキル</i><b>${esc(U.name)}</b><small>${esc(U.se || '')}</small></div></div>
+        <div class="gc2-tx">
+          <div class="gc2-rib"><span>今月のピックアップ</span><span>${esc(bn.until)}まで</span></div>
+          <div class="gc2-star">★★★★★</div>
+          <h2 class="gc2-nm">${esc(U.who)}</h2>
+          <div class="gc2-tm"><i>${esc(q.pos)}</i><span>${esc(gcTeamShort(bn.tid))}</span><s></s><span>${esc(tp)}</span></div>
+          <p class="gc2-ttl">国内屈指の${esc(tp)}</p>
+          <div class="gc2-un"><i>固有スキル</i><b>${esc(U.name)}</b><small>${esc(U.se || '')}</small></div>
         </div>
-        <div class="gc-side">
-          <div class="gc-pity"><span>ピックアップ確定まで</span><b>あと${left}回</b><i style="width:${Math.round((1 - left / C.GACHA_PITY) * 100)}%"></i></div>
-          <button class="gc-btn one" data-n="1"><b>1回スカウト</b><span>${COIN}${C.GACHA_COST.one}</span></button>
-          <button class="gc-btn ten" data-n="10"><b>10回スカウト</b><span>${COIN}${C.GACHA_COST.ten.toLocaleString()}</span><small>☆3以上 1人確定</small></button>
-          <div class="gc-row"><button class="gc-rate">出る確率</button><button class="gc-auto${g.auto ? ' on' : ''}">自動放出：${['しない', '☆1', '☆2以下'][g.auto || 0]}</button></div>
-          <p class="gc-note">同じ選手が出たら凸（最大3凸）。完凸のあとは覚醒のカケラ。自動放出をオンにすると、はじめて出た選手のうちその☆以下はカケラになります（持っている選手は凸）。チームが25人の時は、リザーブ（控え室）に入ります。</p>
+        <div class="gc2-side">
+          <div class="gc2-pity"><span>ピックアップ確定まで</span><b>あと<em>${left}</em>回</b><i><s style="width:${Math.round((1 - left / C.GACHA_PITY) * 100)}%"></s></i></div>
+          <button class="gc2-btn ten" data-n="10"><b>10回スカウト</b><span>${COIN}${C.GACHA_COST.ten.toLocaleString()}</span><small>★3以上 1人確定</small></button>
+          <button class="gc2-btn one" data-n="1"><b>1回スカウト</b><span>${COIN}${C.GACHA_COST.one}</span></button>
+          <div class="gc2-row"><button class="gc-rate">出る確率 ›</button><button class="gc-rule">獲得ルール ›</button><button class="gc-auto${g.auto ? ' on' : ''}"><span>自動放出<small>${['しない', '★1', '★2以下'][g.auto || 0]}</small></span><i class="gc2-sw"></i></button></div>
         </div></div>`;
+      box.querySelector('.gc-rule').onclick = () => coachAsk('<b>獲得ルール</b><br><small>同じ選手が出たら凸（最大3凸）。完凸のあとは覚醒のカケラになります。<br>自動放出をオンにすると、はじめて出た選手のうち、その★以下はカケラになります（持っている選手は凸）。<br>チームが25人の時は、リザーブ（控え室）に入ります。</small>', [{ label: 'とじる', value: true }], 'sec');
       box.querySelector('.gc-back').onclick = () => { el.hidden = true; go('home'); };
       box.querySelector('.gc-auto').onclick = () => { g.auto = ((g.auto || 0) + 1) % 3; store(); draw(); };
       box.querySelector('.gc-rate').onclick = () => coachAsk(`<b>出る確率</b><br>${C.GACHA_RATE.map(([st, pc]) => `☆${st}：${pc}%`).join('　')}<br><small>☆5が出た時、半分はピックアップの${esc(U.who)}。<br>このスカウトで${C.GACHA_PITY}回引くと、${esc(U.who)}が確定（出たら数え直し）。<br>10回スカウトは、☆3以上が1人確定。</small>`, [{ label: 'とじる', value: true }], 'sec');
-      box.querySelectorAll('.gc-btn').forEach((b) => b.onclick = async () => {
+      box.querySelectorAll('.gc2-btn').forEach((b) => b.onclick = async () => {
         const n = +b.dataset.n, res = C.gachaPull(save, n);
         if (!res) { coachAsk('コインが足りません。<br>カップ戦で勝つと、コインがもらえますよ。', [{ label: 'OK', value: true }], 'sec'); return; }
         store(); await gachaShow(el, res); draw();
