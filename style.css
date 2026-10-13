@@ -1875,3 +1875,8 @@ html.short #assocScreen .sc-o,html.phone #assocScreen .sc-o{min-width:0;text-ove
 .s2resbar .s2rf{width:44px;height:44px;border-radius:50%;object-fit:cover;object-position:top}
 .s2resbar b{font-size:20px}.s2resbar span{font-size:15px;font-weight:800;color:#ffe14a}
 .s2res-back{border-radius:999px;padding:4px 14px;font-weight:800}
+.gc-row{display:flex;gap:10px;align-items:center}
+.gc-auto{background:rgba(255,255,255,.15);color:#fff;border:2px solid rgba(255,255,255,.4);border-radius:999px;padding:6px 16px;font-weight:800}
+.gc-auto.on{background:#2a9ad8;border-color:#bfe8ff}
+.b-auto{background:#5a5a8a}
+.gcc:has(.b-auto) .gcc-f{opacity:.7}

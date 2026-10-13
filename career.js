@@ -1684,6 +1684,7 @@
       if ((own.totsu || 0) < 3) { const from = own.totsu || 0; own.totsu = from + 1; return { kind: 'totsu', p: own, from, to: own.totsu, star: pick.star, q, tid: pick.tid }; }
       const k = KAKERA_OF[pick.star] || 1; save.kakera = (save.kakera || 0) + k; return { kind: 'kakera', p: own, kakera: k, star: pick.star, q, tid: pick.tid };
     }
+    if ((save.gacha && save.gacha.auto || 0) >= pick.star) { const k = KAKERA_OF[pick.star] || 1; save.kakera = (save.kakera || 0) + k; return { kind: 'auto', kakera: k, star: pick.star, q, tid: pick.tid }; }   // 版509：自動放出（はじめての選手でも、その☆以下ならカケラに）
     const full = ps.length >= 25;   // チームは25人まで。あふれた選手はリザーブ（控え室）へ
     const p = rosterPlayer(q, ps.length); delete p.topHair; delete p.role;
     const used = new Set(ps.map((x) => x.number)); let n = q.no; if (used.has(n)) { n = 12; while (used.has(n)) n++; } p.number = n;

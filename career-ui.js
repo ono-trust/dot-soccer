@@ -3058,10 +3058,11 @@
           <div class="gc-pity"><span>ピックアップ確定まで</span><b>あと${left}回</b><i style="width:${Math.round((1 - left / C.GACHA_PITY) * 100)}%"></i></div>
           <button class="gc-btn one" data-n="1"><b>1回スカウト</b><span>${COIN}${C.GACHA_COST.one}</span></button>
           <button class="gc-btn ten" data-n="10"><b>10回スカウト</b><span>${COIN}${C.GACHA_COST.ten.toLocaleString()}</span><small>☆3以上 1人確定</small></button>
-          <button class="gc-rate">出る確率</button>
-          <p class="gc-note">同じ選手が出たら凸（最大3凸）。完凸のあとは覚醒のカケラ。チームが25人の時は、リザーブ（控え室）に入ります。</p>
+          <div class="gc-row"><button class="gc-rate">出る確率</button><button class="gc-auto${g.auto ? ' on' : ''}">自動放出：${['しない', '☆1', '☆2以下'][g.auto || 0]}</button></div>
+          <p class="gc-note">同じ選手が出たら凸（最大3凸）。完凸のあとは覚醒のカケラ。自動放出をオンにすると、はじめて出た選手のうちその☆以下はカケラになります（持っている選手は凸）。チームが25人の時は、リザーブ（控え室）に入ります。</p>
         </div></div>`;
       box.querySelector('.gc-back').onclick = () => { el.hidden = true; go('home'); };
+      box.querySelector('.gc-auto').onclick = () => { g.auto = ((g.auto || 0) + 1) % 3; store(); draw(); };
       box.querySelector('.gc-rate').onclick = () => coachAsk(`<b>出る確率</b><br>${C.GACHA_RATE.map(([st, pc]) => `☆${st}：${pc}%`).join('　')}<br><small>☆5が出た時、半分はピックアップの${esc(U.who)}。<br>このスカウトで${C.GACHA_PITY}回引くと、${esc(U.who)}が確定（出たら数え直し）。<br>10回スカウトは、☆3以上が1人確定。</small>`, [{ label: 'とじる', value: true }], 'sec');
       box.querySelectorAll('.gc-btn').forEach((b) => b.onclick = async () => {
         const n = +b.dataset.n, res = C.gachaPull(save, n);
@@ -3086,7 +3087,7 @@
         const one = rs.length === 1;
         ov.innerHTML = `<div class="gcs-grid${one ? ' one' : ''}">${rs.map((r, i) => {
           const tz = r.kind === 'totsu' ? r.to : r.p ? r.p.totsu || 0 : 0;
-          const badge = r.kind === 'new' ? (r.reserve ? '<em class="b-res">NEW・リザーブへ</em>' : '<em class="b-new">NEW</em>') : r.kind === 'totsu' ? `<em class="b-tz">凸UP ${r.from}→${r.to}</em>` : `<em class="b-kk">カケラ +${r.kakera}</em>`;
+          const badge = r.kind === 'new' ? (r.reserve ? '<em class="b-res">NEW・リザーブへ</em>' : '<em class="b-new">NEW</em>') : r.kind === 'totsu' ? `<em class="b-tz">凸UP ${r.from}→${r.to}</em>` : r.kind === 'auto' ? `<em class="b-auto">放出・カケラ +${r.kakera}</em>` : `<em class="b-kk">カケラ +${r.kakera}</em>`;
           return `<div class="gcc s${r.star}" style="--d:${i * (one ? 0 : 0.16)}s"><div class="gcc-in"><div class="gcc-b"></div><div class="gcc-f">${gcFace(r.tid, r.q, 'gcc-face')}<div class="gcc-st">${starHTML(r.star, tz)}</div><b>${esc(r.q.name)}</b><small>${esc(gcTeamShort(r.tid))}・${esc(r.q.pos)}</small>${badge}</div></div></div>`; }).join('')}</div>
           <button class="gcs-ok primary">OK</button>`;
         rs.forEach((r, i) => later(() => SND2(r.star >= 4 ? 'reveal5' : 'reveal'), 300 + i * (one ? 0 : 160)));
