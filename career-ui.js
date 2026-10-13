@@ -3292,28 +3292,64 @@
     });
   }
   // ================= ショップ =================
-  function shop() {
-    const cats = ['tact', 'tech', 'phys', 'sup'];
-    const draw = (msg) => {
-      // 版522：スクロールしないで1画面に収まる形（上：スカウトとパック／下：カード、カードは画面に合わせて大きさを決める）
-      $('#crModalBody').innerHTML = `<div class="shp"><div class="shp-h"><b>ショップ</b><span class="coin">${COIN}${(save.coins || 0).toLocaleString()} コイン</span><button id="shopClose" class="shp-x" title="とじる">×</button></div>
-        <div class="shp-top">
-          <button class="gc-entry shp-gc" id="gcEntry"><b>スカウト</b><span>今月のピックアップ：${esc(C.gachaBanner().uniq.who)}（${esc(C.gachaBanner().uniq.name)}）</span><em>選手をスカウトする ▶</em></button>
-          <div class="pack"><b>カードパック</b><small>ランダム5枚</small><button data-pack="5" class="primary">${COIN}${C.PRICE.pack5}</button></div>
-          <div class="pack"><b>カードパック（大）</b><small>ランダム12枚</small><button data-pack="12" class="primary">${COIN}${C.PRICE.pack12}</button></div>
-          <div class="pack prem"><b>プレミアムパス</b><small>毎日5枚（月額）</small><button disabled>準備中</button></div>
-        </div>
-        <p class="shp-hint">1枚ずつ買う：カードをタップ（どれも ${COIN}${C.PRICE.card}）</p>
-        <div class="shp-cards"><div class="shop-cards2 shp-in">${cats.map((cat) => `<div class="hg ${CATC[cat]}"><span class="hg-l">${C.CAT_NAME[cat]}</span><div class="hg-c">${Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat === cat).map((c) => artCard(c, { extra: `<i class="ac-pr">${COIN}${cat === 'sup' ? C.PRICE.sup : C.PRICE.card}</i>` })).join('')}</div></div>`).join('')}</div></div>
-        ${msg ? `<p class="shp-msg">${msg}</p>` : ''}</div>`;
-      { const box = $('#crModalBody .shp-cards'), inn = box && box.querySelector('.shp-in'); if (inn) requestAnimationFrame(() => { inn.style.zoom = 1; const k = Math.min(1.6, (box.clientWidth - 4) / inn.scrollWidth, (box.clientHeight - 4) / inn.scrollHeight); inn.style.zoom = k.toFixed(3); }); }
-      { const m = $('#crModalBody .shp-msg'); if (m) setTimeout(() => m.classList.add('out'), 1800); }
-      $('#crModalBody').querySelectorAll('[data-pack]').forEach((b) => b.onclick = () => { const got = C.buyPack(save, +b.dataset.pack); store(); draw(got ? `${got.map((c) => C.CARDS[c].name).join('・')} を手に入れた！` : 'コインが足りません'); });
-      $('#crModalBody').querySelectorAll('.shop-cards2 .acard').forEach((b) => b.onclick = () => { const ok = C.buyCard(save, b.dataset.c); store(); draw(ok ? `${C.CARDS[b.dataset.c].name} を買った！` : 'コインが足りません'); });
-      $('#shopClose').onclick = () => { $('#crModal').hidden = true; renderHome(); };
-      $('#gcEntry').onclick = () => { $('#crModal').hidden = true; openGacha(); };
+  // 版526：ショップ（監督のデザイン案3枚：おすすめ／特訓カード／プレミアムパス）。案の絵を下地にして、数字・ピックアップ・カードは中身に合わせて描く
+  const SH_CATS = [['all', 'すべて'], ['tact', '戦術'], ['tech', 'テクニック'], ['phys', 'フィジカル'], ['sup', 'サポート']];
+  const SH_CATCOL = { tact: '#1f9a45', tech: '#e2512a', phys: '#2f6fd6', sup: '#d4a017' };
+  let shopSt = { tab: 'rec', cat: 'tact', sel: null, qty: 1 };
+  function shop(tab) {
+    const el = fullScreen('shopScreen', 'std-wrap sh3-wrap'), box = el.querySelector('.lk-box');
+    if (tab) shopSt.tab = tab;
+    const toast = (msg) => { const t = document.createElement('p'); t.className = 'sh3-toast'; t.innerHTML = msg; box.appendChild(t); setTimeout(() => t.classList.add('out'), 1600); setTimeout(() => t.remove(), 2200); };
+    const coins = () => (save.coins || 0).toLocaleString();
+    const hit = (cls, x, y, w, h, attr, title) => `<button class="sh3-hit ${cls}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px" ${attr || ''} title="${title || ''}"></button>`;
+    const price = (c) => (C.CARDS[c].cat === 'sup' ? C.PRICE.sup : C.PRICE.card);
+    const effText = (c) => { const cd = C.CARDS[c]; return `${Object.entries(cd.up).map(([k, v]) => `${C.PNAME[k]}+${v}`).join('・')}${cd.fat ? `（疲労${cd.fat > 0 ? '+' : ''}${cd.fat}）` : ''}`; };
+    const draw = () => {
+      const S = shopSt; let h = '';
+      if (S.tab === 'rec') {
+        const bn = C.gachaBanner(), U = bn.uniq, q = C.rosterAt(bn.tid, 1).players.find((x) => x.no === bn.no), cc = U.chip || ['#c8141e', '#ffd23a', '#ffe45a'];
+        h = `<div class="sh3 sh3-rec"><img class="sh3-bgimg" src="img/shop_m1.jpg" alt="">
+          <span class="sh3-coin c1">${coins()}</span>
+          <div class="sh3-ban" style="--c0:${cc[0]}"><div class="sh3-ban-bg"></div><div class="sh3-ban-fc">${gcFace(bn.tid, q, 'sh3-ban-face')}</div>
+            <i class="sh3-ban-rib">今月のピックアップ</i><b class="sh3-ban-nm" style="font-size:${Math.min(96, Math.round(360 / Math.max(3, U.who.length)))}px">${esc(U.who)}</b><em class="sh3-ban-sk">${esc(U.name)}</em>
+            <button class="sh3-ban-go" data-go="scout">スカウトを見る<span>›</span></button></div>
+          ${hit('', 27, 9, 67, 66, 'data-go="back"', 'もどる')}${hit('', 34, 88, 398, 44, 'data-tab="rec"')}${hit('', 442, 88, 397, 44, 'data-tab="cards"', '特訓カード')}${hit('', 847, 88, 397, 44, 'data-tab="prem"', 'プレミアムパス')}
+          ${hit('', 847, 142, 397, 272, 'data-tab="prem"', 'プレミアムパス')}
+          ${hit('', 52, 573, 201, 41, 'data-info="5"', 'パック内容を見る')}${hit('sh3-buy', 345, 555, 266, 63, 'data-pack="5"', 'カードパックを買う')}
+          ${hit('', 666, 573, 199, 41, 'data-info="12"', 'パック内容を見る')}${hit('sh3-buy', 984, 555, 239, 63, 'data-pack="12"', 'カードパック（大）を買う')}
+          ${hit('', 398, 642, 488, 57, 'data-tab="cards"', '特訓カードを1枚ずつ選ぶ')}</div>`;
+      } else if (S.tab === 'prem') {
+        h = `<div class="sh3 sh3-prem"><img class="sh3-bgimg" src="img/shop_m3.jpg" alt=""><span class="sh3-coin c3">${coins()}<small>コイン</small></span>
+          ${hit('', 46, 8, 69, 69, 'data-go="back"', 'もどる')}${hit('', 86, 80, 366, 58, 'data-tab="rec"')}${hit('', 459, 80, 356, 58, 'data-tab="cards"')}${hit('', 823, 80, 387, 58, 'data-tab="prem"')}${hit('', 467, 635, 345, 60, 'data-soon="1"', '近日公開')}</div>`;
+      } else {
+        const list = Object.keys(C.CARDS).filter((c) => S.cat === 'all' || C.CARDS[c].cat === S.cat);
+        if (!S.sel || !list.includes(S.sel)) { S.sel = list[0]; S.qty = 1; }
+        const c = S.sel, cd = C.CARDS[c], pr = price(c), tot = pr * S.qty, lack = Math.max(0, tot - (save.coins || 0));
+        h = `<div class="sh3 sh3-cards"><img class="sh3-bgimg" src="img/shop_m2.jpg" alt=""><span class="sh3-coin c2">${coins()}<small>コイン</small></span>
+          ${hit('', 34, 15, 69, 67, 'data-go="back"', 'もどる')}${hit('', 527, 27, 214, 50, 'data-tab="rec"')}${hit('', 750, 27, 224, 50, 'data-tab="cards"')}${hit('', 984, 27, 240, 50, 'data-tab="prem"')}
+          <div class="sh3-sub">${SH_CATS.map(([k, l]) => `<button data-cat="${k}" class="${S.cat === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+          <div class="sh3-grid">${list.map((k) => { const d = C.CARDS[k]; return `<button class="sh3-card${k === c ? ' on' : ''}" data-c="${k}" style="--cc:${SH_CATCOL[d.cat]}"><b style="font-size:${d.name.length > 7 ? 15 : d.name.length > 5 ? 18 : 21}px">${esc(d.name)}</b><img src="cards/${k}.jpg" alt="" draggable="false"><span class="sh3-cf"><small>所持 ${save.cards[k] || 0}枚</small><em>${COIN}${price(k)}</em></span></button>`; }).join('')}</div>
+          <div class="sh3-det"><h3>${esc(cd.name)}</h3><img src="cards/${c}.jpg" alt=""><p class="sh3-eff">${esc(effText(c))}</p>
+            <div class="sh3-one">1枚 ${COIN}<b>${pr}</b><small>コイン</small></div>
+            <div class="sh3-qty"><button data-q="-1" class="m"${S.qty <= 1 ? ' disabled' : ''}>−</button><span>${S.qty}</span><button data-q="1" class="p"${S.qty >= 99 ? ' disabled' : ''}>＋</button></div>
+            <div class="sh3-tot">合計<span>${COIN}<b>${tot}</b><small>コイン</small></span></div>
+            <button class="sh3-go"${lack ? ' disabled' : ''}>購入する</button><p class="sh3-lack">${lack ? `あと <b>${lack}</b> コイン必要` : ''}</p>
+            <button class="sh3-pk" data-tab="rec">まとめ買いならカードパックへ <span>→</span></button></div></div>`;
+      }
+      box.innerHTML = h;
+      box.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { shopSt.tab = b.dataset.tab; draw(); });
+      box.querySelectorAll('[data-go="back"]').forEach((b) => b.onclick = () => { el.hidden = true; renderHome(); });
+      box.querySelectorAll('[data-go="scout"]').forEach((b) => b.onclick = () => { el.hidden = true; openGacha(); });
+      box.querySelectorAll('[data-soon]').forEach((b) => b.onclick = () => toast('プレミアムパスは近日公開です'));
+      box.querySelectorAll('[data-info]').forEach((b) => b.onclick = () => coachAsk(`<b>カードパック${b.dataset.info === '12' ? '（大）' : ''}</b><br>特訓カード（戦術・テクニック・フィジカル・サポート）から<br>ランダムで <b>${b.dataset.info}枚</b> 入っています。<br><small>1枚ずつ買うより、1枚あたりがお得です。</small>`, [{ label: 'とじる', value: true }], 'sec'));
+      box.querySelectorAll('[data-pack]').forEach((b) => b.onclick = () => { const got = C.buyPack(save, +b.dataset.pack); store(); draw(); toast(got ? `${got.map((k) => C.CARDS[k].name).join('・')}<br>を手に入れた！` : 'コインが足りません'); });
+      box.querySelectorAll('[data-cat]').forEach((b) => b.onclick = () => { shopSt.cat = b.dataset.cat; shopSt.sel = null; draw(); });
+      box.querySelectorAll('.sh3-card').forEach((b) => b.onclick = () => { if (shopSt.sel !== b.dataset.c) shopSt.qty = 1; shopSt.sel = b.dataset.c; const g = box.querySelector('.sh3-grid'), st = g ? g.scrollTop : 0; draw(); const g2 = box.querySelector('.sh3-grid'); if (g2) g2.scrollTop = st; });
+      box.querySelectorAll('[data-q]').forEach((b) => b.onclick = () => { shopSt.qty = Math.max(1, Math.min(99, shopSt.qty + +b.dataset.q)); const g = box.querySelector('.sh3-grid'), st = g ? g.scrollTop : 0; draw(); const g2 = box.querySelector('.sh3-grid'); if (g2) g2.scrollTop = st; });
+      { const go = box.querySelector('.sh3-go'); if (go) go.onclick = () => { const c = shopSt.sel; let n = 0; for (let k = 0; k < shopSt.qty; k++) { if (C.buyCard(save, c)) n++; else break; } store(); const g = box.querySelector('.sh3-grid'), st = g ? g.scrollTop : 0; shopSt.qty = 1; draw(); const g2 = box.querySelector('.sh3-grid'); if (g2) g2.scrollTop = st; toast(n ? `${esc(C.CARDS[c].name)} を ${n}枚 買った！` : 'コインが足りません'); }; }
+      { const bg = box.querySelector('.sh3-ban-bg'); if (bg) { const bn = C.gachaBanner(); gcBgFor(bn.uniq.chip, (u) => { bg.style.backgroundImage = `url(${u})`; }); } }
     };
-    draw(''); $('#crModal').hidden = false;
+    draw(); el.hidden = false; el._fit();
   }
 
   let clubAsked = false;
