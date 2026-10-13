@@ -53,7 +53,7 @@
   function go(v) {
     if (v === 'assoc') { go('home'); openAssoc({ tab: 'sched' }); return; }   // サッカー協会は全画面
     if (v === 'lineup' && view !== 'lineup') sqFromHome = view === 'home';   // クラブ事務所から来た時だけ、クラブ設定のボタンを出す
-    view = v;
+    view = v; try { window.DotSound && DotSound.bgm(v === 'home' ? 'home' : 'club'); } catch (_) {}   // 版499：BGM
     $('#cv-home').hidden = v !== 'home';
     $('#cv-club').hidden = v === 'home';
     $('#cvBack').hidden = v === 'home';
@@ -1641,7 +1641,7 @@
     let el = document.getElementById('weekFx');
     if (!el) { el = document.createElement('div'); el.id = 'weekFx'; el.innerHTML = '<div class="wf-in"><b></b><small></small></div>'; (document.getElementById('app') || document.body).appendChild(el); }
     if (phase === 'dark') { el.querySelector('b').textContent = ''; el.querySelector('small').textContent = ''; el.className = 'wf-dark'; return new Promise((r) => setTimeout(r, 420)); }
-    if (phase === 'show') { el.querySelector('b').textContent = label; el.querySelector('small').textContent = sub || ''; el.className = 'wf-dark wf-show'; return new Promise((r) => setTimeout(r, sub ? 1250 : 850)); }
+    if (phase === 'show') { try { window.DotSound && DotSound.play('week'); } catch (_) {} el.querySelector('b').textContent = label; el.querySelector('small').textContent = sub || ''; el.className = 'wf-dark wf-show'; return new Promise((r) => setTimeout(r, sub ? 1250 : 850)); }
     el.className = 'wf-light'; return new Promise((r) => setTimeout(r, 450));
   }
   async function endWeek() {
@@ -1700,7 +1700,7 @@
     const lgH = lgOf(home.name), lgA = lgOf(away.name), stad = stadiumName(op, meta);
     const title = `${esc(meta.comp)}${meta.label ? '　' + esc(meta.label) : ''}`;
     return new Promise((resolve) => {
-      const showLive = () => {
+      const showLive = () => { try { window.DotSound && DotSound.bgm('prematch'); } catch (_) {}
         el.innerHTML = `<canvas width="1280" height="720"></canvas>
           <div class="lv-head"><div class="lv-t"><b>LIVE</b><span>${title}</span></div>
             <div class="lv-m"><img src="${emblemURL(home.name, 40)}" alt="">${esc((C.findTeam(save, home.name) || {}).short || home.name.replace(/FC$/, ''))}${lgBadge(lgH)}<em>×</em><img src="${emblemURL(away.name, 40)}" alt="">${esc((C.findTeam(save, away.name) || {}).short || away.name.replace(/FC$/, ''))}${lgBadge(lgA)}</div>
@@ -3121,7 +3121,8 @@
   if (!fsOk) $('#mFull').hidden = true;
   if (!inFrame && $('#mTab')) $('#mTab').hidden = true;
   window.__openMenu = () => $('#mMenu').onclick();
-  $('#mMenu').onclick = () => { $('#mFull').textContent = document.fullscreenElement ? '全画面をやめる' : '全画面にする'; if ($('#mGap')) $('#mGap').textContent = topGap ? '画面の上を空けない（上までゲームを広げる）' : '画面の上を空ける（上がさわれない時）'; sheet.hidden = false; };
+  const sndLabel = () => { const P = window.DotSound ? DotSound.pref : { sfx: true, bgm: true }; if ($('#mSfx')) $('#mSfx').textContent = '効果音：' + (P.sfx ? 'オン' : 'オフ'); if ($('#mBgm')) $('#mBgm').textContent = 'BGM：' + (P.bgm ? 'オン' : 'オフ'); };
+  $('#mMenu').onclick = () => { sndLabel(); $('#mFull').textContent = document.fullscreenElement ? '全画面をやめる' : '全画面にする'; if ($('#mGap')) $('#mGap').textContent = topGap ? '画面の上を空けない（上までゲームを広げる）' : '画面の上を空ける（上がさわれない時）'; sheet.hidden = false; };
   addEventListener('fullscreenchange', refit); addEventListener('webkitfullscreenchange', refit);
   sheet.addEventListener('click', async (e) => {
     const m = e.target.dataset && e.target.dataset.m;
@@ -3131,6 +3132,7 @@
     if (m === 'career') window.__career.open();
     else if (m === 'free') $('#newGame').click();
     else if (m === 'tut') { if (window.__tut) { const of = $('#officeScreen'); if (of) { of.hidden = true; go('home'); } if ($('#career').hidden) window.__career.open(); setTimeout(() => window.__tut.replay(), 300); } }
+    else if (m === 'sfx' || m === 'bgm') { if (window.DotSound) DotSound.set(m, !DotSound.pref[m]); sndLabel(); sheet.hidden = false; return; }
     else if (m === 'gap') { topGap = topGap ? 0 : 1; try { localStorage.setItem('dotTopGap', String(topGap)); } catch (_) {} refit(); }
     else if (m === 'tab') { try { window.open(location.href, '_blank'); } catch (_) {} }
     else if (m === 'fs') {

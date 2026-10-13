@@ -66,6 +66,8 @@
   }
   // 試合を始める（フリー試合・育成モード共通）。onDone があれば、試合後に呼ぶ
   let onMatchDone = null, mctx = null;
+  const SND = () => window.DotSound || { play() {}, crowd() {}, bgm() {} };   // 版499：サウンド
+  let kickAll = [], kickPtr = 0, koWhistleT = -1, chipHeard = new Map();
   function startWith(mine, theirs, seed, homeShort, awayShort, done, opts) {
     closePlv();
     { const dc = document.getElementById('digestCtl'); if (dc) dc.style.display = 'none'; }
@@ -80,9 +82,10 @@
     $('#match').classList.toggle('watching', !!mctx.opts.watch); { const ws = document.getElementById('wStop'); if (ws) { ws.hidden = !mctx.opts.watch; ws.onclick = async () => {
         { const pn = document.getElementById('panel'); if (pn && !pn.hidden) { pn.hidden = true; return; } }   /* 版491：開いている画面を一つずつ閉じる */
         { const pv = document.getElementById('plv'); if (pv && !pv.hidden) { if (plvMode !== 'both') { plvMode = 'both'; plvDraw(); } else closePlv(); return; } }
-        const was = playing; stop(); if (mctx.opts.confirmQuit && !(await mctx.opts.confirmQuit())) { if (was) play(); return; } closePlv(); ws.hidden = true; onMatchDone = null; document.getElementById('half').hidden = true; const q = mctx.opts.onQuit; if (q) q(); };   /* 版481：「観戦をやめますか？」はい／いいえ */ } }   /* 版477：観戦を途中でやめる */
+        const was = playing; stop(); if (mctx.opts.confirmQuit && !(await mctx.opts.confirmQuit())) { if (was) play(); return; } closePlv(); ws.hidden = true; onMatchDone = null; SND().crowd(false); document.getElementById('half').hidden = true; const q = mctx.opts.onQuit; if (q) q(); };   /* 版481：「観戦をやめますか？」はい／いいえ */ } }   /* 版477：観戦を途中でやめる */
     match.homeShort = homeShort || match.homeShort; match.awayShort = awayShort || match.awayShort;
     prepTimeline();
+    kickAll = kickTimes.flat().map((k) => k.t).sort((x, y) => x - y); kickPtr = 0; koWhistleT = 0.05; chipHeard = new Map(); SND().bgm(null); SND().crowd(true);
     warmUp();
     // 育成モードは入場・対戦カードの画面を先に見せているので、すぐキックオフへ
     show = mctx.opts.noIntro ? { phase: 'kickoff', hold: true, koT: 0, start: 0, goal: null, rt: 0, walk: true } : { phase: 'preCrowd', hold: true, koT: 0, start: 0, goal: null, rt: 0 };
@@ -250,12 +253,15 @@
     lastNow = now;
     if (show && show.hold) advanceShow(dt);
     else {
+      const simT0 = simT;
       simT += dt * RATE * speed * (speed < 4 ? slowAt(simT) : 1);   // 白夜の視界の間は、ゆっくり
+      if (koWhistleT >= 0 && simT0 < koWhistleT && simT >= koWhistleT) { SND().play('whistle'); koWhistleT = -1; }
+      while (kickPtr < kickAll.length && kickAll[kickPtr] <= simT) { if (kickAll[kickPtr] > simT0 - 0.05 && speed < 4 && !show) SND().play('kick'); kickPtr++; }
       if (simT >= match.duration) {
         // 試合終了（ゴール演出の途中でも、ここで締める。止まったままにならないように）
         simT = match.duration;
         if (speed >= 16) { show = null; draw(); finish(); return; }
-        if (!show || !show.hold) show = { phase: 'endOut', hold: true, rt: 0 };
+        if (!show || !show.hold) { show = { phase: 'endOut', hold: true, rt: 0 }; SND().play('whistle3'); }
       }
       fireEvents();
       if (show) advanceShow(dt);
@@ -524,7 +530,8 @@
   const GK_SAD_T = 2.9;   // ゴールが決まってから、GKが悔しがり終わる（立ち上がってゴールを見つめる）までの間
   function jumpToKickoff() {
     const g = show.goal, koT = koTimeAfter(g.t + 0.5);
-    if (koT >= match.duration - 0.3) { simT = match.duration; show = { phase: 'endOut', hold: true, rt: 0 }; return; }
+    if (koT >= match.duration - 0.3) { simT = match.duration; show = { phase: 'endOut', hold: true, rt: 0 }; SND().play('whistle3'); return; }
+    koWhistleT = koT;
     // 負けている側の得点：リプレイのあとは続きから（ボールを拾って蹴り返し、急いで戻るところを見せる）
     simT = g.hurry ? (show.saveT || simT) : Math.max(show.saveT || simT, koT - 2.6);
     // 飛ばした間の出来事は出さない（前後半の切り替えだけは拾う）
@@ -535,7 +542,7 @@
       if (e.type === 'sub') skippedSubs.push(e);   // ゴールのあとの交代は、キックオフ前に交代ボードで見せる
       evIndex++;
     }
-    cam.init = false; lastBall = null; ballTrail.length = 0;
+    cam.init = false; lastBall = null; ballTrail.length = 0; while (kickPtr < kickAll.length && kickAll[kickPtr] <= simT) kickPtr++;
     const n = goals.filter((x) => x.idx === g.idx && x.t <= g.t).length;
     show = { phase: g.hurry && koT - 2.6 > simT ? 'hurry' : 'kickoff', hold: false, koT, start: simT, goal: g, nGoals: n, rt: 0 };
     if (skippedSubs.length) startSubShow(skippedSubs, show);
@@ -2881,7 +2888,7 @@
       // 技名は頭の上の小さな吹き出しで（大きな技名はリプレイ・ダイジェストでだけ）
       if (sk) {   // 紫電の遊戯が出ている間の技の吹き出しは、紫電の遊戯と同じ色にする
         let ov = null; const L9 = actsOf[i]; if (L9) for (let k = L9.length - 1; k >= 0; k--) { const a = L9[k]; if (a.t > simT) continue; if (simT - a.t > 9) break; if (a.a === 'uend' && a.k === 'shiden') break; if (a.a === 'uniq' && a.k === 'shiden') { ov = D.UNIQ && D.UNIQ.shiden && D.UNIQ.shiden.chip; break; } }
-        skillChips.push([q.x, r.top - 44, sk, ov]); }
+        skillChips.push([q.x, r.top - 44, sk, ov]); { const kk = i + '|' + sk, last = chipHeard.get(kk); if (!show && speed < 4 && (last == null || Math.abs(simT - last) > 2)) SND().play(sk.includes('【') ? 'uniq' : 'skill'); chipHeard.set(kk, simT); } }
       // 月影の抜け出し：出ている間、走る選手のうしろに月の光の色の風と残像
       { const L3 = actsOf[i]; for (let k = L3.length - 1; k >= 0; k--) { const a = L3[k]; if (a.t > simT) continue; if (simT - a.t > 6) break;
           if (a.a === 'uend' && a.k === 'tsukikage') break;
@@ -3423,7 +3430,10 @@
         if (!active || (nb.prio || 0) >= (banner.prio || 0)) banner = nb;
         else if (nb.prio) nextBanner = nb; // 大事な知らせは後で出す
       }
-      if (e.type === 'goal') startGoalShow(e);
+      if (e.type === 'goal') { startGoalShow(e); SND().play('goal'); }
+      if ((e.type === 'foul' || e.type === 'offside') && speed < 16) SND().play('whistle');
+      if (e.type === 'card' && speed < 16) SND().play('card');
+      if (e.type === 'half') { SND().play('whistle2'); koWhistleT = e.t + 0.6; }
       if ((e.type === 'offside' || e.type === 'foul') && !show && speed < 4) startJudge(e);
       if (e.type === 'card') { const i = idxOf(e.team, e.number); if (i >= 0) cardPanel = { t: e.t + 1.3, idx: i, color: e.color, second: e.second }; }
       // ゴールの演出（喜び・観客・リプレイ）の最中に起きた交代は、演出が全部終わってキックオフの前に見せる
@@ -3555,6 +3565,8 @@
   // ---------- 試合終了 ----------
   function finish(direct) {
     { const ws = document.getElementById('wStop'); if (ws) ws.hidden = true; }
+    SND().crowd(false);
+    if (!direct && match && !(mctx && mctx.opts && mctx.opts.watch)) { const d = match.score[0] - match.score[1]; SND().play(d > 0 ? 'win' : d < 0 ? 'lose' : 'draw'); }
     closePlv();
     stop();
     // 試合結果（状況と同じ画面）→ 戻るで、育成モードは次へ（ロッカールームの会話など）、フリー試合は今までの結果画面
