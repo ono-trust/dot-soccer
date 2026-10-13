@@ -3413,15 +3413,16 @@
   }
   // ================= 版570：コイン購入（課金）の画面 =================
   // いまはテスト版：本当のお金はかからない（あとでアプリの課金につなぐ）。買った記録は save.buys に残す
+  // 版571：ピックアップのスカウト200回（20,000コイン）が、だいたい1.3万円になるように（いちばん大きいパックで1円＝約1.54コイン）
   const COIN_PACKS = [
-    { id: 'c1', coins: 250, yen: 120 },
-    { id: 'c2', coins: 800, yen: 370 },
-    { id: 'c3', coins: 1400, yen: 610, tag: '人気' },
-    { id: 'c4', coins: 3000, yen: 1220 },
-    { id: 'c5', coins: 8000, yen: 3060 },
-    { id: 'c6', coins: 17000, yen: 6100, tag: 'いちばんお得' },
+    { id: 'c1', coins: 160, yen: 120 },
+    { id: 'c2', coins: 500, yen: 370 },
+    { id: 'c3', coins: 850, yen: 610 },
+    { id: 'c4', coins: 1750, yen: 1220, tag: '人気' },
+    { id: 'c5', coins: 4500, yen: 3060 },
+    { id: 'c6', coins: 9400, yen: 6100, tag: 'いちばんお得' },
   ];
-  const COIN_BASE = 250 / 120;   // いちばん小さいパックの「1円あたりのコイン」を基準に、お得さを出す
+  const COIN_BASE = 160 / 120;   // いちばん小さいパックの「1円あたりのコイン」を基準に、お得さを出す
   function coinShop(onClose) {
     const el = fullScreen('coinScreen', 'cs-wrap'), box = el.querySelector('.lk-box');
     const draw = () => {
