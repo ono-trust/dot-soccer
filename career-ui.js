@@ -2481,8 +2481,8 @@
     };
     let svg = '', W = 1256, Hh = 540;
     if (view === 'pre') {
-      const g = H(0);
-      svg = (cup.pre || []).map(([a, b], k) => { const gg = g && g.games[k]; const y = 90 + k * 170; const m = match(330, 470, y, y + 60, gg); return label(a, 20, y) + label(b, 20, y + 60) + m.svg + `<path d="M470 ${m.ym}H560" stroke="${m.out}" stroke-width="${m.outW}"/>` + (gg ? label(gg.w, 570, m.ym) : `<text x="570" y="${m.ym + 6}" font-size="16" fill="#888">1回戦へ</text>`); }).join('');
+      const g = H(0); W = 640; Hh = 252;   // 版490：出場決定戦は2試合だけなので、表示を大きく（見る範囲をせまく）
+      svg = (cup.pre || []).map(([a, b], k) => { const gg = g && g.games[k]; const y = 30 + k * 128; const m = match(330, 470, y, y + 52, gg); return label(a, 20, y) + label(b, 20, y + 52) + m.svg + `<path d="M470 ${m.ym}H560" stroke="${m.out}" stroke-width="${m.outW}"/>` + (gg ? label(gg.w, 570, m.ym) : `<text x="570" y="${m.ym + 6}" font-size="16" fill="#888">1回戦へ</text>`); }).join('');
     } else if (view === 'final') {
       const r3 = H(3), qf = H(4), sf = H(5), fn = H(6);
       const ent = [...Array(8)].map((_, k) => (r3 ? r3.games[k].w : null));
@@ -2519,7 +2519,7 @@
       const mi = cup.bracket.slice(base, base + 16).indexOf(me); if (mi >= 0) svg = `<rect x="6" y="${rowY(mi) - 14}" width="318" height="28" rx="4" fill="#fff3c4"/>` + svg;
       Hh = 540;
     }
-    const tabs = [['A', 'ブロックA'], ['B', 'ブロックB'], ['C', 'ブロックC'], ['D', 'ブロックD'], ['final', '準々決勝から'], ['pre', '出場決定戦']].map(([k, l]) => `<button data-cupv="${k}" class="${view === k ? 'on' : ''}">${l}${k !== 'final' && k !== 'pre' && myIdx >= 0 && 'ABCD'[Math.floor(myIdx / 16)] === k ? '<small>★</small>' : ''}</button>`).join('');
+    const tabs = [['pre', '出場決定戦'], ['A', 'ブロックA'], ['B', 'ブロックB'], ['C', 'ブロックC'], ['D', 'ブロックD'], ['final', '準々決勝から']].map(([k, l]) => `<button data-cupv="${k}" class="${view === k ? 'on' : ''}">${l}${k !== 'final' && k !== 'pre' && myIdx >= 0 && 'ABCD'[Math.floor(myIdx / 16)] === k ? '<small>★</small>' : ''}</button>`).join('');
     const now = cup.champion ? `優勝：${esc(cup.champion)}` : `次は ${esc(C.CUP_LABELS[cup.round] || '')}`;
     return `<div class="std-body"><div class="std-h"><span>国内カップ トーナメント表</span><em>${now}</em></div><div class="cg-tabs">${tabs}</div><div class="cup-svg"><svg viewBox="0 0 ${W} ${Hh}" font-family="Hiragino Kaku Gothic ProN, Yu Gothic, sans-serif">${svg}</svg></div></div>`;
   }
