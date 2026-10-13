@@ -284,13 +284,15 @@
     }
     return MOBMAP[tid][q.no] || null;
   }
+  const noSkillLg = (lg) => /^reg/.test(lg || '');   // 地域リーグ（東1・東2・西1・西2）
   function rosterTeam(save, tm, ro) {
     const st = STYLES.find((x) => x.id === STYLE_ID[ro.style]) || STYLES[0];
     const ovr = (q) => KEYS.reduce((a, k) => a + q[k], 0) / KEYS.length;
     const starters = ro.players.filter((q) => q.starter), rest = ro.players.filter((q) => !q.starter).sort((a, b) => ovr(b) - ovr(a));
     const bench = [];
     for (const [pos, n] of [['GK', 1], ['DF', 2], ['MF', 2], ['FW', 2]]) bench.push(...rest.filter((q) => q.pos === pos).slice(0, n));
-    const ps = [...starters, ...bench].map((q, k) => { const p = rosterPlayer(q, k); const fk = faceKeyOf(tm.id, q), hc = p.topHair || (fk && root.STAR_HAIR && root.STAR_HAIR[fk]); delete p.topHair; if (hc) p.hairColor = hc; if (fk) p.faceKey = fk; p.cpuTid = tm.id; p.cpuNo = q.no; return p; });   // 国内屈指はその選手だけの鮮やかな色   // 試合のドット絵の髪は、顔の絵と同じ色に
+    const noSk = noSkillLg(tm.lg);   // 版559：地域リーグのCPUはスキルを持たない
+    const ps = [...starters, ...bench].map((q, k) => { const p = rosterPlayer(q, k); if (noSk) p.skills = []; const fk = faceKeyOf(tm.id, q), hc = p.topHair || (fk && root.STAR_HAIR && root.STAR_HAIR[fk]); delete p.topHair; if (hc) p.hairColor = hc; if (fk) p.faceKey = fk; p.cpuTid = tm.id; p.cpuNo = q.no; return p; });   // 国内屈指はその選手だけの鮮やかな色   // 試合のドット絵の髪は、顔の絵と同じ色に
     const t = { name: tm.name, short: tm.short, color: 'red', policies: [], autoSubs: true, kit: ro.kit, players: ps };
     applyTactics(t, { ...st.t, formation: ro.formation });
     t.players = fitLines(ps.slice(0, 11), ro.formation).concat(ps.slice(11));
@@ -415,8 +417,8 @@
       D.fillParams(p, 0);
       for (const k of KEYS) p[k] = clamp(Math.round(tm.lvl + (p[k] - 50) * 0.8 + (r() - 0.5) * 6), 25, 95);
       const pool = SKILL_POOL[p.position] || [];
-      const n = lg.skills[0] + Math.floor(r() * (lg.skills[1] - lg.skills[0] + 1));
-      const sk = new Set(p.skills || []);
+      const n = noSkillLg(tm.lg) ? 0 : lg.skills[0] + Math.floor(r() * (lg.skills[1] - lg.skills[0] + 1));
+      const sk = new Set(noSkillLg(tm.lg) ? [] : p.skills || []);
       for (let j = 0; j < n && pool.length; j++) sk.add(pool[Math.floor(r() * pool.length)]);
       p.skills = [...sk];
     });
@@ -614,7 +616,7 @@
       } else p.fatigue = clamp(p.fatigue - 10, 0, 100);
     });
   }
-  // 公式戦のあと：出場停止（レッドカード→次の公式戦）と、サポーターの支持率
+  // 公式戦のあと：出場停止（レッドカード→次の公式戦）と、勝った時の調子アップ
   function afterOfficial(save, events, myScore, res, played) {
     const ps = save.team.players, served = [], reds = [];
     for (const p of ps) if (p.suspend > 0) { p.suspend--; served.push(p.name); }   // 今日の試合で出場停止が明けた
@@ -623,11 +625,8 @@
     // 版515：公式戦に勝つと、試合に出た選手の調子が1段上がる（PK戦で勝ち上がった時も）
     const won = d > 0 || (d === 0 && res && res.win === true), condUp = [];
     if (won) (played || []).forEach((i) => { const q = ps[i]; if (q && condOf(q) < 2) { q.cond = condOf(q) + 1; condUp.push(q.name); } });
-    let dl = d > 0 ? 5 + Math.min(3, d - 1) : d === 0 ? 0 : -5 - Math.min(3, -d - 1);
-    if (res && res.champion) dl += 15; else if (res && res.win === false && (res.kind === 'cup' || res.kind === 'post')) dl -= 3;
-    const before = save.support ?? 60;
-    save.support = clamp(before + dl, 0, 100);
-    return { reds, served, condUp, support: save.support, delta: save.support - before };
+    delete save.support;   // 版559：支持率はなくした
+    return { reds, served, condUp };
   }
   // 公式戦の記録（シーズンごとの 出場P・得点G・アシストA・警告Y・退場R）
   function recordStats(save, events, playedIdx) {
@@ -1534,9 +1533,9 @@
   const CARD_POOL = Object.keys(CARDS);
   function rewardCards(save, myScore, events) {
     const r = rng(save), got = [];
-    // 1試合でもらえるのは3〜10枚（勝ち6〜9・引き分け4〜6・負け3〜5、活躍のぶんを足して最大10）
+    // 版559：1試合でもらえるのは平均5〜6枚（勝ち6〜7・引き分け5〜6・負け4〜5。課題のカードもこの中に入る）
     const res = myScore[0] > myScore[1] ? 'W' : myScore[0] === myScore[1] ? 'D' : 'L';
-    const n = res === 'W' ? 6 + Math.floor(r() * 4) : res === 'D' ? 4 + Math.floor(r() * 3) : 3 + Math.floor(r() * 3);
+    const n = (res === 'W' ? 6 : res === 'D' ? 5 : 4) + (r() < 0.5 ? 1 : 0);
     // 試合中に「見つかった課題」のカードは必ずもらえる（ハーフタイムの「見つかった課題」に並んでいたもの）
     const ISSUE_CARD = { video: 'video', setplay: 'setplay', running: 'running', man_marking: 'manMark', press: 'press', pass: 'pass', dash: 'dash', shoot: 'shoot', line_control: 'line' };
     for (const e of events || []) if (e.type === 'issue' && e.team === 0 && ISSUE_CARD[e.key] && CARDS[ISSUE_CARD[e.key]] && got.length < 6) got.push(ISSUE_CARD[e.key]);
@@ -1545,8 +1544,8 @@
     for (const g of mine.slice(0, 2)) { got.push('shoot'); if (g.assist && got.length < 4) got.push('pass'); }
     if (myScore[1] === 0) got.push(r() < 0.5 ? 'sliding' : 'line');
     const main = CARD_POOL.filter((c) => CARDS[c].cat !== 'sup'), sup = CARD_POOL.filter((c) => CARDS[c].cat === 'sup');
-    while (got.length < Math.min(10, n + Math.min(2, got.length))) got.push(r() < 0.25 ? sup[Math.floor(r() * sup.length)] : main[Math.floor(r() * main.length)]);
-    got.length = Math.min(got.length, 10);
+    got.length = Math.min(got.length, Math.max(n, Math.min(issueN, 7)));   // 多すぎる時は、課題のカードを残して減らす
+    while (got.length < n) got.push(r() < 0.25 ? sup[Math.floor(r() * sup.length)] : main[Math.floor(r() * main.length)]);
     save.cards = save.cards || {};
     for (const c of got) save.cards[c] = Math.min(CARD_MAX, (save.cards[c] || 0) + 1);
     got.issueN = issueN;   // 課題のカードの枚数（残りは試合のごほうび）
@@ -1667,7 +1666,7 @@
     if ((save.gacha && save.gacha.auto || 0) >= pick.star) { const k = KAKERA_OF[pick.star] || 1; save.kakera = (save.kakera || 0) + k; return { kind: 'auto', kakera: k, star: pick.star, q, tid: pick.tid }; }   // 版509：自動放出（はじめての選手でも、その☆以下ならカケラに）
     const full = ps.length >= 25;   // チームは25人まで。あふれた選手はリザーブ（控え室）へ
     const p = rosterPlayer(q, ps.length); const topHc = p.topHair; delete p.topHair; delete p.role;
-    const used = new Set(ps.map((x) => x.number)); let n = q.no; if (used.has(n)) { n = 12; while (used.has(n)) n++; } p.number = n;
+    const used = new Set([...ps, ...save.reserve].map((x) => x.number)); let n = q.no; if (used.has(n)) { n = 12; while (used.has(n)) n++; } p.number = n;   // 版559：控え室（リザーブ）の選手の番号も見る（26番が何人もできていた）
     p.star = pick.star; p.totsu = 0; p.gsrc = pick.tid + '_' + pick.no; p.faceKey = faceKeyOf(pick.tid, q) || undefined;
     { const hc = topHc || (p.faceKey && root.STAR_HAIR && root.STAR_HAIR[p.faceKey]); if (hc != null) p.hairColor = hc; }   // 版555：国内屈指級はその選手だけの髪の色（CPUの時と同じ）
     p.fatigue = 10; p.cond = 0; p.injury = 0; p.games = 0; p.foot = p.foot || (Math.random() < 0.2 ? 'L' : 'R'); delete p.age; gachaWeak(p);
@@ -1682,7 +1681,14 @@
     p.skills = []; p.totsu = p.totsu || 0;   // 版507：スキルは0から（固有スキルはそのまま）
     p.gweak = 2;
   }
-  function gachaFixOld(save) { for (const p of [...save.team.players, ...(save.reserve || [])]) { if (p.gsrc && (p.gweak || 0) < 2) gachaWeak(p); if (p.gsrc && p.uniq && D.UNIQ[p.uniq] && D.UNIQ[p.uniq].hair) p.hairColor = D.UNIQ[p.uniq].hair; } }   // 版555：前に来た国内屈指級の髪の色も直す
+  // 版559：背番号がかぶっていたら直す（先にいる選手はそのまま、あとの選手を空いている番号へ）。試合では背番号で選手を探すので、かぶると得点者や演出が別の選手になる
+  function fixNumbers(save) {
+    const all = [...save.team.players, ...(save.reserve || [])], seen = new Set(), dup = [];
+    for (const p of all) { if (p.number >= 1 && p.number <= 99 && !seen.has(p.number)) seen.add(p.number); else dup.push(p); }
+    for (const p of dup) { let n = 12; while (seen.has(n) && n < 99) n++; if (seen.has(n)) { n = 1; while (seen.has(n)) n++; } p.number = n; seen.add(n); }
+    return dup.length;
+  }
+  function gachaFixOld(save) { try { fixNumbers(save); } catch (_) {} for (const p of [...save.team.players, ...(save.reserve || [])]) { if (p.gsrc && (p.gweak || 0) < 2) gachaWeak(p); if (p.gsrc && p.uniq && D.UNIQ[p.uniq] && D.UNIQ[p.uniq].hair) p.hairColor = D.UNIQ[p.uniq].hair; } }   // 版555：前に来た国内屈指級の髪の色も直す
   function gachaPull(save, n, r) {
     r = r || Math.random; const bn = gachaBanner(), cost = n >= 10 ? GACHA_COST.ten : GACHA_COST.one * n;
     if ((save.coins || 0) < cost) return null;
@@ -1690,5 +1696,5 @@
     const picks = []; for (let i = 0; i < n; i++) picks.push(gachaOne(save, bn, r, n >= 10 && i === n - 1 && !picks.some((x) => x.star >= 3) ? 3 : 0));   // 10連は☆3以上を1人確定
     return { banner: bn, results: picks.map((pk) => gachaApply(save, pk)) };
   }
-  root.DotCareer = { gachaBanner, gachaPull, gachaPoolAll, ensureGacha, GACHA_RATE, GACHA_COST, GACHA_PITY, KAKERA_OF, oppKits, BENCH_N, kitsPair, d1Round, pinWatch, faceKeyOf, cpuTeam, ensureStar, starOf, totsuOf, capGrade, capPts, capIdx, GRADES, rosterAt, lvlAt, retiredAt, titleOf, ensureTitles, evalTitles, CUP_LABELS, cupIn, ensureClub, renameClub, kitsFor, KIT_DEFAULT, EMB_DEFAULT, TEAMS, TEAM_BY_ID, ROSTERS, rosterOfTeam, leagueTable, prevOrder, goalRank, recordGoals, CUP_WEEKS_ALL: CUP_WEEKS, leagueWeeksOf: leagueWeeks, POST_WEEKS, CARDS, CAT_NAME, SP, findSpecial, previewCards, trainCards, trainOne, weekTick, GRID_R, GRID_C, zoneOf, cellsFor, formationLabel, FORMATIONS, TACTIC_ITEMS, STYLES, SITU_DEFAULT, SITU_ACTS, SITU_ROWS, SITU_FROM, ensureTactics, slotRoles, applyTactics, skillRate, endWeek, SEASON_WEEKS, INJURIES, TYPE_TUNE, COND_NAME, condOf, trainedThisWeek, trainsDone, trainLimit, trainMult, campState, campAdvance, CAMP, slotInfo, SLOT_MAX, SKILL_RATE, rewardCards, newLeague, newCup, playFixture, peekRound, afterOfficial, playPractice, practiceOpponent, practiceOptions, teamLook, recordStats, teamLevel, findTeam, CUP_WEEKS, CAMPS, LG, rankInfo, PMAX, PRICE, buyCard, buyPack, toEng, toPts, migrate, ensurePts, TEAM_MENUS: TEAM_PTS, MENUS, SPECIAL, LEAGUES, PNAME, newCareer, menusFor, train, learnSkill, slots, skillChance, nextFixture, finishRound, standings, endSeason, opponentTeam, matchTeam, avgParam, decideType };
+  root.DotCareer = { noSkillLg, gachaBanner, gachaPull, gachaPoolAll, ensureGacha, GACHA_RATE, GACHA_COST, GACHA_PITY, KAKERA_OF, oppKits, BENCH_N, kitsPair, d1Round, pinWatch, faceKeyOf, cpuTeam, ensureStar, starOf, totsuOf, capGrade, capPts, capIdx, GRADES, rosterAt, lvlAt, retiredAt, titleOf, ensureTitles, evalTitles, CUP_LABELS, cupIn, ensureClub, renameClub, kitsFor, KIT_DEFAULT, EMB_DEFAULT, TEAMS, TEAM_BY_ID, ROSTERS, rosterOfTeam, leagueTable, prevOrder, goalRank, recordGoals, CUP_WEEKS_ALL: CUP_WEEKS, leagueWeeksOf: leagueWeeks, POST_WEEKS, CARDS, CAT_NAME, SP, findSpecial, previewCards, trainCards, trainOne, weekTick, GRID_R, GRID_C, zoneOf, cellsFor, formationLabel, FORMATIONS, TACTIC_ITEMS, STYLES, SITU_DEFAULT, SITU_ACTS, SITU_ROWS, SITU_FROM, ensureTactics, slotRoles, applyTactics, skillRate, endWeek, SEASON_WEEKS, INJURIES, TYPE_TUNE, COND_NAME, condOf, trainedThisWeek, trainsDone, trainLimit, trainMult, campState, campAdvance, CAMP, slotInfo, SLOT_MAX, SKILL_RATE, rewardCards, newLeague, newCup, playFixture, peekRound, afterOfficial, playPractice, practiceOpponent, practiceOptions, teamLook, recordStats, teamLevel, findTeam, CUP_WEEKS, CAMPS, LG, rankInfo, PMAX, PRICE, buyCard, buyPack, toEng, toPts, migrate, ensurePts, TEAM_MENUS: TEAM_PTS, MENUS, SPECIAL, LEAGUES, PNAME, newCareer, menusFor, train, learnSkill, slots, skillChance, nextFixture, finishRound, standings, endSeason, opponentTeam, matchTeam, avgParam, decideType };
 })(typeof window !== 'undefined' ? window : globalThis);

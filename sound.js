@@ -58,20 +58,25 @@
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.03); g.gain.setValueAtTime(vol, t + d * 0.8); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.04);
     o.connect(g); g.connect(sfxG); o.start(t); o.stop(t + d + 0.06);
   }
-  // 観客の「おぉー」：たくさんの人の声（少しずつ高さのずれた声）を、口の形（オの響き）に通す
-  function voices(d, vol, t0 = 0, base = 150, up = 1.0) {
+  // 版559：観客の声のかたまり。ひとりひとり高さ・ゆれ・出だしが違う声を何十人分も重ね、口の形（母音の響き）に通す
+  // （全員が同じように上がり下がりすると「サイレン」に、雑音だけだと「砂嵐」に聞こえるので、どちらもしない）
+  function crowdVoices(d, vol, t0, o) {
     const a = ctx(); if (!a) return; const t = a.currentTime + t0;
-    const out = a.createGain(); out.gain.setValueAtTime(0.0001, t); out.gain.exponentialRampToValueAtTime(vol, t + 0.35); out.gain.setValueAtTime(vol, t + d * 0.55); out.gain.exponentialRampToValueAtTime(0.0001, t + d);
-    const f1 = a.createBiquadFilter(); f1.type = 'bandpass'; f1.frequency.value = 520; f1.Q.value = 2.2;
-    const f2 = a.createBiquadFilter(); f2.type = 'bandpass'; f2.frequency.value = 800; f2.Q.value = 3;
-    const f3 = a.createBiquadFilter(); f3.type = 'lowpass'; f3.frequency.value = 320;
-    [f1, f2, f3].forEach((f) => { f.connect(out); }); out.connect(sfxG);
-    for (let i = 0; i < 9; i++) {
-      const o = a.createOscillator(); o.type = 'sawtooth'; const f = base * (0.8 + Math.random() * 0.5);
-      o.frequency.setValueAtTime(f, t); o.frequency.linearRampToValueAtTime(f * up, t + d * 0.5); o.frequency.linearRampToValueAtTime(f * up * 0.88, t + d);
-      const g = a.createGain(); g.gain.value = 0.11; o.connect(g); [f1, f2, f3].forEach((x) => g.connect(x)); o.start(t + Math.random() * 0.12); o.stop(t + d + 0.05);
+    const out = a.createGain(); out.gain.setValueAtTime(0.0001, t); out.gain.exponentialRampToValueAtTime(vol, t + o.att); out.gain.setValueAtTime(vol, t + Math.max(o.att, d - o.rel)); out.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = o.lp || 3200; lp.connect(out); out.connect(sfxG);
+    const fm = o.vowel.map(([fq, q, g]) => { const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = fq; f.Q.value = q; const gg = a.createGain(); gg.gain.value = g; f.connect(gg); gg.connect(lp); return f; });
+    for (let i = 0; i < o.n; i++) {
+      const f0 = o.lo * Math.pow(o.hi / o.lo, Math.random()), st = t + Math.random() * o.spread, en = t + d - Math.random() * o.rel * 0.6;
+      const osc = a.createOscillator(); osc.type = 'sawtooth';
+      // 声の高さ：ひとりずつ、ゆっくりばらばらに動く（そろわない）
+      const pts = 6, curve = new Float32Array(pts); for (let k = 0; k < pts; k++) curve[k] = f0 * (1 + (Math.random() - 0.5) * 0.08 + (k === pts - 1 ? o.endBend * Math.random() : 0));
+      osc.frequency.setValueAtTime(f0, st); try { osc.frequency.setValueCurveAtTime(curve, st + 0.01, Math.max(0.2, en - st - 0.02)); } catch (_) {}
+      const vib = a.createOscillator(), vg = a.createGain(); vib.frequency.value = 4 + Math.random() * 3; vg.gain.value = f0 * (0.01 + Math.random() * 0.02); vib.connect(vg); vg.connect(osc.frequency);
+      const g = a.createGain(), pk = (0.5 + Math.random() * 0.5) / Math.sqrt(o.n);
+      g.gain.setValueAtTime(0.0001, st); g.gain.exponentialRampToValueAtTime(pk, st + 0.08 + Math.random() * o.att); g.gain.setValueAtTime(pk, Math.max(st + 0.1, en - 0.3)); g.gain.exponentialRampToValueAtTime(0.0001, en);
+      osc.connect(g); fm.forEach((f) => g.connect(f));
+      osc.start(st); vib.start(st); osc.stop(en + 0.05); vib.stop(en + 0.05);
     }
-    noise(d, vol * 0.5, 'bandpass', 650, t0, null, 0.3);
   }
   const N = (s) => { const m = /^([A-G])(#?)(\d)$/.exec(s); if (!m) return 0; const k = { C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2 }[m[1]] + (m[2] ? 1 : 0) + (+m[3] - 4) * 12; return 440 * Math.pow(2, k / 12); };
 
@@ -96,9 +101,10 @@
     whistle3() { whistle(0.19); whistle(0.19, 0.52); whistle(1.48, 1.03); },
     // 版558：本家のゴール：1秒で観客が「ワーッ」と明るく大きくなり（高めの声が+10dB）、5秒ほど続いて1秒で戻る。低い地鳴りはない。指笛がまじる
     cheer() {
-      [[700, 1.4, 0.2], [1100, 1.2, 0.2], [1700, 1.4, 0.15], [2600, 2, 0.06]].forEach(([fq, q, v], k) => noiseHold(6.4, v, fq, q, k * 0.04, 0.8, 1.2));
-      voices(5.8, 0.12, 0.2, 210, 1.15);
-      [[1.2, 500, 2400], [1.6, 700, 2800], [2.9, 450, 2200], [3.4, 2900, 3700], [4.3, 600, 2500]].forEach(([t, a, b]) => fanWhistle(t, a, b, a > 2000 ? 0.35 : 0.22, 0.045));
+      // 「ワーッ」：高めの声（ア）を28人分。雑音は少しだけ（息の音）
+      crowdVoices(6.4, 0.45, 0.05, { n: 28, lo: 170, hi: 430, att: 0.7, rel: 1.3, spread: 0.5, endBend: -0.06, vowel: [[800, 4, 1], [1250, 5, 0.7], [2600, 6, 0.25]] });
+      [[900, 5, 0.05], [1500, 5, 0.035]].forEach(([fq, q, v], k) => noiseHold(6.2, v, fq, q, k * 0.05, 0.8, 1.2));
+      [[1.3, 500, 2400], [2.9, 450, 2200], [4.1, 600, 2500]].forEach(([t, a, b]) => fanWhistle(t, a, b, 0.22, 0.04));
       if (crowdGain && AC) { const t = AC.currentTime; try { crowdGain.gain.cancelScheduledValues(t); crowdGain.gain.setValueAtTime(crowdGain.gain.value, t); crowdGain.gain.linearRampToValueAtTime(1.3, t + 0.8); crowdGain.gain.setValueAtTime(1.3, t + 5.4); crowdGain.gain.linearRampToValueAtTime(0.9, t + 6.6); } catch (_) {} }
     },
     // 点数が変わる時のファンファーレ
@@ -109,7 +115,7 @@
     },
     goal() { SFX.cheer(); },
     // 版558：おしいシュートの「おぉー」と指笛（本家：声のかたまり＋「ヒュイッ、ヒュイーッ」）
-    ooh() { voices(1.7, 0.75, 0, 150, 1.12); fanWhistle(0.75, 400, 1800, 0.17, 0.12); fanWhistle(0.98, 400, 2200, 0.24, 0.12); },
+    ooh() { crowdVoices(2.2, 0.8, 0, { n: 22, lo: 110, hi: 260, att: 0.3, rel: 0.9, spread: 0.25, endBend: -0.12, vowel: [[480, 4, 1], [850, 5, 0.6], [2400, 6, 0.12]] }); fanWhistle(0.8, 420, 1900, 0.18, 0.07); },
     skill() { [880, 1320, 1760, 2349].forEach((f, i) => tone(f, 0.09, 'triangle', 0.12, i * 0.045)); },
     uniq() { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, 0.12, 'square', 0.08, i * 0.05)); noise(0.5, 0.06, 'highpass', 4000, 0.05); },
     card() { whistle(0.09); whistle(0.085, 0.12); },
@@ -172,6 +178,9 @@
     // 版558：ハーフタイム（ロッカールーム）。本家はテンポ約130の明るいバンドの曲なので、明るく速い曲にした（曲は自作）
     half: { bpm: 128, mel: 'C5 . F5 . A5 - G5 F5 | G5 - - . . . E5 F5 | G5 . A5 . A#5 - A5 G5 | A5 - - - . . . . | A5 . G5 . F5 - D5 F5 | G5 - - . C5 . E5 G5 | F5 . A5 . G5 - E5 . | F5 - - - . . . .',
       bass: 'F2 . F3 . F2 . F3 . | C3 . C3 . C3 . E3 . | A#2 . A#2 . A#2 . A#3 . | F2 . F3 . A2 . C3 . | D3 . D3 . D3 . A2 . | C3 . C3 . C3 . E3 . | A#2 . A#2 . C3 . C3 . | F2 . C3 . F2 . . .', drum: 'khshkhsh' },
+    // 版559：試合が終わったあと（ダイジェスト・ロッカールーム・順位表）。本家は試合後、観客の声が消えて、ノリのいい曲になる（曲は自作）
+    post: { bpm: 140, mel: 'E5 - G5 - C6 - B5 A5 | G5 - E5 - D5 - . . | F5 - A5 - D6 - C6 B5 | C6 - - - G5 - . . | A5 - C6 - F5 - E5 D5 | E5 - C5 - A4 - G4 - | F4 - E4 - D4 - G4 - | C5 - - - . . . .',
+      bass: 'C3 C3 C4 C3 C3 C3 C4 C3 | G2 G2 G3 G2 G2 G2 G3 G2 | D3 D3 D4 D3 D3 D3 D4 D3 | C3 C3 C4 C3 E3 E3 E4 E3 | F2 F2 F3 F2 F2 F2 F3 F2 | A2 A2 A3 A2 A2 A2 A3 A2 | D3 D3 D4 D3 G2 G2 G3 G2 | C3 C3 C4 C3 C3 . . .', drum: 'khshkhsh' },
   };
   let cur = null, want = null, timer = null, step = 0, nextT = 0, parsed = null;
   const parse = (s) => s.replace(/\|/g, ' ').trim().split(/\s+/);

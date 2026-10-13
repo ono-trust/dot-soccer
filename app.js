@@ -352,6 +352,7 @@
   function startDigest() {
     const list = digestItems();
     show = { phase: 'digest', hold: true, rt: 0, list, k: 0, tr: 0, paused: false };
+    SND().crowd(false); SND().bgm('post');   // 版559：本家は試合が終わると観客の声が消え、ダイジェストからノリのいい曲になる
     simT = list[0].t0; cam.init = false; lastBall = null; ballTrail.length = 0;
     digestCtl(true);
   }
@@ -524,7 +525,9 @@
       closePlv(); openLocker();
       if (mctx && mctx.opts.tut && mctx.opts.tut.onHalf) mctx.opts.tut.onHalf(tutApi());   // チュートリアル：ハーフタイムの説明
     } else if (show.phase === 'endOut' && show.rt > END_T.digest) {
-      startDigest();   // 笛 → 選手が止まる → 暗転 → ダイジェスト（観客席は映さない）
+      startDigest();
+    } else if (show.phase === 'endOut' && show.rt > END_T.fade0 && !show.cOff) {
+      show.cOff = 1; SND().crowd(false);   // 暗転といっしょに観客の声も消える   // 笛 → 選手が止まる → 暗転 → ダイジェスト（観客席は映さない）
     } else if (show.phase === 'digest') {
       digestAdvance(dt);
     } else if (show.phase === 'preCrowd' && show.rt > 2.6) {
@@ -3587,7 +3590,9 @@
   function finish(direct) {
     { const ws = document.getElementById('wStop'); if (ws) ws.hidden = true; }
     SND().crowd(false);
-    if (!direct && match && !(mctx && mctx.opts && mctx.opts.watch)) { const d = match.score[0] - match.score[1]; SND().play(d > 0 ? 'win' : d < 0 ? 'lose' : 'draw'); }
+    { const st = SND().state, playingPost = st && st.bgm === 'post';
+      if (!direct && match && !(mctx && mctx.opts && mctx.opts.watch) && !playingPost) { const d = match.score[0] - match.score[1]; SND().play(d > 0 ? 'win' : d < 0 ? 'lose' : 'draw'); }
+      if (!direct && !playingPost) setTimeout(() => { const s2 = SND().state; if (s2 && s2.want == null) SND().bgm('post'); }, 1800); }   // 版559：試合のあとの曲
     closePlv();
     stop();
     // 試合結果（状況と同じ画面）→ 戻るで、育成モードは次へ（ロッカールームの会話など）、フリー試合は今までの結果画面
@@ -4171,7 +4176,7 @@
         return;
       }
       const L = lines[k]; dlg.hidden = false;
-      const img = dlg.querySelector('.lk-face'); img.classList.toggle('art', !!L.art); if (L.face) { img.src = L.face; img.style.display = ''; } else img.style.display = 'none';
+      const img = dlg.querySelector('.lk-face'); img.classList.toggle('art', !!L.art); if (L.face) { img.style.display = ''; if (img.getAttribute('src') !== L.face) { img.style.visibility = 'hidden'; img.onload = () => { img.style.visibility = ''; }; img.onerror = () => { img.style.visibility = 'hidden'; }; img.src = L.face; } else img.style.visibility = ''; } else img.style.display = 'none';   /* 版559：絵が読めるまで隠す（iPhoneで一瞬、四角い枠が見えていた） */
       dlg.querySelector('.lk-name').textContent = L.name || '';
       full = L.text || ''; shown = 0; dlg.querySelector('.lk-text').textContent = '';
       dlg.querySelector('.lk-cards2').innerHTML = (L.cards || []).map((c) => cardTag(c.id, c.name)).join('');

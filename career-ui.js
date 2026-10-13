@@ -53,7 +53,7 @@
   function go(v) {
     if (v === 'assoc') { go('home'); openAssoc({ tab: 'sched' }); return; }   // サッカー協会は全画面
     if (v === 'lineup' && view !== 'lineup') sqFromHome = view === 'home';   // クラブ事務所から来た時だけ、クラブ設定のボタンを出す
-    view = v; try { window.DotSound && (DotSound.crowd(false), DotSound.bgm(v === 'home' ? 'home' : 'club')); } catch (_) {}   /* 版532：ホームに来たら試合の音を止める */   // 版499：BGM
+    view = v; try { window.DotSound && (DotSound.crowd(false), DotSound.bgm(v === 'home' ? 'home' : liveBack ? 'prematch' : 'club')); } catch (_) {}   /* 版559：試合前（LIVE）から開いたスタメン・戦術は、試合前の曲のまま */   /* 版532：ホームに来たら試合の音を止める */   // 版499：BGM
     try { const cl = C.ensureClub(save); A().applyKits([{ ...cl.kit }, { ...cl.kit2 }]); } catch (_) {}   // 版536：観戦（D1）などで変わったユニフォームを、自分のクラブのものに戻す
     $('#cv-home').hidden = v !== 'home';
     $('#cv-club').hidden = v === 'home';
@@ -70,7 +70,7 @@
     cancelAnimationFrame(raf); raf = requestAnimationFrame(tick);
     if (window.__tut) window.__tut.onView(v);   // チュートリアル：画面が変わったら次の説明へ
   }
-  let liveBack = null;   // 試合前の画面（LIVE）からスタメン・戦術を開いたとき、もどる先
+  let liveBack = null, liveSnap = null;   // 試合前の画面（LIVE）からスタメン・戦術を開いたとき、もどる先と、後ろに見せる会場の絵
   $('#cvBack').onclick = () => { if (liveBack) { const f = liveBack; liveBack = null; f(); return; } go(view === 'club' || view === 'assoc' ? 'home' : 'club'); };
   document.querySelectorAll('#cv-club .rbtns button').forEach((b) => b.onclick = () => { const g = b.dataset.go; if (g === 'tactic') { sqTab = 'tac'; go('lineup'); } else { if (g === 'lineup') sqTab = 'pos'; go(g); } });
 
@@ -796,7 +796,7 @@
   const RB_TAC_SVG = '<svg viewBox="0 0 60 56" class="rb-svg"><rect x="2" y="4" width="56" height="48" rx="2" fill="#fff" stroke="#bbb"/><rect x="34" y="8" width="20" height="40" fill="#cfeedd" stroke="#8c8" stroke-width=".8"/><line x1="44" y1="8" x2="44" y2="48" stroke="#8c8" stroke-width=".8"/><rect x="6" y="18" width="7" height="18" fill="none" stroke="#888"/><circle cx="20" cy="14" r="2" fill="#e33"/><circle cx="22" cy="26" r="2" fill="#e33"/><circle cx="20" cy="38" r="2" fill="#e33"/><circle cx="28" cy="20" r="2" fill="#e33"/><circle cx="28" cy="32" r="2" fill="#e33"/><circle cx="38" cy="16" r="2" fill="#23c"/><circle cx="40" cy="28" r="2" fill="#23c"/><circle cx="38" cy="40" r="2" fill="#23c"/><circle cx="31" cy="44" r="2" fill="#f2c21c"/><path d="M14 46 q6-6 12-2" stroke="#e33" fill="none" stroke-width="1.2"/></svg>';
   function tick(t) {
     if (!document.getElementById('career') || $('#career').hidden) return;
-    if (view === 'home') drawHome(t); else drawClub(t);
+    if (view === 'home') drawHome(t); else if (liveBack && liveSnap) { cx.drawImage(liveSnap, 0, 0); } else drawClub(t);   // 版559：試合前から開いた時は、後ろも試合会場のまま
     raf = requestAnimationFrame(tick);
   }
 
@@ -1809,7 +1809,7 @@
     let el = document.getElementById('coachTalk');
     if (!el) { el = document.createElement('div'); el.id = 'coachTalk'; (document.getElementById('app') || $('#career')).appendChild(el); }
     el.innerHTML = `<div class="ct-bust">${sec ? `<img class="art" src="${staffFace('sec')}" alt="秘書">` : staffImg.coach ? `<img class="art" src="${staffImg.coach}" alt="コーチ">` : `<img src="${coachURL}" alt="コーチ">`}</div><div class="ct-btns">${buttons.map((b, k) => `<button data-k="${k}" class="${ibCls(String(b.label).replace(/<[^>]*>/g, ''), b.value !== false)}">${b.label}</button>`).join('')}</div><div class="ct-box"><b class="ct-name">${sec ? '秘書' : 'コーチ'}</b><p>${html}</p></div>`;
-    el.hidden = false; requestAnimationFrame(() => el.classList.add('on'));
+    el.hidden = false; { const im = el.querySelector('.ct-bust img'); const go = () => requestAnimationFrame(() => el.classList.add('on')); if (im && !im.complete) { im.style.visibility = 'hidden'; const ok = () => { im.style.visibility = ''; go(); }; im.onload = ok; im.onerror = ok; } else go(); }   /* 版559：絵が読めてから出す（一瞬四角が見えないように） */
     { const bx = el.querySelector('.ct-box'), bt = el.querySelector('.ct-btns'); if (bx && bt) bt.style.bottom = (bx.offsetHeight + 30 + 6) + 'px'; }   /* 版536：本家と同じく、文の枠のすぐ上の右に */   // 版510：文が長い時も、ボタンが文の上に出る（押せるように）
     return new Promise((res) => el.querySelectorAll('.ct-btns button').forEach((b) => b.onclick = () => { el.classList.remove('on'); el.hidden = true; res(buttons[+b.dataset.k].value); }));
   }
@@ -1855,7 +1855,7 @@
         liveRaf = requestAnimationFrame(loop);
         el.querySelectorAll('.lv-btns button').forEach((b) => b.onclick = () => {
           const a = b.dataset.a;
-          if (a === 'lineup' || a === 'tac') { cancelAnimationFrame(liveRaf); el.hidden = true; sqTab = a === 'tac' ? 'tac' : 'pos'; liveBack = () => { showLive(); }; go('lineup'); return; }
+          if (a === 'lineup' || a === 'tac') { cancelAnimationFrame(liveRaf); { const sc = el.querySelector('canvas'); liveSnap = document.createElement('canvas'); liveSnap.width = 1280; liveSnap.height = 720; try { liveSnap.getContext('2d').drawImage(sc, 0, 0, 1280, 720); } catch (_) { liveSnap = null; } } el.hidden = true; sqTab = a === 'tac' ? 'tac' : 'pos'; liveBack = () => { showLive(); }; go('lineup'); return; }
           if (a === 'kit') { kitPick(el, op, meta, () => showLive()); return; }
           cancelAnimationFrame(liveRaf); showVs();
         });
@@ -2329,8 +2329,6 @@
       store(); open();
       await postComp(res, info);
       store(); open();
-      await postSecretary(info);
-      store(); open();
       await endWeek();
       return;
     }
@@ -2593,9 +2591,9 @@
     const rowH = Math.min(38, Math.floor((720 - 136 - 36 - 40) / n));
     const used = new Set();
     const body = t.rows.map((r, k) => { const z = zoneOf(id, k, n); if (z) used.add(z[0] + ':' + z[1]); const gd = r.stats.GF - r.stats.GA;
-      return `<tr class="${z ? 'z-' + z[0] : ''}${r.me ? ' me' : ''}"${r.me ? '' : ` data-team="${esc(r.name)}"`}><td class="s-rk">${k + 1}</td><td class="s-aw">${arrow(r, k)}</td><td class="s-em"><img src="${emblemURL(r.name, 40)}" alt=""></td><td class="s-nm">${esc(r.name)}</td><td>${r.stats.Pts}</td><td>${r.stats.P}</td><td>${r.stats.W}</td><td>${r.stats.D}</td><td>${r.stats.L}</td><td>${r.stats.GF}</td><td>${gd > 0 ? '+' : ''}${gd}</td></tr>`; }).join('');
+      return `<tr class="${z ? 'z-' + z[0] : ''}${r.me ? ' me' : ''}"${r.me ? '' : ` data-team="${esc(r.name)}"`}><td class="s-rk">${k + 1}</td><td class="s-aw">${arrow(r, k)}</td><td class="s-em"><img src="${emblemURL(r.name, 40)}" alt=""></td><td class="s-nm">${esc(r.name)}</td><td>${r.stats.Pts}</td><td>${r.stats.P}</td><td>${r.stats.W}</td><td>${r.stats.D}</td><td>${r.stats.L}</td><td>${r.stats.GF}</td><td>${r.stats.GA}</td><td>${gd > 0 ? '+' : ''}${gd}</td></tr>`; }).join('');   // 版559：失点も
     const legend = [...used].map((u) => { const [k, l] = u.split(':'); return `<span><i class="z-${k}"></i>${esc(l)}</span>`; }).join('');
-    return `<div class="std-body"><table class="std-tbl" style="--rh:${rowH}px"><tr class="std-h"><th colspan="4"><span>${esc(LG_LABEL[id])} 順位表</span><small>第${t.round}節まで（全${t.rounds}節）</small></th><th>勝点</th><th>試合</th><th>勝</th><th>分</th><th>負</th><th>得点</th><th>得失</th></tr>${body}</table><div class="std-legend">${legend}</div></div>`;
+    return `<div class="std-body"><table class="std-tbl" style="--rh:${rowH}px"><tr class="std-h"><th colspan="4"><span>${esc(LG_LABEL[id])} 順位表</span><small>第${t.round}節まで（全${t.rounds}節）</small></th><th>勝点</th><th>試合</th><th>勝</th><th>分</th><th>負</th><th>得点</th><th>失点</th><th>得失</th></tr>${body}</table><div class="std-legend">${legend}</div></div>`;
   }
   function rankHTML(id, kind) {
     const k = kind === 'goal' ? 'g' : 'a', list = C.goalRank(save, id).filter((x) => x[k] > 0).sort((x, y) => y[k] - x[k] || (y[kind === 'goal' ? 'a' : 'g'] - x[kind === 'goal' ? 'a' : 'g']));
@@ -2763,7 +2761,7 @@
       body = `<div class="pc-st"><span class="pc-chip">利き足${footSVG(foot)}<small>${foot === 'L' ? '左' : '右'}</small></span><span class="pc-chip">${q.starter ? 'スタメン' : '控え'}</span></div>
         <div class="pc-car"><span>所属</span><b>${esc(tm.name || '')}</b><span>リーグ</span><b>${esc((C.LG[t.lg] || {}).name || '')}</b></div>`;
     } else {
-      const sk = q.skills || [];
+      const sk = C.noSkillLg(t.lg) ? [] : q.skills || [];   // 版559：地域リーグのCPUはスキルなし
       const cells = sk.length ? sk.map((k) => `<button class="has pc-skb" data-sk="${k}">${esc((D.SKILLS[k] || {}).name || k)}<i>説明</i></button>`) : ['<span>なし</span>'];
       const uk = q.top && D.UNIQ_BY_TOP ? D.UNIQ_BY_TOP[q.top] : null, u = uk && D.UNIQ[uk];   // 国内屈指：その選手だけの固有スキル
       // 固有スキル：名前だけ出しておき、タップすると発動の条件と効果が開く
@@ -2813,7 +2811,7 @@
     const KS = D.PARAM_KEYS, ovr = (q) => Math.round(KS.reduce((a, k) => a + q[k], 0) / KS.length), G = (v) => D.grade(v);
     const order = { GK: 0, DF: 1, MF: 2, FW: 3 };
     const ps = cpuList(t.id);   // 選手カードと同じ並び（番号で選手を取り違えないように）
-    const sk = (q) => q.skills.slice(0, 3).map((k) => ((D.SKILLS[k] || {}).name || k)).join('・') + (q.skills.length > 3 ? ` ほか${q.skills.length - 3}` : '');
+    const sk = (q) => C.noSkillLg(t.lg) ? '' : q.skills.slice(0, 3).map((k) => ((D.SKILLS[k] || {}).name || k)).join('・') + (q.skills.length > 3 ? ` ほか${q.skills.length - 3}` : '');
     const rows = ps.map((q, pi) => `<div class="tm-row${q.starter ? ' st' : ''}" data-pi="${pi}" data-tid="${t.id}"><span class="tm-no">${q.no}</span><i class="pos ${POSC[q.pos]}">${q.pos}</i><span class="tm-nm">${esc(q.name)}${starHTML(C.starOf(t.id, q), C.totsuOf(t.id, q), 'sm')}${C.titleOf(save, t.id, q.name) ? `<b class="tm-top" title="国内屈指の${esc(C.titleOf(save, t.id, q.name))}">国内屈指</b>` : ''}${C.titleOf(save, t.id, q.name) ? '' : q.role === 'ace' ? '<b class="tm-ace">エース</b>' : q.role === 'core' && !q.top ? '<b class="tm-core">中心</b>' : ''}</span><span class="tm-ty">${typeBadge(q.type, 'sm')}</span>${KS.map((k) => `<span class="tm-g"><b class="rk rk-${G(q[k])}">${G(q[k])}</b></span>`).join('')}<span class="tm-sk" title="${esc(q.skills.map((k) => (D.SKILLS[k] || {}).name || k).join('・'))}">${esc(sk(q))}</span></div>`).join('');
     const lg = (C.LG[t.lg] || {}).name || '';
     const rank = (q) => (C.titleOf(save, t.id, q.name) ? 0 : q.role === 'ace' ? 1 : 2);
@@ -2862,7 +2860,7 @@
   function mgrHTML() {
     const lg = save.league, st = C.standings(save), pos = st.findIndex((t) => t.me) + 1, me = st.find((t) => t.me);
     const hist = save.history.length ? save.history.map((h) => `<div class="mg-row"><span>シーズン${h.season}</span><span>${esc(h.league)}</span><span>${esc(h.msg)}</span><span>${esc(h.cup || '')}</span></div>`).join('') : '<p class="std-soon">まだありません</p>';
-    return `<div class="std-body"><div class="std-h"><span>監督成績</span></div><div class="mgr">${save.manager ? `<div class="mg-name">監督　<b>${esc(save.manager)}</b></div>` : ''}<div class="mg-now"><b>シーズン${save.season}</b>　${esc(lg.name)}　<b>${pos}位</b>（${me.stats.W}勝 ${me.stats.D}分 ${me.stats.L}敗）　支持率 <b>${save.support ?? 60}%</b></div><div class="mg-h">これまでのシーズン</div>${hist}<p class="std-soon">監督成績は、これから作り込みます。</p></div></div>`;
+    return `<div class="std-body"><div class="std-h"><span>監督成績</span></div><div class="mgr">${save.manager ? `<div class="mg-name">監督　<b>${esc(save.manager)}</b></div>` : ''}<div class="mg-now"><b>シーズン${save.season}</b>　${esc(lg.name)}　<b>${pos}位</b>（${me.stats.W}勝 ${me.stats.D}分 ${me.stats.L}敗）</div><div class="mg-h">これまでのシーズン</div>${hist}<p class="std-soon">監督成績は、これから作り込みます。</p></div></div>`;
   }
   let assocBefore = null;   // 試合の前の順位（順位表の矢印）
 
@@ -3168,8 +3166,7 @@
     const BUDGET = ['500万円', '1,500万円', '5,000万円', '1億5,000万円', '4億円'];
     const bizHTML = () => { const tier = (C.LG[save.league.id] || {}).tier || 0, tr = (save.history || []).filter((h) => /優勝/.test(h.msg) || h.cup).length;
       return `<div class="of-p of-biz"><div class="ob-h"><img src="${emblemURL(save.team.name, 64)}" alt=""><div><b>${esc(save.team.name)}</b><small>（${esc(stadiumName({ name: save.team.name }, { home: true }))}）</small><em>${esc(save.manager || '')}${save.manager ? '監督' : ''}</em></div></div>
-        <table class="ob-t"><tr><th>所属</th><td>${lgBadge(save.league.id)} ${esc(save.league.name)}</td></tr><tr><th>予算</th><td>${BUDGET[tier]}<small>（リーグが上がると増えます）</small></td></tr><tr><th>シーズン</th><td>${save.season}年目</td></tr><tr><th>獲得タイトル</th><td>${tr}</td></tr></table>
-        <div class="ob-s"><span>支持率</span><b>${save.support ?? 60}%</b></div></div>`; };
+        <table class="ob-t"><tr><th>所属</th><td>${lgBadge(save.league.id)} ${esc(save.league.name)}</td></tr><tr><th>予算</th><td>${BUDGET[tier]}<small>（リーグが上がると増えます）</small></td></tr><tr><th>シーズン</th><td>${save.season}年目</td></tr><tr><th>獲得タイトル</th><td>${tr}</td></tr></table></div>`; };
     const PK = D.PARAMS.map((q) => q.k);
     const teamHTML = () => {
       const ps = save.team.players.map((p, i) => ({ p, i })), key = String(save.season);
