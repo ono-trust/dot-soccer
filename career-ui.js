@@ -54,6 +54,7 @@
     if (v === 'assoc') { go('home'); openAssoc({ tab: 'sched' }); return; }   // サッカー協会は全画面
     if (v === 'lineup' && view !== 'lineup') sqFromHome = view === 'home';   // クラブ事務所から来た時だけ、クラブ設定のボタンを出す
     view = v; try { window.DotSound && (DotSound.crowd(false), DotSound.bgm(v === 'home' ? 'home' : 'club')); } catch (_) {}   /* 版532：ホームに来たら試合の音を止める */   // 版499：BGM
+    try { const cl = C.ensureClub(save); A().applyKits([{ ...cl.kit }, { ...cl.kit2 }]); } catch (_) {}   // 版536：観戦（D1）などで変わったユニフォームを、自分のクラブのものに戻す
     $('#cv-home').hidden = v !== 'home';
     $('#cv-club').hidden = v === 'home';
     $('#cvBack').hidden = v === 'home';
@@ -1796,7 +1797,7 @@
     if (!el) { el = document.createElement('div'); el.id = 'coachTalk'; (document.getElementById('app') || $('#career')).appendChild(el); }
     el.innerHTML = `<div class="ct-bust">${sec ? `<img class="art" src="${staffFace('sec')}" alt="秘書">` : staffImg.coach ? `<img class="art" src="${staffImg.coach}" alt="コーチ">` : `<img src="${coachURL}" alt="コーチ">`}</div><div class="ct-btns">${buttons.map((b, k) => `<button data-k="${k}" class="${ibCls(String(b.label).replace(/<[^>]*>/g, ''), b.value !== false)}">${b.label}</button>`).join('')}</div><div class="ct-box"><b class="ct-name">${sec ? '秘書' : 'コーチ'}</b><p>${html}</p></div>`;
     el.hidden = false; requestAnimationFrame(() => el.classList.add('on'));
-    { const bx = el.querySelector('.ct-box'), bt = el.querySelector('.ct-btns'); if (bx && bt) bt.style.bottom = Math.max(178, bx.offsetHeight + 30 + 14) + 'px'; }   // 版510：文が長い時も、ボタンが文の上に出る（押せるように）
+    { const bx = el.querySelector('.ct-box'), bt = el.querySelector('.ct-btns'); if (bx && bt) bt.style.bottom = (bx.offsetHeight + 30 + 6) + 'px'; }   /* 版536：本家と同じく、文の枠のすぐ上の右に */   // 版510：文が長い時も、ボタンが文の上に出る（押せるように）
     return new Promise((res) => el.querySelectorAll('.ct-btns button').forEach((b) => b.onclick = () => { el.classList.remove('on'); el.hidden = true; res(buttons[+b.dataset.k].value); }));
   }
   // ================= 試合前：入場口（LIVE）→ 対戦カード → キックオフ =================
