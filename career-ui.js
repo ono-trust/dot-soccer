@@ -31,7 +31,7 @@
     const pre = (u) => { const im = new Image(); im.decoding = 'async'; im.src = u; warmKeep.push(im); };
     const CARD_IDS = Object.keys(C.CARDS || {});
     CARD_IDS.forEach((c) => pre(`cards/${c}.jpg`));
-    ['btn_players', 'btn_status', 'btn_change', 'off_kit', 'off_emblem', 'off_name', 'off_retire', 'off_setting', 'off_biz', 'off_team', 'coin', 'dash', 'defense', 'dribble', 'jump', 'kick', 'mental', 'pass', 'physical', 'speed', 'stamina', 'technique', 'top_mark', 'vision'].forEach((k) => pre(`icons/${k}.png`));
+    ['btn_players', 'btn_status', 'btn_change', 'off_kit', 'off_emblem', 'off_name', 'off_retire', 'off_setting', 'off_biz', 'off_team', 'ui_back', 'ui_change', 'ui_next', 'coin', 'dash', 'defense', 'dribble', 'jump', 'kick', 'mental', 'pass', 'physical', 'speed', 'stamina', 'technique', 'top_mark', 'vision'].forEach((k) => pre(`icons/${k}.png`));
     ['d1', 'd2', 'd3', 'reg1', 'reg2', 'regE1', 'regE2', 'regW1', 'regW2'].forEach((k) => pre(`icons/lg/${k}.png`));
     ['coach', 'secretary'].forEach((k) => pre(`staff/${k}.png`));
     // 自分のチームの顔は、顔の元絵が読めたら少しずつ作っておく
@@ -854,7 +854,7 @@
           <div class="pc-icons">${icons}</div>
           <div class="pc-grades${ups ? ' wd' : ''}">${grades}</div>
           <div class="pc-page">${body}</div>
-          <div class="pc-dots"><button class="pc-nav prev" title="前の選手">◀</button>${pages.map((nm, k) => `<button data-pg="${k}" class="${k === pcPage ? 'on' : ''}">${nm}</button>`).join('')}<button class="pc-nav next" title="次の選手">▶</button></div>
+          <div class="pc-dots"><button class="pc-nav prev ui-img" title="前の選手"><img src="icons/ui_next.png" alt="前へ" style="transform:scaleX(-1)"></button>${pages.map((nm, k) => `<button data-pg="${k}" class="${k === pcPage ? 'on' : ''}">${nm}</button>`).join('')}<button class="pc-nav next ui-img" title="次の選手"><img src="icons/ui_next.png" alt="次へ"></button></div>
         </div>
       </div>
       ${embed ? '' : '<button class="sb-round pc-close" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button>'}
@@ -881,7 +881,7 @@
     let el = document.getElementById('pcModal');
     if (!el) { el = document.createElement('div'); el.id = 'pcModal'; el.className = 'modal pc-wrap'; $('#career').appendChild(el); }
     el.innerHTML = playerCardHTML(i, null, false);
-    { const ov = [...document.querySelectorAll('.lk-wrap')].some((w) => !w.hidden && w.id !== 'pcModal'); const host = ov ? document.getElementById('app') : $('#career'); if (el.parentElement !== host) host.appendChild(el); el.style.zIndex = ov ? 40 : ''; }
+    { const ov = [...document.querySelectorAll('.lk-wrap')].some((w) => !w.hidden && w.id !== 'pcModal'); const host = ov ? document.getElementById('app') : $('#career'); if (el.parentElement !== host) host.appendChild(el); el.style.zIndex = ov ? 60 : ''; }   /* 版477：クラブ事務所（z 45）より前に */
     el.hidden = false;
     bindCard(el, i, playerDetail, () => playerDetail(i, o));
     if (o.noNav) el.querySelectorAll('.pc-nav').forEach((b) => b.remove());   /* 版470：ランキングから開いた時は、前後の選手への矢印なし */
@@ -1203,7 +1203,7 @@
         ${Array.from({ length: C.BENCH_N }, (_, k) => `<i class="s2e" style="left:776px;top:${116 + k * 77}px"></i><i class="s2e" style="left:882px;top:${116 + k * 77}px"></i>`).join('')}${dots}${col(b1, 11, 776, false)}${col(b2, 11 + C.BENCH_N, 882, true)}
         ${pop}</div>
       <button class="s2btn s2nb" data-a="note"><span>${formMini(tac.formation === 'custom' ? '4-4-2' : tac.formation)}</span><b>フォーメーション</b></button>
-      <button class="s2btn s2db" data-a="show"><span>${sqShow === 'type' ? '<i class="s2tyi">TYPE</i>' : '<i class="cdot cd-blue"></i>'}</span><b>${sqShow === 'type' ? '選手タイプ' : '調子'}</b></button>
+      <button class="s2btn s2db" data-a="show"><span><img class="s2chg" src="icons/ui_change.png" alt="切りかえ"></span><b>${sqShow === 'type' ? '選手タイプ' : '調子'}</b></button>
       <button class="s2btn s2tb" data-a="tac"><span>${RB_TAC_SVG}</span><b>戦術</b></button>
       ${forms}
       <p class="s2hint">選手をドラッグして、マスに置く・ほかの選手（控えとも）と入れ替える。タップでくわしく。</p></div>`;
@@ -1657,7 +1657,7 @@
           <div class="vs-vs">VS</div>
           <div class="vs-row a"><div class="vs-ban"><img src="${emblemURL(away.name, 96)}" alt=""><b>${esc(away.name)}</b></div>${sub(away.name, 'AWAY', lgA)}</div>
           <div class="vs-toto"><h5>TOTO</h5><div><small>WIN</small><b>${tt[0]}%</b></div><div><small>DRAW</small><b>${tt[1]}%</b></div><div><small>WIN</small><b>${tt[2]}%</b></div><h5>DOT</h5></div>
-          <div class="vs-bot">${esc(stad)}</div></div><div class="ko-fade"></div><button class="vs-go" title="とばす">▶</button>`;
+          <div class="vs-bot">${esc(stad)}</div></div><div class="ko-fade"></div><button class="vs-go ui-img" title="とばす"><img src="icons/ui_next.png" alt="次へ"></button>`;
         const cv = el.querySelector('canvas'), cx3 = cv.getContext('2d'), vs = el.querySelector('.vs2'), fade = el.querySelector('.ko-fade');
         const homeRow = meta.home ? save.team.players.slice(0, 11) : C.opponentTeam(save, op).players.slice(0, 11), awayRow = meta.home ? C.opponentTeam(save, op).players.slice(0, 11) : save.team.players.slice(0, 11);
         const hT = meta.home ? 0 : 1, aT = 1 - hT;
@@ -2207,7 +2207,7 @@
     A().startWith(ta, tb, seed, shA, shB, (score) => {
       C.pinWatch(save, R.id, R.round, f.a, f.b, score, (A().match || {}).events || []); store();
       open(); openAssoc({ tab: 'watch' });
-    }, { venue: 4, kits: C.kitsPair(save, f.A, f.B), watch: true, noIntro: true, comp: 'D1観戦', label: `第${R.round + 1}節`, homeName: f.A, awayName: f.B, embH: emblemURL(f.A, 48), embA: emblemURL(f.B, 48), grade: (q, k) => C.rankInfo(C.toPts((q.params || q)[k])).g });
+    }, { onQuit: () => { open(); openAssoc({ tab: 'watch' }); }, venue: 4, kits: C.kitsPair(save, f.A, f.B), watch: true, noIntro: true, comp: 'D1観戦', label: `第${R.round + 1}節`, homeName: f.A, awayName: f.B, embH: emblemURL(f.A, 48), embA: emblemURL(f.B, 48), grade: (q, k) => C.rankInfo(C.toPts((q.params || q)[k])).g });
   }
   // ================= サッカー協会（本家の N.LEAGUE の画面）：試合日程・成績・監督成績・移籍情報 =================
   const LG_ORDER = ['d1', 'd2', 'd3', 'regE1', 'regW1', 'regE2', 'regW2'];
@@ -2542,7 +2542,7 @@
           <div class="pc-icons">${icons}</div>
           <div class="pc-grades">${grades}</div>
           <div class="pc-page">${body}</div>
-          <div class="pc-dots"><button class="pc-nav prev" title="前の選手">◀</button>${pages.map((nm, k) => `<button data-pg="${k}" class="${k === ccPage ? 'on' : ''}">${nm}</button>`).join('')}<button class="pc-nav next" title="次の選手">▶</button></div>
+          <div class="pc-dots"><button class="pc-nav prev ui-img" title="前の選手"><img src="icons/ui_next.png" alt="前へ" style="transform:scaleX(-1)"></button>${pages.map((nm, k) => `<button data-pg="${k}" class="${k === ccPage ? 'on' : ''}">${nm}</button>`).join('')}<button class="pc-nav next ui-img" title="次の選手"><img src="icons/ui_next.png" alt="次へ"></button></div>
         </div>
       </div>
       <button class="sb-round pc-close" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button>
@@ -2888,7 +2888,7 @@
       else { head = th('star', 'レア度') + '<th>上限</th>' + th('fat', '疲労') + '<th>年齢</th>'; row = (o) => `<td>${starHTML(C.ensureStar(o.p), o.p.totsu)}</td><td>${capBadge(C.capGrade(o.p))}</td><td><i class="cdot ${condDot(o.p)}"></i> ${Math.round(o.p.fatigue || 0)}%</td><td>${o.p.age || '-'}</td>`; }
       return `<div class="of-p of-team"><div class="ot-h">${esc(save.team.name)}　チーム編成<span>${['成績', '能力', '状態'][['st', 'ab', 'cd'].indexOf(mode)]}</span></div><div class="ot-sc"><table class="ot"><tr>${th('pos', 'Pos.')}${th('no', 'No.')}<th class="nm">選手</th><th></th>${head}</tr>
         ${ps.map((o) => `<tr data-i="${o.i}" class="${o.i < 11 ? '' : 'sub'}"><td><i class="pos ${POSC[o.p.position]}">${o.p.position}</i></td><td class="no">${o.p.number}</td><td class="nm">${esc(o.p.name)}</td><td><i class="cdot ${condDot(o.p)}"></i></td>${row(o)}</tr>`).join('')}</table></div>
-        <button class="ot-mode" title="表示を切りかえる"><svg viewBox="0 0 40 40"><path d="M10 15a11 11 0 0 1 19-4l3-3v10h-10l4-4a7 7 0 0 0-12 3zM30 25a11 11 0 0 1-19 4l-3 3V22h10l-4 4a7 7 0 0 0 12-3z" fill="#fff"/></svg></button><p class="ot-hint">見出しをタップで並べかえ。右下のボタンで「成績・能力・状態」を切りかえ</p></div>`;
+        <button class="ot-mode ui-img" title="表示を切りかえる"><img src="icons/ui_change.png" alt="切りかえ"></button><p class="ot-hint">見出しをタップで並べかえ。右下のボタンで「成績・能力・状態」を切りかえ</p></div>`;
     };
     const draw = () => {
       box.innerHTML = `<div class="off"><div class="of-room"></div>

@@ -77,6 +77,7 @@
     match = D.simulateMatch(mine, theirs, seed);
     { const hb = document.getElementById('htTac'); if (hb) hb.hidden = !mctx.opts.onSub; const sb = document.querySelector('#half [data-panel="subs"]'); if (sb) sb.hidden = !!mctx.opts.onSub; }
     { const ab = document.querySelector('#match aside [data-panel="subs"]'); if (ab) ab.style.display = mctx.opts.watch ? 'none' : ''; }   // 観戦：選手交代はない
+    { const ws = document.getElementById('wStop'); if (ws) { ws.hidden = !mctx.opts.watch; ws.onclick = () => { closePlv(); stop(); ws.hidden = true; onMatchDone = null; document.getElementById('half').hidden = true; const q = mctx.opts.onQuit; if (q) q(); }; } }   /* 版477：観戦を途中でやめる */
     match.homeShort = homeShort || match.homeShort; match.awayShort = awayShort || match.awayShort;
     prepTimeline();
     warmUp();
@@ -337,7 +338,7 @@
     let el = document.getElementById('digestCtl');
     if (!el) {
       el = document.createElement('div'); el.id = 'digestCtl';
-      el.innerHTML = `<div class="dg-bar"><button class="dg-prev" title="前の場面・巻き戻し">|◀◀</button><button class="dg-back" title="5秒もどす">↺5</button><button class="dg-pause" title="一時停止">❚❚</button><div class="dg-track"><i class="dg-dot"></i></div><button class="dg-skip" title="次の場面">▶▶|</button></div><button class="dg-next" title="試合結果へ">▶</button>`;
+      el.innerHTML = `<div class="dg-bar"><button class="dg-prev" title="前の場面・巻き戻し">|◀◀</button><button class="dg-back" title="5秒もどす">↺5</button><button class="dg-pause" title="一時停止">❚❚</button><div class="dg-track"><i class="dg-dot"></i></div><button class="dg-skip" title="次の場面">▶▶|</button></div><button class="dg-next ui-img" title="試合結果へ"><img src="icons/ui_next.png" alt="次へ"></button>`;
       ($('#pitch').parentElement || document.body).appendChild(el);
       el.querySelector('.dg-pause').onclick = (ev) => { ev.stopPropagation(); if (!show || show.phase !== 'digest') return; show.paused = !show.paused; el.querySelector('.dg-pause').textContent = show.paused ? '▶' : '❚❚'; };
       // 版464：巻き戻し。|◀◀＝場面の頭へ（頭なら前の場面へ）、↺5＝5秒もどす、バーをタップ・ドラッグ＝好きな所へ
@@ -3546,6 +3547,7 @@
 
   // ---------- 試合終了 ----------
   function finish(direct) {
+    { const ws = document.getElementById('wStop'); if (ws) ws.hidden = true; }
     closePlv();
     stop();
     // 試合結果（状況と同じ画面）→ 戻るで、育成モードは次へ（ロッカールームの会話など）、フリー試合は今までの結果画面

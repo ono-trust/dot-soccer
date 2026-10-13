@@ -1708,3 +1708,17 @@ html.stage #match .match-shell{height:var(--lh)}
 .stars .tz0{color:#ffffff;-webkit-text-stroke:1px #555}
 .stars .tz1{background:linear-gradient(180deg,#ffffff,#c9ced6 45%,#8a929e 60%,#e4e8ee);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:0;filter:drop-shadow(0 0 1px #3a3f48) drop-shadow(0 1px 0 rgba(0,0,0,.45))}
 .stars .tz2{background:linear-gradient(180deg,#fff6b0,#ffd23a 45%,#c98a00 60%,#ffe680);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:0;filter:drop-shadow(0 0 1px #5a3a00) drop-shadow(0 1px 0 rgba(0,0,0,.45))}
+/* 版477：戻る・切りかえ・次へのボタンを、送ってもらった絵に */
+button:has(> .bk-ico){background:none!important;border:0!important;box-shadow:none!important;padding:0!important;overflow:visible}
+button:has(> .bk-ico) .bk-ico{width:100%;height:100%;margin:0;background:url("icons/ui_back.png") center/contain no-repeat!important;filter:drop-shadow(0 3px 0 rgba(0,0,0,.35))}
+button:has(> .bk-ico):active .bk-ico{transform:scale(.93)}
+button.ui-img{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;overflow:visible;font-size:0}
+button.ui-img img{width:100%;height:100%;display:block;filter:drop-shadow(0 3px 0 rgba(0,0,0,.35))}
+button.ui-img:active img{transform:scale(.93)}
+.hm-adv.ui-img{width:52px!important;height:52px!important;margin-left:4px;align-self:center;animation:pulse 1.4s infinite}
+.pc-nav.ui-img{width:34px!important;height:34px!important}
+.ot-mode.ui-img{width:62px;height:62px}
+.s2db .s2chg{width:100%;height:100%;display:block}
+.w-stop{position:absolute;right:12px;top:10px;z-index:30;width:66px;height:66px;padding:0;border:0;background:none;box-shadow:none;cursor:pointer}
+.w-stop img{width:100%;height:100%;filter:drop-shadow(0 3px 0 rgba(0,0,0,.4))}
+.w-stop[hidden]{display:none}
