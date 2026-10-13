@@ -2243,7 +2243,7 @@
       el.innerHTML = '<div class="lk-box"></div>';
       (document.getElementById('app') || document.body).appendChild(el);
       const fit = () => { const bx = el.querySelector('.lk-box');
-        if (id === 'assocScreen' && document.documentElement.classList.contains('short')) { bx.style.width = (el.clientWidth || innerWidth) + 'px'; bx.style.height = (el.clientHeight || innerHeight) + 'px'; bx.style.transform = 'translate(-50%,-50%)'; return; }   // 版486：スマホでは協会の画面を縮めずに、画面の大きさのまま作る（文字が大きくなる）
+        if (id === 'assocScreen' && (document.documentElement.classList.contains('short') || document.documentElement.classList.contains('phone'))) { bx.style.width = (el.clientWidth || innerWidth) + 'px'; bx.style.height = (el.clientHeight || innerHeight) + 'px'; bx.style.transform = 'translate(-50%,-50%)'; return; }   // 版486：スマホでは協会の画面を縮めずに、画面の大きさのまま作る（文字が大きくなる）
         bx.style.width = ''; bx.style.height = '';
         const k = Math.min((el.clientWidth || innerWidth) / 1280, (el.clientHeight || innerHeight) / 720); bx.style.transform = `translate(-50%,-50%) scale(${k.toFixed(4)})`; };
       addEventListener('resize', fit); el._fit = fit;
@@ -3102,6 +3102,7 @@
     app.style.left = (sl + (aw - lw * s) / 2) + 'px'; app.style.top = tg + 'px'; app.style.transform = `scale(${s})`;
     html.style.setProperty('--lh', lh + 'px');
     html.classList.toggle('short', lh < 640);
+    html.classList.toggle('phone', touch && Math.min(screen.width || 9999, screen.height || 9999) <= 540);   // 版487：スマホ（画面の短い辺が540以下）
   }
   let raf = 0;
   let synth = false;

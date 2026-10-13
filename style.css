@@ -1779,7 +1779,9 @@ button.ui-img:active img{transform:scale(.93)}
 html{background:repeating-linear-gradient(0deg,#1fa63a 0 56px,#18922f 56px 112px);min-height:100%}
 html.stage body{min-height:100vh}
 /* 版485：スマホ（横に長い画面）では、サッカー協会の文字を大きく */
-html.short #assocScreen .std-body > *{zoom:1.12}
-html.short #assocScreen .std-body{overflow-y:auto}
-html.short #assocScreen .sc-row{grid-template-columns:70px 120px 1fr auto 90px}
-html.short #assocScreen .std-tabs button{font-size:22px!important}
+html.short #assocScreen .std-body > *,html.phone #assocScreen .std-body > *{zoom:1.25}
+html.short #assocScreen .std-body,html.phone #assocScreen .std-body{overflow-y:auto}
+html.short #assocScreen .sc-row,html.phone #assocScreen .sc-row{grid-template-columns:58px 104px 1fr auto 70px;height:46px;font-size:21px}
+html.short #assocScreen .sm-menu,html.phone #assocScreen .sm-menu{zoom:1.2}
+html.short #assocScreen .std-tabs button,html.phone #assocScreen .std-tabs button{font-size:22px!important}
+html.short #assocScreen .sc-o,html.phone #assocScreen .sc-o{min-width:0;text-overflow:ellipsis}
