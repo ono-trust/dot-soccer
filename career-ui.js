@@ -2612,8 +2612,8 @@
         <div class="cl-h">マーク</div><div class="cl-opts img">${EMB_ICONS.map(([k, l]) => `<button data-eicon="${k}" class="${st.emb.icon === k ? 'on' : ''}"><img src="${embCanvas({ ...lk, icon: k }, 56)}" alt="">${l}</button>`).join('')}</div>
         <div class="cl-h">上の文字<small>（1〜2文字。空なら略称の1文字目）</small></div><input id="clCh" class="cl-ch" maxlength="2" value="${esc(st.emb.ch || '')}">
         <div class="cl-h">土台の色</div>${sw('c1', st.emb.c1)}<div class="cl-h">模様の色</div>${sw('c2', st.emb.c2)}<div class="cl-h">マークと文字の色</div>${sw('c3', st.emb.c3)}</div>`;
-      box.innerHTML = `<div class="std cl"><div class="cl-top"><b>クラブ設定</b><span>${opt.first ? 'あなたのクラブを作りましょう' : '名前・ユニフォーム・エンブレム'}</span>${opt.first ? '' : '<button class="std-back" title="もどる（変えない）"><i class="bk-ico" aria-hidden="true"></i></button>'}</div>
-        ${preview}<div class="cl-side"><div class="std-tabs cl-tabs">${[['name', '名前'], ['kit', 'ユニフォーム'], ['emb', 'エンブレム']].map(([k, l]) => `<button data-ctab="${k}" class="${clubTab === k ? 'on' : ''}">${l}</button>`).join('')}</div><div class="cl-body">${body}</div><button class="cl-ok">決定</button></div></div>`;
+      box.innerHTML = `<div class="std cl"><div class="cl-top"><b>${opt.only ? { name: 'チーム名変更', kit: 'ユニフォーム', emb: 'エンブレム' }[opt.only] : 'クラブ設定'}</b><span>${opt.first ? 'あなたのクラブを作りましょう' : opt.only ? { name: 'クラブ名と略称', kit: 'ホーム・アウェーのユニフォーム', emb: 'クラブのエンブレム' }[opt.only] : '名前・ユニフォーム・エンブレム'}</span>${opt.first ? '' : '<button class="std-back" title="もどる（変えない）"><i class="bk-ico" aria-hidden="true"></i></button>'}</div>
+        ${preview}<div class="cl-side"><div class="std-tabs cl-tabs"${opt.only ? ' hidden' : ''}>${[['name', '名前'], ['kit', 'ユニフォーム'], ['emb', 'エンブレム']].map(([k, l]) => `<button data-ctab="${k}" class="${clubTab === k ? 'on' : ''}">${l}</button>`).join('')}</div><div class="cl-body">${body}</div><button class="cl-ok">決定</button></div></div>`;
       // ユニフォームの見本（正面・ななめ・GKなしの3人）
       const kits = box.querySelector('#clKits');
       for (const [view, p] of [['front', ps[9]], ['f34', ps[5]], ['side', ps[2]]]) { const cv = A().kitSprite(st.kit, p || {}, view); if (cv) { const im = document.createElement('canvas'); im.width = cv.width * 6; im.height = cv.height * 6; const c = im.getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(cv, 0, 0, im.width, im.height); kits.appendChild(im); } }
@@ -2785,7 +2785,7 @@
       box.querySelectorAll('.of-b').forEach((b) => b.onclick = async () => { const a = b.dataset.a;
         if (a === 'biz' || a === 'team') { panel = panel === a ? null : a; draw(); return; }
         if (a === 'set') { if (window.__openMenu) window.__openMenu(); return; }   /* 版470：設定（チュートリアル・全画面など。右上のメニューの代わり） */
-        if (a === 'kit' || a === 'emb' || a === 'name') { clubTab = a; el.hidden = true; openClub({ onDone: () => { el.hidden = false; draw(); } }); return; }
+        if (a === 'kit' || a === 'emb' || a === 'name') { clubTab = a; el.hidden = true; openClub({ only: a, onDone: () => { el.hidden = false; draw(); } }); return; }
         if (a === 'bye') {
           const ok = await coachAsk('え、退任…？<br>このクラブの監督をやめる、ということでしょうか？<br><small>（育てた選手・順位など、セーブデータがすべて消えます）</small>', null, 'sec');
           if (ok) { el.hidden = true; save = C.newCareer(); store(); runners.length = 0; go('home'); open(); }
