@@ -1789,3 +1789,70 @@ html.short #assocScreen .sc-o,html.phone #assocScreen .sc-o{min-width:0;text-ove
 #zoomTip{position:absolute;left:50%;top:18%;transform:translateX(-50%);z-index:25;pointer-events:none;background:rgba(0,0,0,.6);color:#fff;font:900 26px/1 "Hiragino Kaku Gothic ProN",sans-serif;padding:10px 22px;border-radius:999px;opacity:0}
 #zoomTip.on{animation:zt 1s ease-out}
 @keyframes zt{0%{opacity:0;transform:translateX(-50%) scale(.8)}15%{opacity:1;transform:translateX(-50%) scale(1)}70%{opacity:1}100%{opacity:0}}
+/* ===== 版505：スカウト（選手ガチャ）===== */
+.gc-entry{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;margin:0 0 10px;padding:12px 18px;border:3px solid #fff3b0;border-radius:14px;background:linear-gradient(110deg,#c8141e,#ff7a1a 55%,#ffd23a);color:#fff;text-align:left;box-shadow:0 4px 0 rgba(0,0,0,.3);cursor:pointer}
+.gc-entry b{font:900 26px/1.1 "Hiragino Kaku Gothic ProN",sans-serif;text-shadow:0 2px 0 rgba(0,0,0,.35)}
+.gc-entry span{font-weight:800;font-size:15px}.gc-entry em{font-style:normal;font-weight:900;font-size:14px;align-self:flex-end;background:rgba(0,0,0,.25);padding:3px 10px;border-radius:999px}
+.gc-wrap .lk-box{background:radial-gradient(ellipse at 30% 40%,#1d2a6a,#080b1e 70%)}
+.gc{position:absolute;inset:0;color:#fff;font-family:"Hiragino Kaku Gothic ProN",sans-serif}
+.gc-top{position:absolute;left:0;right:0;top:0;height:84px;display:flex;align-items:center;gap:24px;padding:0 22px;background:linear-gradient(#000a,#0000)}
+.gc-top>b{font:900 40px/1 "Hiragino Kaku Gothic ProN",sans-serif;letter-spacing:4px;text-shadow:0 3px 0 #000}
+.gc-coin,.gc-kk{display:flex;align-items:center;gap:6px;font-weight:900;font-size:22px;background:rgba(0,0,0,.45);padding:6px 14px;border-radius:999px}.gc-coin .coin-ico{width:26px;height:26px}
+.gc-kk{color:#b8f0ff}
+.gc-back{top:6px!important}
+.gc-ban{position:absolute;left:24px;top:96px;width:800px;height:600px;border-radius:22px;overflow:hidden;border:5px solid var(--c2);box-shadow:0 0 30px var(--c0)}
+.gc-bg{position:absolute;inset:0;background:linear-gradient(135deg,var(--c0),#120a24 70%);}
+.gc-bg::after{content:"";position:absolute;inset:-50%;background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.08) 0 8deg,transparent 8deg 22deg);animation:gcspin 30s linear infinite}
+@keyframes gcspin{to{transform:rotate(360deg)}}
+.gc-fc{position:absolute;left:-10px;bottom:0;width:440px;height:560px;display:flex;align-items:flex-end;justify-content:center}
+.gc-face{width:430px;height:auto;max-height:560px;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(0,0,0,.6))}
+.gc-tx{position:absolute;left:400px;right:22px;top:40px;text-align:left}
+.gc-tx em{font-style:normal;font-weight:900;font-size:16px;background:var(--c1);color:#1a1000;padding:4px 12px;border-radius:999px}
+.gc-star{margin:14px 0 4px}.gc-star .stars{font-size:38px}
+.gc-tx h2{margin:0;font:900 64px/1.1 "Hiragino Kaku Gothic ProN",sans-serif;text-shadow:0 4px 0 rgba(0,0,0,.5)}
+.gc-tm{margin:6px 0 18px;font-weight:800;font-size:20px;opacity:.9}
+.gc-un{background:rgba(0,0,0,.45);border:2px solid var(--c1);border-radius:14px;padding:12px 14px}
+.gc-un i{display:inline-block;font-style:normal;font-size:13px;font-weight:900;background:var(--c1);color:#1a1000;padding:2px 8px;border-radius:6px}
+.gc-un b{display:block;font-size:30px;margin:6px 0;color:var(--c2)}.gc-un small{font-size:15px;line-height:1.5;opacity:.95}
+.gc-side{position:absolute;right:24px;top:110px;width:400px;display:flex;flex-direction:column;gap:14px}
+.gc-pity{position:relative;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.3);border-radius:14px;padding:12px 16px 20px;overflow:hidden}
+.gc-pity span{font-size:15px;font-weight:800;opacity:.9}.gc-pity b{display:block;font-size:30px;font-weight:900}
+.gc-pity i{position:absolute;left:0;bottom:0;height:8px;background:linear-gradient(90deg,#ffd23a,#ff5ad2)}
+.gc-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px;border-radius:16px;border:4px solid #fff;color:#fff;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.4)}
+.gc-btn b{font-size:28px;font-weight:900}.gc-btn span{display:flex;align-items:center;gap:6px;font-size:24px;font-weight:900}.gc-btn .coin-ico{width:26px;height:26px}.gc-btn small{font-size:14px;font-weight:800;background:rgba(0,0,0,.3);padding:2px 10px;border-radius:999px}
+.gc-btn.one{background:linear-gradient(#3a8cf0,#1f5fc0)}.gc-btn.ten{background:linear-gradient(#ff8a2a,#d84a10)}
+.gc-btn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.4)}
+.gc-rate{align-self:flex-start;background:rgba(255,255,255,.15);color:#fff;border:2px solid rgba(255,255,255,.4);border-radius:999px;padding:6px 16px;font-weight:800}
+.gc-note{font-size:14px;line-height:1.5;opacity:.8;margin:0}
+/* 演出 */
+.gcs{position:absolute;inset:0;z-index:20;background:rgba(0,0,10,.92);display:grid;place-items:center;overflow:hidden}
+.gcs-tap{position:absolute;bottom:18px;left:0;right:0;text-align:center;color:#fff8;font-weight:800;font-size:16px}
+.gcs-orb{position:absolute;left:50%;top:-140px;width:140px;height:140px;margin-left:-70px;border-radius:50%;animation:orbfall 1.6s cubic-bezier(.3,.7,.4,1) forwards}
+.gcs-orb i{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,var(--oc) 45%,transparent 72%);box-shadow:0 0 60px 20px var(--oc)}
+.gcs-orb.r1{--oc:#cfe6ff}.gcs-orb.r3{--oc:#c9ced6}.gcs-orb.r4{--oc:#ffd23a}
+.gcs-orb.r5 i{background:conic-gradient(#ff4d4d,#ffb31a,#3ddc5a,#2f8cff,#b14cff,#ff4d4d);box-shadow:0 0 80px 30px #fff8;animation:gcspin 1s linear infinite}
+@keyframes orbfall{0%{top:-140px;transform:scale(.6)}60%{top:290px;transform:scale(1)}75%{transform:scale(1.25)}100%{top:290px;transform:scale(3.5);opacity:0}}
+.gcs-grid{display:grid;grid-template-columns:repeat(5,200px);gap:16px}
+.gcs-grid.one{grid-template-columns:300px}
+.gcc{height:290px;perspective:800px}.gcs-grid.one .gcc{height:420px}
+.gcc-in{position:relative;width:100%;height:100%;transform-style:preserve-3d;transform:rotateY(180deg);animation:gcflip .5s ease-out forwards;animation-delay:calc(.25s + var(--d))}
+@keyframes gcflip{to{transform:rotateY(0)}}
+.gcc-b,.gcc-f{position:absolute;inset:0;border-radius:14px;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.gcc-b{transform:rotateY(180deg);background:repeating-linear-gradient(45deg,#1d3a8a 0 10px,#16306f 10px 20px);border:4px solid #8fb3ff}
+.gcc-f{background:linear-gradient(#2a3550,#141a2a);border:4px solid #9aa;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:8px;color:#fff;overflow:hidden}
+.gcc.s3 .gcc-f{border-color:#c9ced6}.gcc.s4 .gcc-f{border-color:#ffd23a;background:linear-gradient(#5a4210,#1e1606)}
+.gcc.s5 .gcc-f{border:4px solid transparent;background:linear-gradient(#2a1050,#100620) padding-box,conic-gradient(#ff4d4d,#ffb31a,#3ddc5a,#2f8cff,#b14cff,#ff4d4d) border-box;box-shadow:0 0 30px #fff6}
+.gcc-face{width:100%;flex:1;min-height:0;object-fit:contain;object-position:bottom}
+.gcc-st .stars{font-size:22px}.gcs-grid.one .gcc-st .stars{font-size:32px}
+.gcc-f b{font-size:20px;font-weight:900}.gcs-grid.one .gcc-f b{font-size:30px}
+.gcc-f small{font-size:13px;opacity:.85}
+.gcc-f em{font-style:normal;font-weight:900;font-size:13px;padding:2px 8px;border-radius:6px;margin-top:4px}
+.b-new{background:#e8241c}.b-res{background:#6a6a6a}.b-tz{background:linear-gradient(90deg,#ffd23a,#ff7a1a);color:#2a1500}.b-kk{background:#2a9ad8}
+.gcs-ok{position:absolute;bottom:22px;right:30px;font-size:24px;padding:10px 40px;border-radius:12px}
+.gct{display:flex;flex-direction:column;align-items:center}
+.gct-card{width:360px;padding:16px;border-radius:20px;background:linear-gradient(#2a3550,#141a2a);border:5px solid #ffd23a;display:flex;flex-direction:column;align-items:center;color:#fff;box-shadow:0 0 40px #ffd23a88;animation:ttin .4s ease-out}
+.gct-face{width:300px;height:330px;object-fit:contain;object-position:bottom}
+.gct-card b{font-size:34px;font-weight:900}.gct-st .stars{font-size:48px}
+.gct-card p{font-size:22px;font-weight:900;margin:8px 0 0}.gct-max{background:linear-gradient(90deg,#ff4d4d,#ffb31a,#3ddc5a,#2f8cff,#b14cff);padding:2px 10px;border-radius:8px}
+.stars .tz.pop{display:inline-block;animation:tzpop .45s ease-out}
+@keyframes tzpop{0%{transform:scale(1)}40%{transform:scale(1.8)}100%{transform:scale(1)}}

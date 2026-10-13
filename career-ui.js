@@ -1005,6 +1005,7 @@
   // 顔の絵（dataURL）。まだ読み込めていなければ null
   // bib：控え選手はユニフォームの上にビブス（肩から下の胴の部分だけ、蛍光色のメッシュ）
   function faceURL(p, bib) {
+    if (p.faceKey && window.STAR_FACES && p.faceKey in window.STAR_FACES) return starFace(p.faceKey, (C.ensureClub(save).kit || {}).shirt || '#2f6fd6', p.position === 'GK');   // 版505：スカウトで来た選手は、元の顔
     faceLoad();
     if (!faceTotal || faceLoaded < faceTotal) return null;
     const g = faceGenes(p), set = window.FACE_SET, F = set[g.id], skin = FACE_SKIN[p.skin || 0] || FACE_SKIN[0], hair = FACE_HAIR[p.hairColor || 0] || FACE_HAIR[0], gk = p.position === 'GK';
@@ -2537,7 +2538,7 @@
   function starFace(key, shirt, gk) {
     const ck = key + '|' + shirt + '|' + (gk ? 1 : 0); if (starURLs.has(ck)) return starURLs.get(ck);
     let L = starImgs[key];
-    if (!L) { L = starImgs[key] = { img: new Image(), n: 0 }; L.img.onload = L.img.onerror = () => { L.n = 1; starFill(); }; L.img.src = `faces/star/${key}.png`; }
+    if (!L) { L = starImgs[key] = { img: new Image(), n: 0 }; L.img.onload = L.img.onerror = () => { L.n = 1; starFill(); try { faceFill(); } catch (_) {} }; L.img.src = `faces/star/${key}.png`; }
     if (!L.n) return null;
     let url = `faces/star/${key}.png`;
     try {
@@ -3014,11 +3015,84 @@
     draw(); el.hidden = false; el._fit();
   }
 
+
+  // ================= 版505：スカウト（選手ガチャ）=================
+  const SND2 = (n) => { try { window.DotSound && DotSound.play(n); } catch (_) {} };
+  function gcTeamShort(tid) { const t = (C.TEAMS || []).find((x) => x.id === tid); return t ? t.short || t.name : ''; }
+  function gcFace(tid, q, cls) { const k = C.faceKeyOf(tid, q); return k ? starPic(k, '#ffffff', q.pos === 'GK', cls) : `<img class="${cls}" alt="">`; }
+  function openGacha() {
+    const el = fullScreen('gachaScreen', 'std-wrap gc-wrap'), box = el.querySelector('.lk-box');
+    const g = C.ensureGacha(save);
+    if (!g.gift) { g.gift = 1; save.coins = (save.coins || 0) + 2000; store(); setTimeout(() => coachAsk('スカウトがオープンしました！<br>記念に <b>2,000コイン</b> をプレゼントします。<br>さっそく選手をスカウトしてみましょう！', [{ label: 'OK', value: true }], 'sec'), 300); }
+    const draw = () => {
+      const bn = C.gachaBanner(), U = bn.uniq, q = C.rosterAt(bn.tid, 1).players.find((x) => x.no === bn.no), left = C.GACHA_PITY - (g.pity[bn.id] || 0);
+      const cc = U.chip || ['#c8141e', '#ffd23a', '#ffe45a'];
+      box.innerHTML = `<div class="gc">
+        <div class="gc-top"><b>スカウト</b><span class="gc-coin">${COIN}${(save.coins || 0).toLocaleString()}</span><span class="gc-kk">◆ 覚醒のカケラ ${(save.kakera || 0).toLocaleString()}</span><button class="std-back gc-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
+        <div class="gc-ban" style="--c0:${cc[0]};--c1:${cc[1]};--c2:${cc[2]}">
+          <div class="gc-bg"></div>
+          <div class="gc-fc">${gcFace(bn.tid, q, 'gc-face')}</div>
+          <div class="gc-tx"><em>今月のピックアップ　〜${esc(bn.until)}まで</em><div class="gc-star">${starHTML(5, 0)}</div><h2>${esc(U.who)}</h2><p class="gc-tm">${esc(gcTeamShort(bn.tid))}　${esc(q.pos)}　${esc(U.type || q.type || '')}</p>
+            <div class="gc-un"><i>固有スキル</i><b>${esc(U.name)}</b><small>${esc(U.se || '')}</small></div></div>
+        </div>
+        <div class="gc-side">
+          <div class="gc-pity"><span>ピックアップ確定まで</span><b>あと${left}回</b><i style="width:${Math.round((1 - left / C.GACHA_PITY) * 100)}%"></i></div>
+          <button class="gc-btn one" data-n="1"><b>1回スカウト</b><span>${COIN}${C.GACHA_COST.one}</span></button>
+          <button class="gc-btn ten" data-n="10"><b>10回スカウト</b><span>${COIN}${C.GACHA_COST.ten.toLocaleString()}</span><small>☆3以上 1人確定</small></button>
+          <button class="gc-rate">出る確率</button>
+          <p class="gc-note">同じ選手が出たら凸（最大3凸）。完凸のあとは覚醒のカケラ。チームが25人の時は、リザーブ（控え室）に入ります。</p>
+        </div></div>`;
+      box.querySelector('.gc-back').onclick = () => { el.hidden = true; go('home'); };
+      box.querySelector('.gc-rate').onclick = () => coachAsk(`<b>出る確率</b><br>${C.GACHA_RATE.map(([st, pc]) => `☆${st}：${pc}%`).join('　')}<br><small>☆5が出た時、半分はピックアップの${esc(U.who)}。<br>このスカウトで${C.GACHA_PITY}回引くと、${esc(U.who)}が確定（出たら数え直し）。<br>10回スカウトは、☆3以上が1人確定。</small>`, [{ label: 'とじる', value: true }], 'sec');
+      box.querySelectorAll('.gc-btn').forEach((b) => b.onclick = async () => {
+        const n = +b.dataset.n, res = C.gachaPull(save, n);
+        if (!res) { coachAsk('コインが足りません。<br>カップ戦で勝つと、コインがもらえますよ。', [{ label: 'OK', value: true }], 'sec'); return; }
+        store(); await gachaShow(el, res); draw();
+      });
+    };
+    draw(); el.hidden = false; el._fit();
+  }
+  // 引いた時の演出：光の玉が落ちてきて（いちばん良い☆の色）→ カードが1枚ずつめくれる → 凸の選手は☆の色が変わる
+  function gachaShow(el, res) {
+    return new Promise((done) => {
+      const rs = res.results, best = Math.max(...rs.map((r) => r.star));
+      const ov = document.createElement('div'); ov.className = 'gcs'; el.querySelector('.lk-box').appendChild(ov);
+      const tier = best >= 5 ? 'r5' : best >= 4 ? 'r4' : best >= 3 ? 'r3' : 'r1';
+      ov.innerHTML = `<div class="gcs-orb ${tier}"><i></i></div><p class="gcs-tap">タップでとばす</p>`;
+      SND2(best >= 4 ? 'gachaRare' : 'gachaOrb');
+      let stage = 0, timers = [];
+      const later = (f, ms) => timers.push(setTimeout(f, ms));
+      const cards = () => {
+        stage = 1; timers.forEach(clearTimeout); timers = [];
+        const one = rs.length === 1;
+        ov.innerHTML = `<div class="gcs-grid${one ? ' one' : ''}">${rs.map((r, i) => {
+          const tz = r.kind === 'totsu' ? r.to : r.p ? r.p.totsu || 0 : 0;
+          const badge = r.kind === 'new' ? (r.reserve ? '<em class="b-res">NEW・リザーブへ</em>' : '<em class="b-new">NEW</em>') : r.kind === 'totsu' ? `<em class="b-tz">凸UP ${r.from}→${r.to}</em>` : `<em class="b-kk">カケラ +${r.kakera}</em>`;
+          return `<div class="gcc s${r.star}" style="--d:${i * (one ? 0 : 0.16)}s"><div class="gcc-in"><div class="gcc-b"></div><div class="gcc-f">${gcFace(r.tid, r.q, 'gcc-face')}<div class="gcc-st">${starHTML(r.star, tz)}</div><b>${esc(r.q.name)}</b><small>${esc(gcTeamShort(r.tid))}・${esc(r.q.pos)}</small>${badge}</div></div></div>`; }).join('')}</div>
+          <button class="gcs-ok primary">OK</button>`;
+        rs.forEach((r, i) => later(() => SND2(r.star >= 4 ? 'reveal5' : 'reveal'), 300 + i * (one ? 0 : 160)));
+        ov.querySelector('.gcs-ok').onclick = (e) => { e.stopPropagation(); totsuShow(0); };
+      };
+      // 凸の演出：大きなカードで、☆が1つずつ新しい色に変わる
+      const ups = rs.filter((r) => r.kind === 'totsu');
+      const totsuShow = (k) => {
+        if (k >= ups.length) { ov.remove(); done(); return; }
+        const r = ups[k]; stage = 2;
+        ov.innerHTML = `<div class="gct"><div class="gct-card s${r.star}">${gcFace(r.tid, r.q, 'gct-face')}<b>${esc(r.q.name)}</b><div class="gct-st">${starHTML(r.star, r.from)}</div><p>凸UP！　${r.from}凸 → <span class="tz${r.to}">${r.to}凸</span>${r.to >= 3 ? '　<b class="gct-max">完凸</b>' : ''}</p></div><p class="gcs-tap">タップで次へ</p></div>`;
+        const stars = [...ov.querySelectorAll('.gct-st .tz')];
+        stars.forEach((st, i) => later(() => { st.className = 'tz tz' + r.to + ' pop'; SND2('reveal'); }, 500 + i * 220));
+        ov.onclick = () => { timers.forEach(clearTimeout); timers = []; totsuShow(k + 1); };
+      };
+      ov.onclick = () => { if (stage === 0) cards(); };
+      later(cards, 1900);
+    });
+  }
   // ================= ショップ =================
   function shop() {
     const cats = ['tact', 'tech', 'phys', 'sup'];
     const draw = (msg) => {
       $('#crModalBody').innerHTML = `<h2>ショップ　<span class="coin">${COIN}${(save.coins || 0).toLocaleString()} コイン</span></h2>${msg ? `<p class="shopmsg">${msg}</p>` : ''}
+        <button class="gc-entry" id="gcEntry"><b>スカウト</b><span>今月のピックアップ：${esc(C.gachaBanner().uniq.who)}（${esc(C.gachaBanner().uniq.name)}）</span><em>選手をスカウトする ▶</em></button>
         <div class="shop-top">
           <div class="pack"><b>カードパック</b><span>ランダムで5枚</span><button data-pack="5" class="primary">${COIN}${C.PRICE.pack5}</button></div>
           <div class="pack"><b>カードパック（大）</b><span>ランダムで12枚</span><button data-pack="12" class="primary">${COIN}${C.PRICE.pack12}</button></div>
@@ -3030,6 +3104,7 @@
       $('#crModalBody').querySelectorAll('[data-pack]').forEach((b) => b.onclick = () => { const got = C.buyPack(save, +b.dataset.pack); store(); draw(got ? `${got.map((c) => C.CARDS[c].name).join('・')} を手に入れた！` : 'コインが足りません'); });
       $('#crModalBody').querySelectorAll('.shop-cards2 .acard').forEach((b) => b.onclick = () => { const ok = C.buyCard(save, b.dataset.c); store(); draw(ok ? `${C.CARDS[b.dataset.c].name} を買った！` : 'コインが足りません'); });
       $('#shopClose').onclick = () => { $('#crModal').hidden = true; renderHome(); };
+      $('#gcEntry').onclick = () => { $('#crModal').hidden = true; openGacha(); };
     };
     draw(''); $('#crModal').hidden = false;
   }
@@ -3064,7 +3139,7 @@
     runMatch('練習試合', '', op, (score, ev, played) => { const got = C.playPractice(save, score, played); afterRound(got, { practice: true }); if (onDone) onDone(); }, { comp: '練習試合', label: '', home: true, practice: true, tut: 'practice' });
     return true;
   }
-  window.__career = { venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
+  window.__career = { openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====
