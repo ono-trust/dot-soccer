@@ -4019,7 +4019,8 @@
     }
     el.hidden = false; el._fit();   // 版534：隠れたまま大きさを測ると0になり、画面が小さく縮んでいた
     const t = simT, second = t >= halfT, m = Math.max(1, Math.min(90, Math.ceil((t * match.clockScale) / 60)));
-    renderStatus(el.querySelector('.lk-sub'), t, `${second ? '後半' : '前半'}　${m}分`, m, () => { el.hidden = true; if (wasPlaying) play(); });
+    const ws = document.getElementById('wStop'), wsWas = ws && !ws.hidden; if (ws) ws.hidden = true;   // 版535：状況の画面には自分のもどるボタンがあるので、観戦をやめるボタンは隠す
+    renderStatus(el.querySelector('.lk-sub'), t, `${second ? '後半' : '前半'}　${m}分`, m, () => { el.hidden = true; if (ws && wsWas) ws.hidden = false; if (wasPlaying) play(); });
   }
   function renderStatus(sub, T0, title, minute, onBack, final) {
     const { S2, pos } = statsUntil(T0);
