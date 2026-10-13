@@ -2404,3 +2404,26 @@ html.short .rbtns{top:88px;gap:4px}html.short .rbtns button{width:72px;height:72
 .sb2-round.sb2-img:active img{transform:scale(.93)}
 #locker .lk-room{width:100%!important;height:100%!important;object-fit:cover}
 .sb-askbtns{display:flex;gap:14px;justify-content:center}.sb-askbtns button.ib{width:170px;height:62px!important;font-size:22px!important}
+/* 版557：交代ボード（ハーフタイム・試合中）の見た目を、スタメン画面とそろえる */
+.sb2-board{background:linear-gradient(#3f8f3c,#2f7a30)!important;border:4px solid #1b4a1e!important;border-radius:18px!important;box-shadow:0 8px 0 rgba(0,0,0,.25),inset 0 0 0 3px rgba(255,255,255,.12)!important}
+.sb2-head{font:900 24px "DotGothic16","M PLUS 1p",sans-serif!important;text-shadow:0 2px 0 #0b2a10!important}
+.sb2-head em{font-style:normal;color:#e7ff62;font-size:20px}
+.sb2-pitch{background:#2e8a32!important;border:3px solid #f4f4f0!important}
+.sb2-gc{box-shadow:inset -1px -1px 0 rgba(255,255,255,.3)!important}
+.sb2-gc.z-FW{background:#3c74d8!important}.sb2-gc.z-MF{background:#e7b62a!important}.sb2-gc.z-DF{background:#d24a4a!important}
+.sb2-zl{font:900 34px/1 "Arial Black",Arial!important;color:rgba(255,255,255,.32)!important;letter-spacing:2px!important}
+.sb2-tag{font:800 13px/1.15 "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif!important;padding:2px 6px!important;border-radius:6px!important;border:2px solid rgba(0,0,0,.35)!important;box-shadow:none!important}
+.sb2-tag.pv-fw{background:#2f6fd6!important}.sb2-tag.pv-mf{background:#e8901a!important}.sb2-tag.pv-df{background:#d8303a!important}.sb2-tag.pv-gk{background:#8b3bd0!important}
+.sb2-face{overflow:visible!important;border-radius:0!important}
+.sb2-p .sb2-face{left:-30px!important;top:-30px!important;width:60px!important;height:58px!important}
+.sb2-face .fc,.sb2-fci{width:60px!important;height:58px!important;margin:0!important;object-fit:contain;filter:drop-shadow(0 2px 0 rgba(0,0,0,.45)) drop-shadow(0 0 1px rgba(0,0,0,.6))}
+.sb2-p .sb2-tag{top:-50px!important}
+.sb2-p .bat{left:24px!important;top:8px!important}
+.sb2-bench{background:rgba(0,40,10,.35);border-radius:10px;padding:26px 0 6px;top:8px!important}
+.sb2-bench::before{content:"ベンチ入り";position:absolute;top:4px;left:0;right:0;text-align:center;color:#e7ff62;font:900 13px "Hiragino Kaku Gothic ProN",sans-serif}
+.sb2-b{height:72px!important}
+.sb2-b .sb2-face{left:32px!important;top:22px!important;width:56px!important;height:50px!important}
+.sb2-b .sb2-fci{width:56px!important;height:50px!important}
+.sb2-slots{background:rgba(80,80,80,.45)!important;border-radius:10px;top:8px!important;bottom:8px!important;right:8px!important}
+.sb2-ghost .fc,.sb2-ghost .sb2-fci{position:absolute;left:-32px;top:-32px;width:64px!important;height:62px!important}
+.sb2-left{border-color:#e7ff62!important}

@@ -1575,14 +1575,14 @@
       let grid = '';
       for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) grid += `<i class="sb2-gc z-${C.zoneOf(r)}${occ[r + ':' + c] ? '' : ' free'}" data-r="${r}" data-c="${c}" style="left:${c * CW}px;top:${cy(r) - CH / 2}px;width:${CW}px;height:${CH}px"></i>`;
       const zl = [['FW', 8], ['MF', 4.5], ['DF', 1]].map(([z, r]) => `<b class="sb2-zl l" style="top:${cy(r) - 22}px">${z}</b><b class="sb2-zl r" style="top:${cy(r) - 22}px">${z}</b>`).join('');
-      const pl = (k, x, y, zone) => { const q = ps[on[k]], isNew = plan.subs.some((t) => t.slot === k); return `<div class="sb2-p${isNew ? ' new' : ''}" data-k="${k}" style="left:${x}px;top:${y}px"><b class="sb2-tag ${ZC[zone]}">${esc(q.name)}</b><span class="sb2-face">${portrait(q)}</span>${battery(stamOf(k))}</div>`; };
+      const pl = (k, x, y, zone) => { const q = ps[on[k]], isNew = plan.subs.some((t) => t.slot === k); return `<div class="sb2-p${isNew ? ' new' : ''}" data-k="${k}" style="left:${x}px;top:${y}px"><b class="sb2-tag ${ZC[zone]}">${esc(q.name)}</b><span class="sb2-face">${facePic(q, 'sb2-fci', false)}</span>${battery(stamOf(k))}</div>`; };
       let dots = pl(0, PW / 2, ROWS * CH + CH * 1.2, 'GK');
       for (let k = 1; k < 11; k++) dots += pl(k, cx(cells[k].c), cy(cells[k].r), C.zoneOf(cells[k].r));
       const onSet = new Set(on);
-      const bench = ps.slice(11, 18).map((q, i) => { const j = i + 11, gone = ms.out.includes(q.name) || q.injury > 0, playing = onSet.has(j); return `<div class="sb2-b${gone || playing ? ' off' : ''}" data-j="${j}"><b class="sb2-tag ${ZC[q.position]}">${esc(q.name)}</b><span class="sb2-face">${portrait(q)}</span>${playing ? '<em>出場中</em>' : gone ? `<em>${q.injury > 0 ? 'ケガ' : '交代済'}</em>` : ''}</div>`; }).join('');
+      const bench = ps.slice(11, 18).map((q, i) => { const j = i + 11, gone = ms.out.includes(q.name) || q.injury > 0, playing = onSet.has(j); return `<div class="sb2-b${gone || playing ? ' off' : ''}" data-j="${j}"><b class="sb2-tag ${ZC[q.position]}">${esc(q.name)}</b><span class="sb2-face">${facePic(q, 'sb2-fci', false)}</span>${playing ? '<em>出場中</em>' : gone ? `<em>${q.injury > 0 ? 'ケガ' : '交代済'}</em>` : ''}</div>`; }).join('');
       el.innerHTML = `<div class="sb2-box">
           <div class="sb2-board">
-            <div class="sb2-head"><img src="${emblemURL(save.team.name, 48)}" alt=""><b>${esc(save.team.name)}</b><span>［${lgBadge(save.league.id)}］</span></div>
+            <div class="sb2-head"><img src="${emblemURL(save.team.name, 48)}" alt=""><b>${esc(save.team.name)}</b><em>［${esc(C.formationLabel(cells))}］</em></div>
             <div class="sb2-pitch" style="width:${PW}px;height:${PH}px">${grid}<i class="sb2-pa"></i><i class="sb2-ga"></i>${zl}${dots}
               <div class="sb2-left">交代枠残り<b>${Math.max(0, left())}</b></div></div>
             <div class="sb2-bench">${bench}</div>
@@ -1611,7 +1611,7 @@
           if (!ghost && Math.hypot(e.clientX - sx, e.clientY - sy) < 8) return;
           if (!ghost) {
             if (kind === 'b' && (left() <= 0 || ev.currentTarget && false)) { /* 枠がないときは動かさない */ }
-            ghost = document.createElement('div'); ghost.className = 'sb2-ghost'; ghost.innerHTML = `<b class="sb2-tag ${ZC[q.position]}">${esc(q.name)}</b>${portrait(q)}`; box.appendChild(ghost);
+            ghost = document.createElement('div'); ghost.className = 'sb2-ghost'; ghost.innerHTML = `<b class="sb2-tag ${ZC[q.position]}">${esc(q.name)}</b>${facePic(q, 'sb2-fci', false)}`; box.appendChild(ghost);
           }
           const [x, y] = toBox(e.clientX, e.clientY); ghost.style.left = x + 'px'; ghost.style.top = y + 'px';
           const t = targetAt(e.clientX, e.clientY);
