@@ -3281,38 +3281,86 @@
     draw(); el.hidden = false; el._fit();
   }
   // 引いた時の演出：光の玉が落ちてきて（いちばん良い☆の色）→ カードが1枚ずつめくれる → 凸の選手は☆の色が変わる
+  // 版554：スカウトの演出（抽選はもう終わっている。結果に合わせて見せるだけ）
+  //  ☆1〜3＝青いカード／☆4＝金色に光って粒が広がる／☆5＝暗転→赤い稲妻→カットイン→登場
+  //  昇格：青いカードが開く直前に割れて、金色（☆4）か赤色（☆5）に変わる
+  //  10回：ふつうの選手はテンポよくめくり、☆4・☆5だけ真ん中で大きく見せる。最後に10人の一覧。いつでも「スキップ」
   function gachaShow(el, res) {
     return new Promise((done) => {
-      const rs = res.results, best = Math.max(...rs.map((r) => r.star));
-      const ov = document.createElement('div'); ov.className = 'gcs'; el.querySelector('.lk-box').appendChild(ov);
-      const tier = best >= 5 ? 'r5' : best >= 4 ? 'r4' : best >= 3 ? 'r3' : 'r1';
-      ov.innerHTML = `<div class="gcs-orb ${tier}"><i></i></div><p class="gcs-tap">タップでとばす</p>`;
-      SND2(best >= 4 ? 'gachaRare' : 'gachaOrb');
-      let stage = 0, timers = [];
-      const later = (f, ms) => timers.push(setTimeout(f, ms));
-      const cards = () => {
-        stage = 1; timers.forEach(clearTimeout); timers = [];
-        const one = rs.length === 1;
-        ov.innerHTML = `<div class="gcs-grid${one ? ' one' : ''}">${rs.map((r, i) => {
-          const tz = r.kind === 'totsu' ? r.to : r.p ? r.p.totsu || 0 : 0;
-          const badge = r.kind === 'new' ? (r.reserve ? '<em class="b-res">NEW・リザーブへ</em>' : '<em class="b-new">NEW</em>') : r.kind === 'totsu' ? `<em class="b-tz">凸UP ${r.from}→${r.to}</em>` : r.kind === 'auto' ? `<em class="b-auto">放出・カケラ +${r.kakera}</em>` : `<em class="b-kk">カケラ +${r.kakera}</em>`;
-          return `<div class="gcc s${r.star}" style="--d:${i * (one ? 0 : 0.16)}s"><div class="gcc-in"><div class="gcc-b"></div><div class="gcc-f">${gcFace(r.tid, r.q, 'gcc-face')}<div class="gcc-st">${starHTML(r.star, tz)}</div><b>${esc(r.q.name)}</b><small>${esc(gcTeamShort(r.tid))}・${esc(r.q.pos)}</small>${badge}</div></div></div>`; }).join('')}</div>
-          <button class="gcs-ok primary">OK</button>`;
-        rs.forEach((r, i) => later(() => SND2(r.star >= 4 ? 'reveal5' : 'reveal'), 300 + i * (one ? 0 : 160)));
-        ov.querySelector('.gcs-ok').onclick = (e) => { e.stopPropagation(); totsuShow(0); };
-      };
-      // 凸の演出：大きなカードで、☆が1つずつ新しい色に変わる
+      const rs = res.results, one = rs.length === 1, box = el.querySelector('.lk-box');
+      const ov = document.createElement('div'); ov.className = 'gcs gx'; box.appendChild(ov);
+      let skip = false, finished = false; const timers = new Set();
+      const wait = (ms) => new Promise((ok) => { if (skip) { ok(); return; } const t = setTimeout(() => { timers.delete(t); ok(); }, ms); timers.add(t); waiters.add(ok); });
+      const waiters = new Set();
+      const doSkip = () => { if (skip) return; skip = true; timers.forEach(clearTimeout); timers.clear(); waiters.forEach((f) => f()); waiters.clear(); };
+      const tierOf = (r) => (r.star >= 5 ? 'red' : r.star >= 4 ? 'gold' : 'blue');
+      // 昇格するか：☆5は半分、☆4は3枚に1枚くらい（結果は変わらない。見せ方だけ）
+      const promo = rs.map((r) => (r.star >= 5 ? Math.random() < 0.5 : r.star >= 4 ? Math.random() < 0.35 : false));
+      const badgeOf = (r) => (r.kind === 'new' ? (r.reserve ? '<em class="b-res">NEW・リザーブへ</em>' : '<em class="b-new">NEW</em>') : r.kind === 'totsu' ? `<em class="b-tz">凸UP ${r.from}→${r.to}</em>` : r.kind === 'auto' ? `<em class="b-auto">放出・カケラ +${r.kakera}</em>` : `<em class="b-kk">カケラ +${r.kakera}</em>`);
+      const faceHTML = (r) => { const tz = r.kind === 'totsu' ? r.to : r.p ? r.p.totsu || 0 : 0; return `${gcFace(r.tid, r.q, 'gcc-face')}<div class="gcc-st">${starHTML(r.star, tz)}</div><b>${esc(r.q.name)}</b><small>${esc(gcTeamShort(r.tid))}・${esc(r.q.pos)}</small>${badgeOf(r)}`; };
+      const cardHTML = (r, i, back) => `<div class="gx-c s${r.star}" data-i="${i}"><div class="gx-in"><div class="gx-b ${back}"><i class="gx-crk"></i></div><div class="gx-f">${faceHTML(r)}</div></div></div>`;
+      const burst = (host, n, col) => { const w = document.createElement('div'); w.className = 'gx-burst'; w.style.setProperty('--pc', col); let h = ''; for (let k = 0; k < n; k++) { const a = Math.random() * Math.PI * 2, d = 120 + Math.random() * 260; h += `<i style="--dx:${(Math.cos(a) * d).toFixed(0)}px;--dy:${(Math.sin(a) * d).toFixed(0)}px;--s:${(0.5 + Math.random()).toFixed(2)};animation-delay:${(Math.random() * 0.12).toFixed(2)}s"></i>`; } w.innerHTML = h; host.appendChild(w); setTimeout(() => w.remove(), 1400); };
+      const skipBtn = () => { const b = document.createElement('button'); b.className = 'gx-skip'; b.textContent = 'スキップ ▶▶'; b.onclick = (e) => { e.stopPropagation(); doSkip(); }; ov.appendChild(b); };
+      // 1枚を大きく見せる（☆4・☆5・1回スカウト）
+      async function feature(r, i) {
+        const tier = tierOf(r), pr = promo[i];
+        const st = document.createElement('div'); st.className = 'gx-stage'; ov.appendChild(st);
+        st.innerHTML = cardHTML(r, i, pr || tier === 'blue' ? 'blue' : tier);
+        const c = st.querySelector('.gx-c'); requestAnimationFrame(() => c.classList.add('in'));
+        await wait(650);
+        if (pr) {   // 昇格：割れて色が変わる
+          c.classList.add('shake'); await wait(420);
+          c.classList.add('crack'); SND2('reveal'); await wait(380);
+          const b = c.querySelector('.gx-b'); b.className = 'gx-b ' + tier + ' up'; c.classList.remove('shake', 'crack'); SND2(tier === 'red' ? 'gachaRare' : 'reveal5');
+          st.classList.add('flash-' + tier); await wait(700);
+        } else if (tier !== 'blue') { await wait(250); }
+        if (tier === 'red') {   // 最強：暗転→赤い稲妻→カットイン
+          const fx = document.createElement('div'); fx.className = 'gx-dark'; fx.innerHTML = `<svg class="gx-bolt" viewBox="0 0 1280 720" preserveAspectRatio="none"><polyline points="760,-10 640,250 720,260 560,520 650,530 500,740"/><polyline class="b2" points="980,-10 900,180 950,190 840,420"/><polyline class="b2" points="300,-10 380,200 330,210 420,460"/></svg>`;
+          ov.appendChild(fx); await wait(500); fx.classList.add('hit'); SND2('gachaRare'); await wait(900);
+          const U = (C.gachaBanner().key && r.q.uniq && window.DotSoccer.UNIQ[r.q.uniq]) || null;
+          const ci = document.createElement('div'); ci.className = 'gx-cut'; ci.innerHTML = `<div class="gx-cut-band"></div><div class="gx-cut-fc">${gcFace(r.tid, r.q, 'gx-cut-face')}</div><div class="gx-cut-tx"><i>★★★★★</i><b>${esc(r.q.name)}</b>${U ? `<em>${esc(U.name)}</em>` : ''}</div>`;
+          ov.appendChild(ci); await wait(1700); ci.classList.add('out'); fx.classList.add('out'); await wait(350); ci.remove(); fx.remove();
+        }
+        c.classList.add('open'); SND2(tier === 'blue' ? 'reveal' : 'reveal5');
+        if (tier !== 'blue') { await wait(260); burst(st, tier === 'red' ? 46 : 32, tier === 'red' ? '#ff5a3a' : '#ffd23a'); st.classList.add('glow-' + tier); }
+        await wait(tier === 'blue' ? 700 : 1500);
+        st.classList.add('out'); await wait(250); st.remove();
+      }
+      function finalList() {
+        if (finished) return; finished = true; timers.forEach(clearTimeout);
+        ov.innerHTML = `<div class="gcs-grid${one ? ' one' : ''}">${rs.map((r, i) => `<div class="gcc s${r.star}" style="--d:0s"><div class="gcc-in done"><div class="gcc-b"></div><div class="gcc-f">${faceHTML(r)}</div></div></div>`).join('')}</div><p class="gx-ttl">${one ? '' : `獲得した${rs.length}人`}</p><button class="gcs-ok primary">OK</button>`;
+        ov.onclick = null; ov.querySelector('.gcs-ok').onclick = (e) => { e.stopPropagation(); totsuShow(0); };
+      }
+      // 凸の演出（今まで通り）
       const ups = rs.filter((r) => r.kind === 'totsu');
       const totsuShow = (k) => {
         if (k >= ups.length) { ov.remove(); done(); return; }
-        const r = ups[k]; stage = 2;
+        const r = ups[k];
         ov.innerHTML = `<div class="gct"><div class="gct-card s${r.star}">${gcFace(r.tid, r.q, 'gct-face')}<b>${esc(r.q.name)}</b><div class="gct-st">${starHTML(r.star, r.from)}</div><p>凸UP！　${r.from}凸 → <span class="tz${r.to}">${r.to}凸</span>${r.to >= 3 ? '　<b class="gct-max">完凸</b>' : ''}</p></div><p class="gcs-tap">タップで次へ</p></div>`;
-        const stars = [...ov.querySelectorAll('.gct-st .tz')];
-        stars.forEach((st, i) => later(() => { st.className = 'tz tz' + r.to + ' pop'; SND2('reveal'); }, 500 + i * 220));
-        ov.onclick = () => { timers.forEach(clearTimeout); timers = []; totsuShow(k + 1); };
+        const tl = []; [...ov.querySelectorAll('.gct-st .tz')].forEach((stz, i) => tl.push(setTimeout(() => { stz.className = 'tz tz' + r.to + ' pop'; SND2('reveal'); }, 500 + i * 220)));
+        ov.onclick = () => { tl.forEach(clearTimeout); totsuShow(k + 1); };
       };
-      ov.onclick = () => { if (stage === 0) cards(); };
-      later(cards, 1900);
+      (async () => {
+        // 光の玉：いちばん良い色で落ちる（昇格がある時は青のまま＝わからない）
+        const bestTier = rs.some((r, i) => r.star >= 5 && !promo[i]) ? 'r5' : rs.some((r, i) => r.star >= 4 && !promo[i]) ? 'r4' : 'r1';
+        ov.innerHTML = `<div class="gcs-orb ${bestTier}"><i></i></div>`; skipBtn();
+        SND2(bestTier !== 'r1' ? 'gachaRare' : 'gachaOrb');
+        await wait(1500);
+        if (one) { ov.querySelector('.gcs-orb') && ov.querySelector('.gcs-orb').remove(); await feature(rs[0], 0); }
+        else {
+          ov.insertAdjacentHTML('beforeend', `<div class="gx-grid">${rs.map((r, i) => cardHTML(r, i, 'blue')).join('')}</div>`);
+          const orb = ov.querySelector('.gcs-orb'); if (orb) orb.remove();
+          const cs = [...ov.querySelectorAll('.gx-grid .gx-c')];
+          cs.forEach((c, i) => setTimeout(() => c.classList.add('in'), i * 40)); await wait(500);
+          for (let i = 0; i < rs.length && !skip; i++) {
+            const r = rs[i];
+            if (r.star >= 4) { cs[i].classList.add('wait'); await feature(r, i); cs[i].querySelector('.gx-b').className = 'gx-b ' + tierOf(r); cs[i].classList.add('open', 'glow-' + tierOf(r)); }
+            else { cs[i].classList.add('open'); SND2('reveal'); await wait(160); }
+          }
+          await wait(600);
+        }
+        finalList();
+      })();
     });
   }
   // ================= ショップ =================
