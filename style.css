@@ -1702,3 +1702,4 @@ html.stage #match .match-shell{height:var(--lh)}
 .of-l{gap:14px;top:14px}
 .lv-btns .lv-kitimg img{width:100%;height:100%;margin:0}
 .cl-tabs[hidden]{display:none!important}
+.of-r{gap:14px;top:110px;right:20px}

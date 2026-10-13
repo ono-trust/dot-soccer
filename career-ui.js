@@ -31,7 +31,7 @@
     const pre = (u) => { const im = new Image(); im.decoding = 'async'; im.src = u; warmKeep.push(im); };
     const CARD_IDS = Object.keys(C.CARDS || {});
     CARD_IDS.forEach((c) => pre(`cards/${c}.jpg`));
-    ['btn_players', 'btn_status', 'btn_change', 'off_kit', 'off_emblem', 'off_name', 'off_retire', 'off_setting', 'coin', 'dash', 'defense', 'dribble', 'jump', 'kick', 'mental', 'pass', 'physical', 'speed', 'stamina', 'technique', 'top_mark', 'vision'].forEach((k) => pre(`icons/${k}.png`));
+    ['btn_players', 'btn_status', 'btn_change', 'off_kit', 'off_emblem', 'off_name', 'off_retire', 'off_setting', 'off_biz', 'off_team', 'coin', 'dash', 'defense', 'dribble', 'jump', 'kick', 'mental', 'pass', 'physical', 'speed', 'stamina', 'technique', 'top_mark', 'vision'].forEach((k) => pre(`icons/${k}.png`));
     ['d1', 'd2', 'd3', 'reg1', 'reg2', 'regE1', 'regE2', 'regW1', 'regW2'].forEach((k) => pre(`icons/lg/${k}.png`));
     ['coach', 'secretary'].forEach((k) => pre(`staff/${k}.png`));
     // 自分のチームの顔は、顔の元絵が読めたら少しずつ作っておく
@@ -2604,7 +2604,7 @@
       const lk = embOf(), ps = save.team.players;
       const preview = `<div class="cl-prev"><img class="cl-emb" src="${embCanvas(lk, 240)}" alt=""><div class="cl-name"><b>${esc(st.name || 'クラブ名')}</b><small>略称：${esc(st.short || '―')}</small></div><div class="cl-kits" id="clKits"></div></div>`;
       let body = '';
-      if (clubTab === 'name') body = `<div class="cl-form"><label>クラブ名<input id="clName" maxlength="12" value="${esc(st.name)}" placeholder="例：宿毛サンライズFC"></label><p class="cl-note">12文字まで。ほかのチームと同じ名前は使えません。</p><label>略称（試合の点数の横に出る名前）<input id="clShort" maxlength="6" value="${esc(st.short)}" placeholder="例：宿毛"></label><p class="cl-note">6文字まで。空にすると、クラブ名から自動で作ります。</p>${st.err ? `<p class="cl-err">${esc(st.err)}</p>` : ''}${opt.first ? '' : '<div class="cl-reset"><button id="clReset">最初からやり直す</button><small>育てた選手・順位などが、すべて消えます</small></div>'}</div>`;
+      if (clubTab === 'name') body = `<div class="cl-form"><label>クラブ名<input id="clName" maxlength="12" value="${esc(st.name)}" placeholder="例：宿毛サンライズFC"></label><p class="cl-note">12文字まで。ほかのチームと同じ名前は使えません。</p><label>略称（試合の点数の横に出る名前）<input id="clShort" maxlength="6" value="${esc(st.short)}" placeholder="例：宿毛"></label><p class="cl-note">6文字まで。空にすると、クラブ名から自動で作ります。</p>${st.err ? `<p class="cl-err">${esc(st.err)}</p>` : ''}</div>`;   /* 版474：やり直し（初期化）はクラブ事務所の「退任」だけ */
       else if (clubTab === 'kit') body = `<div class="cl-form"><div class="cl-kside">${[['home', 'ホーム'], ['away', 'アウェー']].map(([k, l]) => `<button data-kside="${k}" class="${st.kside === k ? 'on' : ''}">${l}</button>`).join('')}</div><div class="cl-h">柄</div><div class="cl-opts">${KIT_PATS.map(([k, l]) => `<button data-kpat="${k}" class="${st.kit.pat === k ? 'on' : ''}">${l}</button>`).join('')}</div>
         <div class="cl-h">シャツの色</div>${sw('shirt', st.kit.shirt)}<div class="cl-h">シャツの柄の色${st.kit.pat === 'solid' ? '<small>（無地のときは使いません）</small>' : ''}</div>${sw('sub', st.kit.sub)}<div class="cl-h">パンツの色</div>${sw('shorts', st.kit.shorts)}<div class="cl-h">ソックスの色</div>${sw('socks', st.kit.socks)}</div>`;
       else body = `<div class="cl-form"><div class="cl-h">形</div><div class="cl-opts img">${EMB_SHAPES.map(([k, l]) => `<button data-eshape="${k}" class="${st.emb.shape === k ? 'on' : ''}"><img src="${embCanvas({ ...lk, shape: k }, 56)}" alt="">${l}</button>`).join('')}</div>
@@ -2780,7 +2780,7 @@
     const draw = () => {
       box.innerHTML = `<div class="off"><div class="of-room"></div>
         <div class="of-l">${PIC('kit', 'off_kit', 'ユニフォーム')}${PIC('emb', 'off_emblem', 'エンブレム')}${PIC('name', 'off_name', 'チーム名変更')}${PIC('bye', 'off_retire', '退任')}${PIC('set', 'off_setting', '設定')}</div>
-        <div class="of-r">${BTN('biz', I.biz, '経営状況')}${BTN('team', I.team, 'チーム編成')}</div>
+        <div class="of-r">${PIC('biz', 'off_biz', '経営状況')}${PIC('team', 'off_team', 'チーム編成')}</div>
         <button class="std-back of-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button>
         ${panel === 'biz' ? bizHTML() : panel === 'team' ? teamHTML() : ''}</div>`;
       box.querySelector('.of-room').appendChild(cvs); drawRoom();
