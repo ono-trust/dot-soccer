@@ -541,7 +541,7 @@
       addEventListener('resize', fit); el._fit = fit;
     }
     el.hidden = false; el._fit();
-    try { renderStatus(el.querySelector('.lk-sub'), match.duration + 1, '試合終了', 90, () => { el.hidden = true; next(); }, true); } catch (err) { showErr(err, '試合結果'); el.hidden = true; next(); return; }
+    try { let went = false; renderStatus(el.querySelector('.lk-sub'), match.duration + 1, '試合終了', 90, () => { if (went) return; went = true; el.hidden = true; next(); }, true); } catch (err) { showErr(err, '試合結果'); el.hidden = true; next(); return; }
     if (mctx && mctx.opts.tut && mctx.opts.tut.onResult) mctx.opts.tut.onResult(el, tutApi());   // チュートリアル：結果画面の説明
   }
   // チュートリアルから試合を操作する（止める・再開・結果まで飛ばす・自分のチームが攻める向き）
