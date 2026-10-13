@@ -2320,3 +2320,4 @@ html.short .rbtns{top:88px;gap:4px}html.short .rbtns button{width:72px;height:72
 .sh3-sub button{border-color:var(--cc)!important;color:var(--cc)!important;box-shadow:0 3px 0 var(--cc)!important}
 .sh3-sub button.on{background:var(--cc)!important;color:#fff!important;border-color:color-mix(in srgb,var(--cc) 70%,#000)!important;box-shadow:0 3px 0 color-mix(in srgb,var(--cc) 60%,#000)!important;text-shadow:0 1px 0 rgba(0,0,0,.35)}
 .sh3-sub button:not(.on){color:color-mix(in srgb,var(--cc) 70%,#000)!important}
+.sh3-ban-art{position:absolute;right:0;top:0;width:445px;height:270px;object-fit:cover;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 22%);mask-image:linear-gradient(90deg,transparent 0,#000 22%);pointer-events:none}

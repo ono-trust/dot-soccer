@@ -3308,6 +3308,7 @@
   // ================= ショップ =================
   // 版526：ショップ（監督のデザイン案3枚：おすすめ／特訓カード／プレミアムパス）。案の絵を下地にして、数字・ピックアップ・カードは中身に合わせて描く
   const SH_CATS = [['all', 'すべて'], ['tact', '戦術'], ['tech', 'テクニック'], ['phys', 'フィジカル'], ['sup', 'サポート']];
+  const SH_PICK_ART = { guren: 'img/pick_guren.jpg' };   // 版542：ピックアップの絵がある選手は、その絵を使う（ない選手は顔の絵）
   const SH_CATCOL = { tact: '#1f9a45', tech: '#d81e1e', phys: '#2f6fd6', sup: '#d4a017' };
   let shopSt = { tab: 'rec', cat: 'tact', sel: null, qty: 1 };
   function shop(tab) {
@@ -3326,7 +3327,7 @@
       if (S.tab === 'rec') {
         const bn = C.gachaBanner(), U = bn.uniq, q = C.rosterAt(bn.tid, 1).players.find((x) => x.no === bn.no), cc = U.chip || ['#c8141e', '#ffd23a', '#ffe45a'];
         h = `<div class="sh3 sh3-rec"><img class="sh3-bgimg" src="img/shop_rec.jpg" alt="">${head}
-          <button class="sh3-ban" data-go="scout" style="--c0:${cc[0]}"><div class="sh3-ban-bg"></div><div class="sh3-ban-fc"><i class="sh3-ban-glow"></i>${(() => { const k = C.faceKeyOf(bn.tid, q), sh = ((C.ROSTERS[bn.tid] || {}).kit || {}).shirt || '#2f6fd6'; return k ? starPic(k, sh, q.pos === 'GK', 'sh3-ban-face') : ''; })()}</div>
+          <button class="sh3-ban" data-go="scout" style="--c0:${cc[0]}"><div class="sh3-ban-bg"></div>${SH_PICK_ART[bn.key] ? `<img class="sh3-ban-art" src="${SH_PICK_ART[bn.key]}" alt="">` : ''}<div class="sh3-ban-fc"${SH_PICK_ART[bn.key] ? ' hidden' : ''}><i class="sh3-ban-glow"></i>${(() => { const k = C.faceKeyOf(bn.tid, q), sh = ((C.ROSTERS[bn.tid] || {}).kit || {}).shirt || '#2f6fd6'; return k ? starPic(k, sh, q.pos === 'GK', 'sh3-ban-face') : ''; })()}</div>
             <i class="sh3-ban-rib">今月のピックアップ</i><b class="sh3-ban-nm" style="font-size:${Math.min(96, Math.round(360 / Math.max(3, U.who.length)))}px">${esc(U.who)}</b><em class="sh3-ban-sk">${esc(U.name)}</em>
             <span class="sh3-ban-go">スカウトを見る<span>›</span></span></button>
           ${hit('', 843, 142, 391, 270, 'data-tab="prem"', 'プレミアムパス')}
