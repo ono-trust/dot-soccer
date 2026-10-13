@@ -1141,7 +1141,10 @@
     b.style.transform = `scale(${s})`; b.style.left = Math.max(0, (w - TRB_W * s) / 2) + 'px'; b.style.top = Math.max(0, (h - TRB_H * s) / 2) + 'px';
   }
   addEventListener('stagefit', fitBoard); addEventListener('resize', fitBoard);
+  let trbScroll = null;
   function renderTrain() {
+    { const old = document.querySelector('#clubLayer .trb-line'); if (old) trbScroll = old.scrollLeft; }   // 版538：選手を選んでも、横の位置をそのままに
+    setTimeout(() => { const ln = document.querySelector('#clubLayer .trb-line'); if (!ln) return; if (trbScroll != null) ln.scrollLeft = trbScroll; const se = ln.querySelector('.tl2.sel'); if (se && (se.offsetLeft < ln.scrollLeft || se.offsetLeft + se.offsetWidth > ln.scrollLeft + ln.clientWidth)) ln.scrollLeft = se.offsetLeft - ln.clientWidth / 2 + se.offsetWidth / 2; }, 0);
     const ps = save.team.players, p = ps[selIdx];
     save.plan.cards = save.plan.cards || {};
     const done = C.trainedThisWeek(save, p);
