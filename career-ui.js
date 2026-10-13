@@ -3125,7 +3125,7 @@
   function openOffice() {
     const el = fullScreen('officeScreen', 'std-wrap off-wrap'), box = el.querySelector('.lk-box');
     if (!officeBg) buildOfficeBg();
-    let panel = null, sortK = 'no', sortDir = 1, mode = 'st';
+    let panel = null, sortK = 'order', sortDir = 1, mode = 'st';   // 版518：最初はスタメン順→ベンチ順→ベンチ外順
     const cvs = document.createElement('canvas'); cvs.width = 1280; cvs.height = 720;
     const drawRoom = () => { const c = cvs.getContext('2d'); drawOfficeRoom(c); };
     officeRedraw = drawRoom;
@@ -3148,16 +3148,16 @@
     const teamHTML = () => {
       const ps = save.team.players.map((p, i) => ({ p, i })), key = String(save.season);
       const rec = (p) => (p.rec && p.rec[key]) || { P: 0, G: 0, A: 0, Y: 0, R: 0 };
-      const val = { no: (o) => o.p.number, pos: (o) => ({ GK: 0, DF: 1, MF: 2, FW: 3 })[o.p.position], P: (o) => -rec(o.p).P, G: (o) => -rec(o.p).G, A: (o) => -rec(o.p).A, Y: (o) => -(rec(o.p).Y + rec(o.p).R * 2), X: (o) => -(o.p.injury || 0), star: (o) => -C.ensureStar(o.p), fat: (o) => -(o.p.fatigue || 0) };
+      const val = { order: (o) => o.i, no: (o) => o.p.number, pos: (o) => ({ GK: 0, DF: 1, MF: 2, FW: 3 })[o.p.position], P: (o) => -rec(o.p).P, G: (o) => -rec(o.p).G, A: (o) => -rec(o.p).A, Y: (o) => -(rec(o.p).Y + rec(o.p).R * 2), X: (o) => -(o.p.injury || 0), star: (o) => -C.ensureStar(o.p), fat: (o) => -(o.p.fatigue || 0) };
       PK.forEach((k) => { val[k] = (o) => { C.ensurePts(o.p); return -o.p.pts[k]; }; });
-      const f = val[sortK] || val.no; ps.sort((a, b) => (f(a) - f(b)) * sortDir || a.p.number - b.p.number);
+      const f = val[sortK] || val.order; ps.sort((a, b) => (f(a) - f(b)) * sortDir || a.i - b.i);
       const th = (k, label, cls) => `<th class="${cls || ''}${sortK === k ? ' on' : ''}" data-s="${k}">${label}</th>`;
       let head, row;
       if (mode === 'st') { head = th('P', '試合') + th('G', '得点') + th('A', 'アシスト') + th('Y', '<i class="ob-y"></i>') + th('X', '<i class="ob-x">×</i>'); row = (o) => { const r = rec(o.p); return `<td>${r.P}</td><td>${r.G}</td><td>${r.A}</td><td>${r.Y + r.R}</td><td>${o.p.injury > 0 ? o.p.injury + '週' : '0'}</td>`; }; }
       else if (mode === 'ab') { head = PK.map((k, j) => th(k, ico(k), 'ic')).join('') + '<th>タイプ</th>'; row = (o) => { C.ensurePts(o.p); return PK.map((k) => { const g = C.rankInfo(o.p.pts[k]).g; return `<td><i class="rk2 g-${g}">${g}</i></td>`; }).join('') + `<td><span class="tbadge ${TYPE_CLS[o.p.type] || 'ty-bal'}">${esc(o.p.type || '')}</span></td>`; }; }
       else { head = th('star', 'レア度') + '<th>上限</th>' + th('fat', '疲労'); row = (o) => `<td>${starHTML(C.ensureStar(o.p), o.p.totsu)}</td><td>${capBadge(C.capGrade(o.p))}</td><td><i class="cdot ${condDot(o.p)}"></i> ${Math.round(o.p.fatigue || 0)}%</td>`; }
-      return `<div class="of-p of-team"><div class="ot-h">${esc(save.team.name)}　チーム編成<span>${['成績', '能力', '状態'][['st', 'ab', 'cd'].indexOf(mode)]}</span></div><div class="ot-sc"><table class="ot"><tr>${th('pos', 'Pos.')}${th('no', 'No.')}<th class="nm">選手</th><th></th>${head}</tr>
-        ${ps.map((o) => `<tr data-i="${o.i}" class="${o.i < 11 ? '' : 'sub'}"><td><i class="pos ${POSC[o.p.position]}">${o.p.position}</i></td><td class="no">${o.p.number}</td><td class="nm">${esc(o.p.name)}</td><td><i class="cdot ${condDot(o.p)}"></i></td>${row(o)}</tr>`).join('')}</table></div>
+      return `<div class="of-p of-team"><div class="ot-h">${esc(save.team.name)}　チーム編成<span>${['成績', '能力', '状態'][['st', 'ab', 'cd'].indexOf(mode)]}</span></div><div class="ot-sc"><table class="ot"><tr>${th('pos', 'Pos.')}${th('no', 'No.')}<th class="nm${sortK === 'order' ? ' on' : ''}" data-s="order" title="スタメン順にもどす">選手</th><th></th>${head}</tr>
+        ${ps.map((o) => `<tr data-i="${o.i}" class="${o.i < 11 ? '' : o.i < 11 + C.BENCH_N ? 'sub' : 'sub out'}${sortK === 'order' && (o.i === 11 || o.i === 11 + C.BENCH_N) ? ' sep' : ''}"><td><i class="pos ${POSC[o.p.position]}">${o.p.position}</i></td><td class="no">${o.p.number}</td><td class="nm">${esc(o.p.name)}</td><td><i class="cdot ${condDot(o.p)}"></i></td>${row(o)}</tr>`).join('')}</table></div>
         <button class="ot-mode ui-img" title="表示を切りかえる"><img src="icons/ui_change.png" alt="切りかえ"></button><p class="ot-hint">見出しをタップで並べかえ。右下のボタンで「成績・能力・状態」を切りかえ</p></div>`;
     };
     const draw = () => {

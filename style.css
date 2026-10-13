@@ -2021,3 +2021,6 @@ html .std.tvm .std-body>*{zoom:1!important}
 .s2rel2 img{width:38px!important;height:38px!important}.s2rel2 b{font:900 14px/1 "Hiragino Kaku Gothic ProN",sans-serif}
 .s2strip .s2rel.s2rel2{height:52px;background:none;border:0}
 .s2rel2 img{width:50px!important;height:50px!important}
+/* 版518：チーム編成の並び（スタメン→ベンチ→ベンチ外）の区切り */
+.ot tr.out td{background:rgba(0,0,0,.32);color:#c8c8c8}
+.ot tr.sep td{border-top:3px solid #e7ff62}
