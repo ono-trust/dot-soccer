@@ -2881,7 +2881,7 @@
       // 技名は頭の上の小さな吹き出しで（大きな技名はリプレイ・ダイジェストでだけ）
       if (sk) {   // 紫電の遊戯が出ている間の技の吹き出しは、紫電の遊戯と同じ色にする
         let ov = null; const L9 = actsOf[i]; if (L9) for (let k = L9.length - 1; k >= 0; k--) { const a = L9[k]; if (a.t > simT) continue; if (simT - a.t > 9) break; if (a.a === 'uend' && a.k === 'shiden') break; if (a.a === 'uniq' && a.k === 'shiden') { ov = D.UNIQ && D.UNIQ.shiden && D.UNIQ.shiden.chip; break; } }
-        skillChips.push([q.x, r.top - 38, sk, ov]); }
+        skillChips.push([q.x, r.top - 44, sk, ov]); }
       // 月影の抜け出し：出ている間、走る選手のうしろに月の光の色の風と残像
       { const L3 = actsOf[i]; for (let k = L3.length - 1; k >= 0; k--) { const a = L3[k]; if (a.t > simT) continue; if (simT - a.t > 6) break;
           if (a.a === 'uend' && a.k === 'tsukikage') break;
@@ -3349,14 +3349,14 @@
     drawCardBanner();
     skillChips.forEach(([x, y, k, ov]) => {
       // スキル発動の表示（選手の頭上に小さく）
-      ctx.font = `900 21px ${JP}`; const w = ctx.measureText(k).width + 22;   // 版497：スキルの吹き出しを大きく
+      ctx.font = `900 24px ${JP}`; const w = ctx.measureText(k).width + 26;   // 版497：スキルの吹き出しを大きく
       // 固有スキル：スキルごとの色（engine の UNIQ の chip：地・ふち・文字）。覚醒（凸）は、ふちが太く光る
       const uq = k.includes('【'), kk = k.includes('・覚醒'), U2 = uq && D.UNIQ ? Object.values(D.UNIQ).find((u) => k.includes('【' + u.name)) : null, cc = U2 && U2.chip ? U2.chip : ['#c8141e', '#ffd23a', '#ffe45a'];
       if (kk) { ctx.save(); ctx.shadowColor = cc[1]; ctx.shadowBlur = 14; }
       const oc = !uq && ov ? ov : null;
-      ctx.fillStyle = uq ? cc[0] : oc ? oc[0] : '#ffd400'; rrect(x - w / 2, y - 25, w, 31, 15); ctx.fill(); ctx.strokeStyle = uq ? cc[1] : oc ? oc[1] : '#3a2a00'; ctx.lineWidth = kk ? 3.5 : 2; ctx.stroke();
+      ctx.fillStyle = uq ? cc[0] : oc ? oc[0] : '#ffd400'; rrect(x - w / 2, y - 28, w, 35, 17); ctx.fill(); ctx.strokeStyle = uq ? cc[1] : oc ? oc[1] : '#3a2a00'; ctx.lineWidth = kk ? 3.5 : 2; ctx.stroke();
       if (kk) ctx.restore();
-      ctx.fillStyle = uq ? cc[2] : oc ? oc[2] : '#3a2a00'; ctx.textAlign = 'center'; ctx.fillText(k, x, y - 2.5);
+      ctx.fillStyle = uq ? cc[2] : oc ? oc[2] : '#3a2a00'; ctx.textAlign = 'center'; ctx.fillText(k, x, y - 2);
     });
     if (radarOn) minimap(st);
     if (cardPanel && simT >= cardPanel.t && simT - cardPanel.t < 3.8) {
