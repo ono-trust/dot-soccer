@@ -1573,7 +1573,7 @@
     return got;
   }
   const CARD_MAX = 99;
-  const TEST_MAX_CARDS = true;   // テスト中：全カードを最大枚数で持つ
+  const TEST_MAX_CARDS = false;   // テスト中：全カードを最大枚数で持つ（版563で外した）
   function starterCards() { const o = {}; for (const c of CARD_POOL) o[c] = TEST_MAX_CARDS ? CARD_MAX : CARDS[c].cat === 'sup' ? 1 : 3; return o; }
   // 暦の変更（リーグ12月4週まで・カップ8回戦）に合わせて、今のシーズンを組み直す
   function migrateCal2(save) {
@@ -1615,9 +1615,10 @@
     const r0 = rng(save);
     if (save.potVer !== 3) { for (const p of save.team.players.concat(save.reserve || [])) { delete p.pot; p.cond = condOf(p); } save.potVer = 3; }   // 版514：ポテンシャルをやめて調子に   // ポテンシャルの進み方を本家のペースに直したので、付け直す
     for (const p of save.team.players) { ensurePts(p); }
-    if (save.cardsVer !== 4) { save.cards = starterCards(); save.cardsVer = 4; if (save.plan) save.plan.cards = {}; }
+    if (!(save.cardsVer >= 4)) { save.cards = starterCards(); save.cardsVer = 4; if (save.plan) save.plan.cards = {}; }
     if (save.coins == null || save.coinsVer !== 2) { save.coins = 0; save.coinsVer = 2; }
     if (TEST_MAX_CARDS) for (const c of CARD_POOL) save.cards[c] = CARD_MAX;
+    else if (save.cardsVer === 4) { save.cards = starterCards(); save.cardsVer = 5; if (save.plan) save.plan.cards = {}; }   // 版563：テストで99枚になっていたカードを、始めた時の枚数に戻す（1回だけ）
   }
   root.__resolveCup = (s) => resolveCupRound(s, null);
   const cpuTeam = (id) => (ROSTERS[id] && TEAM_BY_ID[id] ? rosterTeam(null, TEAM_BY_ID[id], rosterAt(id, 1)) : null);   // 確認ページ用：CPUチームをそのまま試合に出す
