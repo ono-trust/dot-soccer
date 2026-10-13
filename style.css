@@ -2160,3 +2160,8 @@ html .std.tvm .std-body>*{zoom:1!important}
 .gc3-btn b,.gc3-btn span{letter-spacing:0}
 .gc3-fc{left:22px;top:48px;width:540px;height:680px}
 .gc3-face{width:540px;height:680px}
+/* 版524：固有スキル名の「牙」などが崩れて見えた（字体の合成斜体）→ iPhone標準の太い字で、斜めは形のまま傾ける */
+.gc3-un b{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","M PLUS 1p",sans-serif;font-weight:900;font-style:normal;transform:skewX(-8deg);transform-origin:0 100%;padding:0 6px}
+.gc3-title{font-style:normal;transform:skewX(-8deg);transform-origin:0 100%}
+.gc3-pos i{font-style:normal}
+.gc3-kk{width:200px;white-space:nowrap;font-size:16px}
