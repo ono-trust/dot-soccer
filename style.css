@@ -2303,3 +2303,16 @@ html.short .rbtns{top:88px;gap:4px}html.short .rbtns button{width:72px;height:72
 .trb-line{height:104px!important}
 .trb-line .tl2{height:96px;width:72px}.trb-line .tl2 .tl2f{width:54px;height:50px}
 .trb-hand{top:370px!important}
+/* 版539：ピックアップの選手は、チームのユニフォームを着た胸から上を大きく（下は帯の端で切る）。うしろに選手の色の光 */
+.sh3-ban-fc{left:420px!important;top:-10px!important;width:360px!important;height:450px!important}
+.sh3-ban-face{width:360px!important;height:450px!important;-webkit-mask-image:none!important;mask-image:none!important;object-fit:contain;object-position:top;filter:drop-shadow(0 0 3px #fff) drop-shadow(0 0 2px #fff) drop-shadow(6px 8px 10px rgba(0,0,0,.55))!important}
+.sh3-ban-glow{position:absolute;left:30px;top:40px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--c0) 75%,#fff) 0,color-mix(in srgb,var(--c0) 45%,transparent) 40%,transparent 70%);filter:blur(4px);opacity:.9}
+/* 版539：カードの絵には枠が入っているので、外の枠はなし（1重に） */
+.sh3-card{border:0!important;background:none!important;box-shadow:0 4px 0 rgba(0,0,0,.25);border-radius:12px}
+.sh3-card img{background:none!important;border-radius:10px 10px 0 0}
+.sh3-card .sh3-cf{border-radius:0 0 10px 10px}
+.sh3-card.on{outline:4px solid #ffb21a;outline-offset:2px}
+.sh3-dr img{border:0!important;background:none!important}
+.sh3-ban-fc{left:455px!important;top:12px!important;width:280px!important;height:350px!important}
+.sh3-ban-face{width:280px!important;height:350px!important}
+.sh3-ban-glow{left:-10px;top:-10px;width:300px;height:300px}
