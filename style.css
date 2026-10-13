@@ -2333,3 +2333,6 @@ html.short .rbtns{top:88px;gap:4px}html.short .rbtns button{width:72px;height:72
   -webkit-mask-image:radial-gradient(ellipse 34% 62% at 50% 48%,#000 70%,transparent 100%)!important;mask-image:radial-gradient(ellipse 34% 62% at 50% 48%,#000 70%,transparent 100%)!important}
 .gc3-art{left:-185px!important;top:61px!important;width:869px!important;height:579px!important;
   -webkit-mask-image:linear-gradient(90deg,transparent 14%,#000 30%,#000 70%,transparent 86%)!important;mask-image:linear-gradient(90deg,transparent 14%,#000 30%,#000 70%,transparent 86%)!important}
+/* 版546：かとうの素材は背景が透明なので、ぼかしはなしでそのまま重ねる */
+.gc3-art{-webkit-mask-image:none!important;mask-image:none!important;filter:drop-shadow(0 8px 18px rgba(0,0,0,.55))}
+.sh3-ban-art{-webkit-mask-image:none!important;mask-image:none!important;mix-blend-mode:normal!important;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
