@@ -3775,7 +3775,7 @@
     el = document.createElement('div'); el.id = 'locker'; el.className = 'lk-wrap'; el.hidden = true;
     el.innerHTML = `<div class="lk-box"><canvas class="lk-room" width="640" height="360"></canvas>
       <div class="lk-btns">
-        <button class="lk-rb" data-a="subs"><img src="icons/btn_sub.png" alt=""><b>選手交代</b></button>
+        <button class="lk-rb" data-a="subs"><img src="icons/btn_change.png" alt=""><b>選手交代</b></button>
         <button class="lk-rb lk-green" data-a="tac"><span class="lk-tac">${LK_TAC_SVG}</span><b>戦術</b></button>
         <button class="lk-rb" data-a="stat"><img src="icons/btn_status.png" alt=""><b>状況</b></button>
       </div>

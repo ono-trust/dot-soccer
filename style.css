@@ -1672,3 +1672,8 @@ html.short .pc-card:not(.pc-embed) .pc-photo:has(.fc.sf){height:226px}
 .spc.cat-tact,.spc.cat-tech,.spc.cat-phys,.spc.cat-sup{border-color:var(--cc)}.spc.unk.cat-tact,.spc.unk.cat-tech,.spc.unk.cat-phys,.spc.unk.cat-sup{background:var(--cc)}
 .kp-cv canvas{position:static!important;width:90px!important;height:120px!important;inset:auto!important}
 .lv-btns .lv-koimg img{width:130%;height:130%;margin:-15% 0 0 -30%}
+/* 版469：試合の下のバー（速さ・近さ）はなし。画面いっぱいに試合 */
+html.stage #match .controls{display:none}
+html.stage #match .match-shell{height:var(--lh)}
+/* 版469：秘書の立ち絵（iPhoneで出ないことがあったので、位置の指定を単純に） */
+#ttScene .sc-sec{left:0;right:0;margin:0 auto;transform:none;width:auto;display:block}

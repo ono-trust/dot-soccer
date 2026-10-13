@@ -126,6 +126,7 @@
     if (!el) { el = document.createElement('div'); el.id = 'ttScene'; (appEl() || document.body).appendChild(el); }
     let bg = ''; try { bg = K().clubhouseBg(); } catch (_) {}
     el.innerHTML = (bg ? `<img class="sc-bg" src="${bg}" alt="">` : '') + `<img class="sc-sec" src="${WHO.sec.img}" alt="">`;
+    { const im = el.querySelector('.sc-sec'); im.decoding = 'sync'; im.onerror = () => { setTimeout(() => { im.src = WHO.sec.img + '?r=' + Date.now(); }, 300); }; }   /* 版469：読み込みに失敗したら、もう一度 */
   }
 
   // ---------- 進み具合 ----------
@@ -222,7 +223,7 @@
             await say(null, `${d > 0 ? '左から右' : '右から左'}に攻めるのが、${MGR()}のチーム「${esc(team())}」です。`, { big: `<div class="tt-dir ${d > 0 ? 'r' : 'l'}"></div>`, boxTop: true, noShade: true });
             await say('coach', '試合が始まったら、選手は自分で考えて動きます。<br>監督は試合の流れを見て、チームの課題を見つけましょう。', { boxTop: true, noShade: true });
             await say('coach', '右のボタンで「選手交代」「選手」の様子、「状況」（スコアや途中経過）が見られます。', { spot: '#match aside', boxTop: false });
-            await say('coach', '下のボタンで、試合の速さと画面の近さを変えられます。<br>選手をタップすると、その選手を追いかけて見られますよ。', { spot: '#match .controls', boxTop: true });
+            await say('coach', '選手をタップすると、その選手を追いかけて見られますよ。', { boxTop: true });
             hide(); api.resume();
             return;
           }

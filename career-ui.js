@@ -24,13 +24,14 @@
   }
   // 画像の先読み：カード・能力マーク・スタッフ・顔を、使う前に読み込んで作っておく（出てくるのが遅れないように）
   let warmed = false; const warmKeep = [];
+  const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);   /* 版469：iPhoneは画像のメモリが少ないので、ほかのチームの顔をまとめて先読みしない（足りなくなると絵が「？」になる） */
   function warm() {
     if (warmed) return; warmed = true;
     faceLoad();
     const pre = (u) => { const im = new Image(); im.decoding = 'async'; im.src = u; warmKeep.push(im); };
     const CARD_IDS = Object.keys(C.CARDS || {});
     CARD_IDS.forEach((c) => pre(`cards/${c}.jpg`));
-    ['btn_players', 'btn_status', 'btn_sub', 'coin', 'dash', 'defense', 'dribble', 'jump', 'kick', 'mental', 'pass', 'physical', 'speed', 'stamina', 'technique', 'top_mark', 'vision'].forEach((k) => pre(`icons/${k}.png`));
+    ['btn_players', 'btn_status', 'btn_change', 'coin', 'dash', 'defense', 'dribble', 'jump', 'kick', 'mental', 'pass', 'physical', 'speed', 'stamina', 'technique', 'top_mark', 'vision'].forEach((k) => pre(`icons/${k}.png`));
     ['d1', 'd2', 'd3', 'reg1', 'reg2', 'regE1', 'regE2', 'regW1', 'regW2'].forEach((k) => pre(`icons/lg/${k}.png`));
     ['coach', 'secretary'].forEach((k) => pre(`staff/${k}.png`));
     // 自分のチームの顔は、顔の元絵が読めたら少しずつ作っておく
@@ -41,7 +42,7 @@
       const step = () => { const end = Math.min(ps.length, i + 3); for (; i < end; i++) { try { facePic(ps[i], ''); facePic(ps[i], '', true); } catch (_) {} } if (i < ps.length) setTimeout(step, 16); };
       step();
       // スター選手の元絵（ほかのチーム）も読み込んでおく
-      setTimeout(() => Object.keys(window.STAR_FACES || {}).forEach((k) => { if (!starImgs[k]) { const L = starImgs[k] = { img: new Image(), n: 0 }; L.img.onload = L.img.onerror = () => { L.n = 1; starFill(); }; L.img.src = `faces/star/${k}.png`; } }), 1500);
+      if (!IOS) setTimeout(() => Object.keys(window.STAR_FACES || {}).forEach((k) => { if (!starImgs[k]) { const L = starImgs[k] = { img: new Image(), n: 0 }; L.img.onload = L.img.onerror = () => { L.n = 1; starFill(); }; L.img.src = `faces/star/${k}.png`; } }), 1500);
     };
     setTimeout(mk, 300);
   }
@@ -1934,12 +1935,12 @@
     }
   }
   // サポーター席：エンブレムの白い旗がたくさん振られ、チーム名のコール
-  let flagBg = null;
+  let flagBg = null, flagTier = -1;
   function buildFlagBg() {
     const W = 1600, H = 720, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d'), r = seeded(33);
     c.fillStyle = '#9da1aa'; c.fillRect(0, 0, W, 40);
     for (let y = 40; y < 470; y += 26) { c.fillStyle = ((y - 40) / 26) % 2 ? '#5a2a2c' : '#4c2224'; c.fillRect(0, y, W, 26); }
-    for (let y = 48; y < 466; y += 26) for (let x = 0; x < W; x += 15) { if (r() < 0.08) continue; c.fillStyle = ['#e8e2d2', '#3a5ad0', '#d94a3a', '#2a2a2a', '#f2c21c', '#f2f2f2', '#2a5ad0'][Math.floor(r() * 7)]; c.fillRect(x, y + 4, 11, 12); c.fillStyle = ['#f2c99c', '#d9a46e', '#9a6a44'][Math.floor(r() * 3)]; c.fillRect(x + 2, y - 4, 8, 8); c.fillStyle = '#3a2a1a'; c.fillRect(x + 2, y - 5, 8, 3); }
+    for (let y = 48; y < 466; y += 26) for (let x = 0; x < W; x += 15) { if (r() < [0.86, 0.66, 0.4, 0.18, 0.08][venueNow ?? 4]) continue;   /* 版469：会場が小さいほど空席が多い */ c.fillStyle = ['#e8e2d2', '#3a5ad0', '#d94a3a', '#2a2a2a', '#f2c21c', '#f2f2f2', '#2a5ad0'][Math.floor(r() * 7)]; c.fillRect(x, y + 4, 11, 12); c.fillStyle = ['#f2c99c', '#d9a46e', '#9a6a44'][Math.floor(r() * 3)]; c.fillRect(x + 2, y - 4, 8, 8); c.fillStyle = '#3a2a1a'; c.fillRect(x + 2, y - 5, 8, 3); }
     c.fillStyle = '#8c8f96'; c.fillRect(0, 470, W, 36);
     const ads = [['DOT SOCCER', '#ffffff', '#1a8a3a'], ['はじまり商店', '#f2c21c', '#1a1a1a'], ['GOAL!!', '#c8202a', '#ffffff'], ['ドット牛乳', '#ffffff', '#2a5ad0'], ['SHOOT', '#1a1a1a', '#f2c21c'], ['カルチョ堂', '#2a8a3a', '#ffffff']];
     for (let k = 0; k * 220 < W; k++) { const [tx, bg, fg] = ads[k % ads.length]; c.fillStyle = bg; c.fillRect(k * 220 + 4, 508, 212, 44); c.fillStyle = fg; c.font = '900 24px sans-serif'; c.textAlign = 'center'; c.fillText(tx, k * 220 + 110, 539); }
@@ -1960,15 +1961,15 @@
     // ゴールエリアとペナルティエリアの線
     c.strokeStyle = '#fff'; c.lineWidth = 4;
     c.beginPath(); c.moveTo(960, gy); c.lineTo(935, 660); c.lineTo(1335, 660); c.lineTo(1300, gy); c.stroke();
-    flagBg = cv;
+    flagBg = cv; flagTier = venueNow;
   }
   function drawFlagsScene(c, t, teamName) {
-    if (!flagBg) buildFlagBg();
+    if (!flagBg || flagTier !== venueNow) buildFlagBg();
     const camX = 120 + t * 30;
     c.drawImage(flagBg, -camX, 0);
     const emb = embImgFor(teamName);
-    const N = 14;
-    for (let k = 0; k < N; k++) {
+    const N = [3, 5, 8, 11, 14][venueNow ?? 4] ?? 14, FK = [1, 7, 3, 11, 5, 9, 0, 13, 2, 12, 4, 10, 6, 8];   /* 版469：地域リーグは旗も少ない */
+    for (let k0 = 0; k0 < N; k0++) { const k = FK[k0];
       const bx = 60 + k * 100 - camX * 0.9 + (k % 2) * 30, by = 300 + (k % 3) * 60;
       const ang = Math.sin(t * 3.4 + k * 1.7) * 0.75 - 0.15, L = 190;
       const px = bx + Math.sin(ang) * L, py = by - Math.cos(ang) * L;
