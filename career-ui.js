@@ -2331,6 +2331,8 @@
       else if (S.tab === 'mgr') body = mgrHTML();
       else body = watchHTML();
       box.innerHTML = `<div class="std">${head}${body}</div>`;
+      { const m = box.querySelector('.sm-menu'), bd = box.querySelector('.std-body'), H = document.documentElement;   // 版489：成績のメニューは、画面に少し余裕をもって収まる大きさに
+        if (m && bd && (H.classList.contains('short') || H.classList.contains('phone'))) { m.style.zoom = 1; requestAnimationFrame(() => { const z0 = parseFloat(getComputedStyle(m.parentElement).zoom) || 1, avail = bd.clientHeight / z0 - 24, need = m.offsetHeight + 12; m.style.zoom = Math.max(0.6, Math.min(1.5, avail / need)).toFixed(3); }); } }
       box.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { S.tab = b.dataset.tab; S.sub = null; S.direct = false; draw(); });
       box.querySelectorAll('[data-sub]').forEach((b) => b.onclick = () => { const [kind, id] = b.dataset.sub.split(':'); S.sub = { kind, id }; draw(); });
       box.querySelectorAll('[data-cupr]').forEach((b) => b.onclick = () => { S.cupRound = +b.dataset.cupr; draw(); });
