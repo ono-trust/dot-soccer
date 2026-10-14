@@ -2897,3 +2897,7 @@ html.short .h2-post{width:40px;height:40px}
 .sheet>.close.xbtn{width:44px;height:44px}
 .ap-fc-x.xbtn{width:30px;height:30px;top:-10px;right:-10px}
 .s2px.xbtn{width:30px;height:30px}
+/* 版628：×が枠の外にはみ出して見切れないように */
+.ap-fcs{padding:14px 14px 6px 4px}
+.acard .x,.tcard2 .x{right:2px;top:2px;width:24px;height:24px}
+.s2strip,.s2st-h{overflow:visible}
