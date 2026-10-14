@@ -585,7 +585,7 @@
     if (coachCache.has(key)) return coachCache.get(key);
     const [info, shirt, light, dark, pants, shades] = COACH_LOOK[k];
     const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-    const src = A().spriteCanvas(info, 0, view, frame, run, false);
+    const src = A().spriteCanvas(info, 2, view, frame, run, false);
     const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
     const x = c.getContext('2d'); x.drawImage(src, 0, 0);
     const d = x.getImageData(0, 0, c.width, c.height), px = d.data;
@@ -1216,7 +1216,7 @@
   let coachURL = null;
   function coachFace() {
     if (!coachURL) {
-      const src = A().spriteCanvas({ name: 'coach', hair: 1, hairColor: 0, skin: 2 }, 0, 'front', 0, false, false);
+      const src = A().spriteCanvas({ name: 'coach', hair: 1, hairColor: 0, skin: 2 }, 2, 'front', 0, false, false);
       const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
       const x = c.getContext('2d'); x.drawImage(src, 0, 0);
       const d = x.getImageData(0, 0, c.width, c.height), px = d.data;
@@ -2093,7 +2093,7 @@
     const k = key + '|' + view + '|' + frame;
     if (peopleCache.has(k)) return peopleCache.get(k);
     const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-    const src = A().spriteCanvas(info, 0, view, frame, false, false);
+    const src = A().spriteCanvas(info, 2, view, frame, false, false);
     const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
     const x = c.getContext('2d'); x.drawImage(src, 0, 0);
     const d = x.getImageData(0, 0, c.width, c.height), px = d.data;

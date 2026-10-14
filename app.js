@@ -1191,6 +1191,7 @@
   ];
   // ユニフォーム（育成モード）：試合ごとに両チームの色と柄をセット。なければ青と赤
   const TEAM_DEF = TEAM.map((c) => ({ ...c }));
+  TEAM[2] = { ...TEAM_DEF[0] };   // 版644：塗り替え用の無地の青（スタッフ・事務所の人・コーチは、チームのユニフォームに関係なくこれを元に塗る）
   const hexMul = (h, k) => '#' + [1, 3, 5].map((i) => Math.max(0, Math.min(255, Math.round(parseInt(h.slice(i, i + 2), 16) * k))).toString(16).padStart(2, '0')).join('');
   function kitCol(k) { return { W: k.shirt, L: hexMul(k.shirt, 1.3), D: hexMul(k.shirt, 0.65), P: k.shorts, K: k.socks, pat: k.pat || 'solid', S: k.sub || k.shirt }; }
   function applyKits(kits) {
