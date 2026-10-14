@@ -56,7 +56,7 @@
     if (!(await ready())) return null;
     return withTimeout((async () => {
       for (const r of [rank, rank - 1, rank + 1, rank - 2, rank + 2]) {
-        if (r < 0 || r > 6) continue;
+        if (r < 0 || r > 4) continue;
         const q = await db.collection('players').where('rank', '==', r).limit(40).get();
         const list = q.docs.filter((d) => d.id !== uid).map((d) => ({ uid: d.id, ...d.data() }));
         if (list.length) return list[Math.floor(Math.random() * list.length)];
