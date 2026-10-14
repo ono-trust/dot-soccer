@@ -3387,3 +3387,5 @@ html.short .h2-kk{height:36px;padding:0 10px 0 4px}html.short .h2-kk .kk-ico{wid
 #pcModal .pc-awk .pc-trn b{position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);white-space:nowrap;font:900 14px "Hiragino Kaku Gothic ProN",sans-serif;color:#fff;-webkit-text-stroke:3px #1a3a1a;paint-order:stroke fill}
 #pcModal .pc-awk button.pc-trn{width:86px!important;height:86px!important;margin:5px}
 #pcModal .pc-awk .pc-trn canvas{display:block;position:static!important;width:60px!important;height:50px!important;margin:-8px 0 0!important;transform:none!important}
+/* 版649：走る選手の頭が、丸の白いふちにかかってトゲのように見えた → 絵を少し小さく、下へ */
+#pcModal .pc-awk .pc-trn canvas{width:54px!important;height:45px!important;margin:4px 0 0!important}
