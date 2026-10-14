@@ -2059,6 +2059,7 @@
       case 'bodyFeint': return u < 0.33 ? { abs: [-0.05, 0.35] } : u < 0.45 ? { abs: [-0.05 + 0.75 * c((u - 0.33) / 0.12), 0.35] } : null;   // 踏み出す間はボールは足元 → 反対の足で横へ転がす
       case 'kickFeint': return u < 0.36 ? { abs: [0, 0.45] } : u < 0.56 ? { abs: [1.24 * c((u - 0.36) / 0.2), 0.45] } : null;   // 振りかぶる間は足元 → インで横へずらす
       case 'hurdle': { const ph = c((u - 0.08) / 0.7); return u > 0.85 ? null : [0, 0.45 + 0.35 * ph, 0.85 * Math.sin(ph * Math.PI)]; }   // つま先で浮かせて、一緒に越える
+      case 'heelLift': return u < 0.27 ? { abs: [0.05, 0.42 - 0.72 * c(u / 0.27)] } : u < 0.42 ? { abs: [0.05, -0.3, 0.12 + 0.25 * c((u - 0.27) / 0.15)] } : null;   // 版666：前の足の裏で後ろへ転がし → 後ろの足のかかとに乗せて少し持ち上げる   // つま先で浮かせて、一緒に越える
       case 'swerve': return u < 0.5 ? [0.35, 0.35] : null;
       case 'cutIn': return u >= 0.3 && u < 0.5 ? { abs: [0.2 + 0.35 * c((u - 0.3) / 0.12), 0] } : null;   // 踏ん張った足の前から、インで内へ持ち出す
       default: return null;
@@ -2657,7 +2658,7 @@
           const a = actionAt(st.owner);
           if (a && a.a === 'dmove' && a.fx != null) {
             const o = skillBallOffset(a);
-            if (o && o.abs) { const pp = st.players[st.owner]; bb = { ...st.ball, x: pp.x + a.dx * o.abs[0] + a.fx * o.abs[1], y: pp.y + a.dy * o.abs[0] + a.fy * o.abs[1], z: 0 }; }
+            if (o && o.abs) { const pp = st.players[st.owner]; bb = { ...st.ball, x: pp.x + a.dx * o.abs[0] + a.fx * o.abs[1], y: pp.y + a.dy * o.abs[0] + a.fy * o.abs[1], z: o.abs[2] || 0 }; }
             else if (o) bb = { ...st.ball, x: st.ball.x + a.dx * o[0] + a.fx * o[1], y: st.ball.y + a.dy * o[0] + a.fy * o[1], z: (st.ball.z || 0) + (o[2] || 0) };
           }
         }
@@ -2986,10 +2987,12 @@
               else { facing = ffw; tilt = ffw * 0.1 * (1 - seg(0.55, 1)); }
               break;
             }
-            case 'heelLift':      // ボールを足に乗せて、かかとで背中越しに跳ね上げる
-              if (u < 0.3) { facing = ffw; pokePose = 'sole'; }
-              else if (u < 0.6) { facing = ffw; pokePose = 'bigWindup'; lift = 0.35 * Math.sin(seg(0.3, 0.6) * Math.PI); jumpPose = false; }
-              else { facing = ffw; pokePose = u < 0.8 ? 'lunge' : null; dust = u < 0.7; }
+            case 'heelLift':      // 版666：①止まって足の裏でボールを後ろへ転がす → ②後ろの足のかかとに乗せ、背中越しに跳ね上げる → ③相手の横を回り込んで走る
+              facing = ffw;
+              if (u < 0.27) { pokePose = 'sole'; tilt = -ffw * 0.06; }
+              else if (u < 0.36) { pokePose = 'crouch'; tilt = ffw * 0.08; }
+              else if (u < 0.5) { pokePose = 'bigWindup'; lift = 0.4 * Math.sin(seg(0.36, 0.5) * Math.PI); jumpPose = false; tilt = ffw * 0.14; }
+              else { pokePose = u < 0.58 ? 'lunge' : null; dust = u < 0.62; }
               break;
           }
           if (dust) dusts.push([q.x - facing * 3.5 * (r0px || 2.6 * q.s), q.y, 2.6 * q.s, u]);
@@ -2997,6 +3000,8 @@
         // シュートブロックに来た相手：コースに立ちはだかって止まり、腰を落として構えたまま固まる（キックフェイントにかかった）
         if (ac && ac.a === 'block') { dmFacing = Math.atan2(ac.dy, ac.dx); pokePose = 'crouch'; tilt = 0; }
         // 股抜きを読んだDF：足を閉じて止め、相手に背中を向けて体を入れる（ボールを隠す）
+        // 版666：ヒールリフトをされた相手：振り返って、頭の上を越えていくボールを見上げる（読んだ時は、ボールの方を向いて腰を落とし、跳ぶ構え）
+        if (ac && ac.a === 'hlLook') { dmFacing = Math.atan2(ac.dy, ac.dx); facing = Math.sign(proj(p.x + ac.dx, p.y + ac.dy).x - q.x) || facing; pokePose = ac.read ? 'crouch' : (ac.u < 0.5 ? null : 'crouch'); tilt = ac.read ? 0 : -facing * 0.1 * Math.sin(Math.PI * Math.min(1, ac.u * 1.4)); }
         if (ac && ac.a === 'bodyIn') {
           // 相手に背中を向けてボールを隠し、肩・背中を相手にぶつける（最初の一瞬は相手の方へ体をぶつけ、そのあと腰を落としてキープ）
           dmFacing = Math.atan2(ac.dy, ac.dx); const bf = Math.sign(proj(p.x - ac.dx, p.y - ac.dy).x - q.x) || 1;

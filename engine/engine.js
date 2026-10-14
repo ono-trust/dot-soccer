@@ -1925,6 +1925,8 @@
           }
         }
         if (p.sway && S.t >= p.sway.t) { p.vx = p.sway.vx; p.vy = p.sway.vy; p.lagT = Math.max(p.lagT || 0, p.sway.lag); p.sway = null; }   // ダブルシザースの2回目につられる
+        if (p.hl && S.t >= p.hl.t) { const h = p.hl; p.hl = null; heelLiftFlick(p, h); }   // 版666：ヒールリフトの跳ね上げ
+        if (p.hlHead && S.t >= p.hlHead.t) { const h = p.hlHead; p.hlHead = null; heelLiftHead(p, h); }
         if (p.lateLose && S.t >= p.lateLose.t) { const l = p.lateLose; p.lateLose = null; act(p, l.fall ? 'fall' : 'lose', l.fall ? 1.2 : 0.9, { o: l.o, dx: l.dx, dy: l.dy }); if (l.fall) p.downT = Math.max(p.downT || 0, 1.0); }
         if (p.downT > 0) { p.downT = Math.max(0, p.downT - DT * (p.sk.has('ironMan') && !p.gk ? 1.7 : 1)); p.vx = p.vy = 0; continue; }
         if (S.refCard && S.refCard.p === p) { p.vx *= 0.8; p.vy *= 0.8; p.x += p.vx * DT; p.y += p.vy * DT; continue; }   // カードを受ける選手はその場で止まる
@@ -4359,6 +4361,54 @@
       }
     }
     // ダブルタッチの足の運び：d＝技の長さ（秒）。最初の12%で踏み込み、45%までに2タッチで横へ約1.8m（1人分）、そのあと斜め前へ加速
+    // 版666：ヒールリフト
+    //  ①0.42秒：止まって、前の足の裏でボールを後ろへ転がし、後ろの足のかかとの上へ乗せる（この間は奪われない）
+    //  ②かかとで背中越しに跳ね上げる：ボールは自分と相手の頭の上（高さ約2.3m）を越えて、相手の約4m後ろへ落ちる
+    //  ③自分は相手の横を回り込んで、落ちてくるボールを拾う。相手は振り返ってボールを見上げる（すぐには追えない）
+    //  失敗：相手が読んで跳び、頭で止める（こぼれ球）
+    function heelLiftStart(own, q, fail, fdx, fdy, lx, ly) {
+      const t = S.t;
+      own.moveQ = [{ until: t + 0.42, dx: fdx, dy: fdy, v: 0.4, snap: 0.9 }]; own.moveEnd = null;
+      act(own, 'dmove', 1.05, { k: 'heelLift', dx: lx, dy: ly, fx: fdx, fy: fdy });
+      own.protect = t + 0.48; own.skillCd = Math.max(own.skillCd || 0, t + 2.4);
+      q.tackleCd = Math.max(q.tackleCd, 0.5); q.vx *= 0.4; q.vy *= 0.4;
+      own.hl = { t: t + 0.42, fail: !!fail, q: q.idx, fdx, fdy, lx, ly };
+    }
+    function heelLiftFlick(own, h) {
+      const b = S.ball, q = P[h.q];
+      if (S.restart || S.celebrate > 0 || b.owner !== own.idx || !q || q.off) return;   // 溜めの間にボールがなくなった
+      const ux = q.x - own.x, uy = q.y - own.y, ul = hyp(ux, uy) || 1, fdx = h.fdx, fdy = h.fdy;
+      const tx = clamp(q.x + (ux / ul) * 4.2 + fdx * 0.8, 0.5, L - 0.5), ty = clamp(q.y + (uy / ul) * 4.2 + fdy * 0.8, 0.5, W - 0.5);
+      const bx0 = own.x - fdx * 0.3, by0 = own.y - fdy * 0.3, z0 = 0.35, vz = h.fail ? 4.8 : 6.2;
+      const T = ((vz + Math.sqrt(vz * vz + 2 * 9.8 * z0)) / 9.8) * 1.08, d = hyp(tx - bx0, ty - by0) || 1, v = d / T;
+      Object.assign(b, { owner: -1, kind: 'pass', selfPass: true, x: bx0, y: by0, z: z0, vx: ((tx - bx0) / d) * v, vy: ((ty - by0) / d) * v, vz, spin: 0, bs: 0, knuckle: false, lastTeam: own.team, lastPlayer: own.idx, kicker: own.idx, intended: own.idx, offside: false, style: 'ground', hlift: S.t });
+      own.touchCd = 0.6; S.dribbleDir = null; own.settle = false;
+      if (globalThis.__hlDbg) globalThis.__hlDbg.push({ t: S.t, o: own.idx, q: q.idx, fail: h.fail });   // 確認用
+      for (const m of mates(own)) if (m !== own && !m.gk && hyp(m.x - tx, m.y - ty) < 10) m.touchCd = Math.max(m.touchCd || 0, T + 0.5);   // 味方は手を出さない（自分で拾う）
+      { const tDn = (vz + Math.sqrt(Math.max(0, vz * vz + 2 * 9.8 * (z0 - 1.0)))) / 9.8; if (!h.fail) own.touchCd = Math.max(own.touchCd, tDn - 0.05);   /* 自分も、頭の高さで触らず（ヘディングで味方へ流さず）、落ちてきた所を足で拾う */ for (const o of opps(own)) if (!o.gk && o !== q && hyp(o.x - bx0, o.y - by0) < 9) o.touchCd = Math.max(o.touchCd || 0, tDn); }   // 頭の上を越えている間は、まわりの相手も胸や足で止められない（落ちてきてから競る）
+      // 相手の横（いない側）を回り込んで、落ちる所へ
+      const rx = h.lx * 0.85 + fdx * 0.55, ry = h.ly * 0.85 + fdy * 0.55, rl = hyp(rx, ry) || 1, sp = Math.max(6, maxSpeed(own) * 0.9);
+      own.vx = (rx / rl) * sp; own.vy = (ry / rl) * sp; own.burstT = S.t + 0.6;
+      if (h.fail) {
+        // 読まれた：相手はその場で待ち、ボールが頭の上に来た所で跳んで止める
+        const tq = Math.max(0.12, (hyp(q.x - bx0, q.y - by0) / v) - 0.05);
+        q.hlHead = { t: S.t + tq, o: own.idx }; q.stun = 0; q.touchCd = Math.max(q.touchCd, tq + 0.05);
+        act(q, 'hlLook', 0.5, { dx: -ux / ul, dy: -uy / ul, read: 1 });
+      } else {
+        stats[own.team].dribbles_past++; noteBeat(own, q);
+        q.stun = Math.max(q.stun, 1.0); q.tackleCd = Math.max(q.tackleCd, 1.6); q.touchCd = Math.max(q.touchCd, T + 0.4); q.vx = q.vy = 0;
+        act(q, 'hlLook', 1.0, { dx: ux / ul, dy: uy / ul });   // 振り返って、頭の上を越えていくボールを見上げる
+      }
+    }
+    function heelLiftHead(q, h) {
+      const b = S.ball;
+      if (b.owner >= 0 || b.hlift == null || S.restart || hyp(b.x - q.x, b.y - q.y) > 2.2 || b.z > 2.9) return;
+      act(q, 'head', 0.6);
+      const o = P[h.o], ax = o ? o.x - q.x : -sgn(q.team), ay = o ? o.y - q.y : 0, al = hyp(ax, ay) || 1, a = Math.atan2(ay, ax) + R.range(-0.9, 0.9), v = R.range(3.5, 6);
+      Object.assign(b, { owner: -1, kind: 'pass', selfPass: false, x: q.x, y: q.y, z: 1.9, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: R.range(1, 3), spin: 0, bs: 0, knuckle: false, lastTeam: q.team, lastPlayer: q.idx, kicker: q.idx, intended: -1, offside: false, style: 'head', hlift: null });
+      if (o) o.touchCd = Math.max(o.touchCd || 0, 0.25);
+      stats[q.team].tackles_won++; stats[1 - q.team].tackles_lost++; ev('tackle', { team: q.team, player: q.name });
+    }
     function doubleTouchMove(own, d, lx, ly, fdx, fdy) {
       const t = S.t, side = 1.8 / (d * 0.33);   // 横へ約1.8m（ボールと一緒に、1人分ずれる）
       own.moveQ = [
@@ -4523,11 +4573,13 @@
       const wts = list.map((k) => zw(own, k) * (k === 'cutIn' && ctx.side ? 4 : 1) * (ctx.narrow && DRIB_ZONES.narrow.includes(k) ? 3 : 1) * (ctx.side && DRIB_ZONES.side.includes(k) ? 2 : 1) * (ctx.goal && DRIB_ZONES.goal.includes(k) ? 3 : 1));
       let r = R.next() * wts.reduce((a, c) => a + c, 0), k = list[0];
       for (let i = 0; i < list.length; i++) { r -= wts[i]; if (r <= 0) { k = list[i]; break; } }
+      if (globalThis.__forceSkill) k = globalThis.__forceSkill;   // 確認用
       own.skillCd = S.t + (uOn(own, 'shiden') ? 0.2 : 2.2);   // 紫電の遊戯：フェイントを連続で（抜いたらすぐ次の相手へ）   // 紫電の遊戯：フェイントを続けて何回でも
       const fit = (ctx.narrow && DRIB_ZONES.narrow.includes(k)) || (ctx.side && DRIB_ZONES.side.includes(k)) || (ctx.goal && DRIB_ZONES.goal.includes(k));
       // 成功率：股抜きは（ドリブル＋テクニック）の平均と、相手の守備力の差でほぼ決まる
       const uD = uDrib(own, q);
-      const pS = k === 'nutmeg' ? clamp(0.5 + ((own.dribble + own.technique) / 2 - q.defense) * 0.012 + (fit ? 0.05 : 0) + (q.stun > 0 ? 0.15 : 0) + uD, 0.08, uD > 0 ? 0.97 : 0.92)
+      const pS = k === 'heelLift' ? clamp(0.5 + ((own.technique * 0.6 + own.dribble * 0.4) - (q.defense * 0.6 + q.jump * 0.4)) * 0.009 + (fit ? 0.08 : 0) + (q.stun > 0 ? 0.15 : 0) + uD, 0.1, uD > 0 ? 0.97 : 0.9)   // 版666：ヒールリフトはテクニックが大事。跳べる相手（ジャンプ）には頭で止められやすい
+        : k === 'nutmeg' ? clamp(0.5 + ((own.dribble + own.technique) / 2 - q.defense) * 0.012 + (fit ? 0.05 : 0) + (q.stun > 0 ? 0.15 : 0) + uD, 0.08, uD > 0 ? 0.97 : 0.92)
         : clamp(0.5 + (own.dribble - q.defense) * 0.008 + (own.technique - 60) * 0.002 + (fit ? 0.1 : 0) + (q.stun > 0 ? 0.15 : 0) + uD, 0.1, uD > 0 ? 0.97 : 0.9);
       // 相手からボールへの向き・抜く方向
       const gx = fx(own.team, L);
@@ -4550,6 +4602,7 @@
       let miss = R.next() >= pS, dblSc = false;
       if (miss && k === 'scissors' && own.technique >= 50 && R.next() < clamp(0.35 + (own.technique - 50) * 0.01, 0, 0.75) && R.next() < pS) { miss = false; dblSc = true; }
       act(own, 'skill', 1.3, { k: dblSc ? 'doubleScissors' : k });
+      if (k === 'heelLift') { heelLiftStart(own, q, miss, fdx, fdy, lx, ly); return true; }   // 版666：ヒールリフトは、溜め（足でボールを背中側へ転がし上げる）→ かかとで跳ね上げる → 相手の横を回って拾う。失敗は、跳び上がった相手に頭で止められる
       if (miss) {
         // 読まれた：足を出されて奪われる
         act(own, 'dmove', 0.45, { k, dx: lx, dy: ly, fail: 1 });
@@ -4672,13 +4725,6 @@
           const [ax2, ay2] = [lx * 0.85 + fdx * 0.35, ly * 0.85 + fdy * 0.35], al2 = hyp(ax2, ay2) || 1;
           own.moveQ = [{ until: S.t + 0.12, dx: ux / ul, dy: uy / ul, v: 1.2, snap: 0.8 }, { until: S.t + 0.55, dx: ax2 / al2, dy: ay2 / al2, v: 6.0, snap: 0.85 }];   // 相手の脇を大きく回り込む
           { const bx = tx - (own.x + ax2 / al2 * 2.6), by = ty - (own.y + ay2 / al2 * 1.8), bl = hyp(bx, by) || 1; own.moveEnd = { dx: bx / bl, dy: by / bl, v: 7.2 }; }
-          break;
-        }
-        case 'heelLift': {
-          // かかとで後ろから相手の頭越しに浮かせる
-          act(own, 'dmove', 0.7, { k, dx: fdx, dy: fdy, fx: fdx, fy: fdy }); beat(1.0, 1.6, false);
-          const [tx, ty] = toBehind(3.6); selfKick(tx, ty, 5.5, 5.2);
-          burst(fdx, fdy, 5);
           break;
         }
         default: return false;
