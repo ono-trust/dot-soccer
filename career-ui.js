@@ -1922,8 +1922,7 @@
           <div class="lv2-head"><div class="lv2-t"><b>LIVE</b><span>${esc(meta.comp)}</span>${meta.label ? `<i></i><span>${esc(meta.label)}</span>` : ''}</div>
             <div class="lv2-m"><img src="${emblemURL(home.name, 64)}" alt=""><span>${esc((C.findTeam(save, home.name) || {}).short || home.name.replace(/FC$/, ''))}</span>${lgBadge(lgH)}<em>×</em><img src="${emblemURL(away.name, 64)}" alt=""><span>${esc((C.findTeam(save, away.name) || {}).short || away.name.replace(/FC$/, ''))}</span>${lgBadge(lgA)}</div>
             <div class="lv2-s">${ICO.stad}<span>${esc(stad)}</span></div></div>
-          <div class="lv2-btns"><button data-a="lineup">${ICO.lineup}<b>スタメン</b></button><button data-a="tac">${ICO.tac}<b>戦術</b></button><button data-a="kit">${ICO.kit}<b>ユニフォーム</b></button></div>
-          <button class="lv2-ko" data-a="ko">${ICO.play}<b>試合開始</b></button>`;
+          <div class="rbtns lv-btns"><button data-a="lineup"><span>${rbLineupSVG()}</span><b>スタメン</b></button><button data-a="tac"><span>${RB_TAC_SVG}</span><b>戦術</b></button><button data-a="kit" class="lv-kit lv-kitimg" title="ユニフォーム"><img src="icons/off_kit.png" alt="ユニフォーム"></button><button data-a="ko" class="lv-ko lv-koimg" title="試合開始"><img src="icons/btn_kickoff.png" alt="試合開始"></button></div>`;
         el.hidden = false;
         try { A().applyKits(C.kitsFor(save, op.name, meta.kitSel, meta.oppSel)); } catch (_) {}   // 版482：並んでいる選手も、この試合のユニフォームで
         const cv = el.querySelector('canvas'), ctx2 = cv.getContext('2d');
@@ -2170,10 +2169,7 @@
     const ROWS = [line(892, 306), line(1030, 356)];
     ROWS.forEach((pos, ri) => { const row = rows[ri]; const gkI = Math.max(0, row.ps.findIndex((p) => p.position === 'GK')); const order = [gkI, ...row.ps.map((_, i) => i).filter((i) => i !== gkI)];
       order.slice(0, 11).forEach((pi, k) => { const p = row.ps[pi], [X, Y] = pos[k];
-        put(A().spriteCanvas(p, row.team, 'b34', 0, false, k === 0), X, Y + bob(k + ri) * 0, false, (X2, Y2, s) => {
-          const n = p.number; if (n == null) return; const fs = Math.round(s * 5);
-          c.save(); c.font = `900 ${fs}px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
-          const ny = Y2 - s * 15.2, nx = X2 + s * 0.3; c.lineWidth = Math.max(2, s * 0.7); c.strokeStyle = 'rgba(0,0,0,.55)'; c.strokeText(String(n), nx, ny); c.fillStyle = '#fff'; c.fillText(String(n), nx, ny); c.restore(); }); }); });
+        put(A().spriteCanvas(p, row.team, 'b34', 0, false, k === 0), X, Y, false); }); });
     // 審判3人（列の先頭・出口の前）
     [[942, 254], [990, 250], [1046, 262]].forEach(([x, y], k) => put(dressed('refB' + k, { hair: k % 3, hairColor: 0, skin: k % 2 }, 'b34', 0, REF_BLACK), x, y, false));
     // 運営スタッフ（壁ぎわに立つ）
