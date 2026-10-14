@@ -1393,9 +1393,9 @@
       PX0 = 12; PY0 = 44;
       const bw = PX0 + CW * COLS + 12 + BW * 2 + 6 + 10, bl = Math.max(GL, Math.round(GL + (Lw - GL - GR - bw) / 2));
       boardCss = ` style="left:${bl}px;top:6px;width:${bw}px;height:${bh}px"`;
-      const bx = PX0 + CW * COLS + 12, btop = 38, bH = bh - btop - 10;
+      const bx = PX0 + CW * COLS + 12, btop = 2, bH = bh - btop - 6;   // 版630：ベンチを上まで使う（名札は顔の上）
       benchCss = [` style="left:${bx}px;top:${btop}px;width:${BW}px;height:${bH}px"`, ` style="left:${bx + BW + 6}px;top:${btop}px;width:${BW}px;height:${bH}px"`];
-      BX1 = bx + BW / 2; BX2 = bx + BW + 6 + BW / 2; BY0 = btop + 46; BDY = Math.floor((bH - 46 - 44) / (C.BENCH_N - 1));
+      BX1 = bx + BW / 2; BX2 = bx + BW + 6 + BW / 2; BY0 = btop + 76; BDY = Math.floor((bH - 76 - 40) / (C.BENCH_N - 1));
     }
     const PW = CW * COLS, PH = CH * (R + 2);
     const cx = (c) => PX0 + c * CW + CW / 2, cy = (r) => PY0 + (R - 1 - r) * CH + CH / 2;

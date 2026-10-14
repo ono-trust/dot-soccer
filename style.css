@@ -2901,3 +2901,8 @@ html.short .h2-post{width:40px;height:40px}
 .ap-fcs{padding:14px 14px 6px 4px}
 .acard .x,.tcard2 .x{right:2px;top:2px;width:24px;height:24px}
 .s2strip,.s2st-h{overflow:visible}
+/* 版630：スマホのスタメン画面：ベンチの名札もピッチと同じく顔の上に */
+.sq2.ph .s2p.bn .s2n{top:-28px;bottom:auto;font-size:14px;padding:1px 7px}
+.sq2.ph .s2bh{top:3px}
+/* 版630：ハーフタイムの右のボタンを少し下に */
+.lk-btns{top:118px}
