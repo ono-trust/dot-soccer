@@ -46,7 +46,7 @@
   const box = document.createElement('div'); box.id = 'ul';
   box.innerHTML = `<button class="mini" id="ulMin">たたむ</button><h3>固有スキル・サポートパッシブの確認</h3>
   <div class="body">
-   <div class="row tabs"><button data-tab="u" class="on">固有スキル（国内屈指18人）</button><button data-tab="p">サポートパッシブ（19タイプ）</button><button data-tab="c">対策役との相性</button><button data-tab="v">選手の対決</button></div>
+   <div class="row tabs"><button data-tab="u" class="on">固有スキル（国内屈指18人）</button><button data-tab="p">サポートパッシブ（19タイプ）</button><button data-tab="c">対策役との相性</button><button data-tab="v">選手の対決</button><button data-tab="d">ドリブル技</button></div>
    <div id="tabU">
     <div class="row"><select id="ulK">${Object.entries(U).map(([k, u]) => `<option value="${k}">${u.name}（${u.who}・${u.type}）</option>`).join('')}</select></div>
     <div class="desc" id="ulD"></div>
@@ -65,6 +65,14 @@
     <div class="desc" id="ucDesc"></div>
     <div class="row"><button class="go" id="ucW">試合で見る</button></div>
     <div class="row" id="ucJ"></div>
+   </div>
+   <div id="tabD" hidden>
+    <div class="desc">ドリブル技を<b>1つ選んで</b>、試合で見ます。その試合では、ドリブル技を使う場面で<b>いつもその技</b>を使います（ふだんの試合では、持っている選手が向いている場面でだけ使います）。固有スキルはなし。</div>
+    <div class="row">技 <select id="udK"></select></div>
+    <div class="row">相手 <select id="udO">${OPPS.map((id) => `<option value="${id}">${tname(id)}</option>`).join('')}</select>
+      速さ <button id="udS1" class="on" data-sp="1">ふつう</button><button data-sp="0.5">1/2</button><button data-sp="0.25">1/4</button></div>
+    <div class="row"><button class="go" id="udW">試合で見る</button></div>
+    <div class="row" id="udJ"></div>
    </div>
    <div id="tabV" hidden>
     <div class="desc">攻めと守りで、<b>チーム</b>と<b>注目する選手</b>を選んで対決させます（控えの選手はスタメンに入れます）。固有スキルは注目する2人だけが持ちます。</div>
@@ -86,7 +94,7 @@
   document.body.appendChild(box);
   const $ = (s) => box.querySelector(s), msg = (t) => { $('#ulM').innerHTML = t; };
   $('#ulMin').onclick = () => { box.classList.toggle('min'); $('#ulMin').textContent = box.classList.contains('min') ? 'ひらく' : 'たたむ'; };
-  box.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { box.querySelectorAll('[data-tab]').forEach((x) => x.classList.toggle('on', x === b)); $('#tabU').hidden = b.dataset.tab !== 'u'; $('#tabP').hidden = b.dataset.tab !== 'p'; $('#tabC').hidden = b.dataset.tab !== 'c'; $('#tabV').hidden = b.dataset.tab !== 'v'; msg(''); });
+  box.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { box.querySelectorAll('[data-tab]').forEach((x) => x.classList.toggle('on', x === b)); $('#tabU').hidden = b.dataset.tab !== 'u'; $('#tabP').hidden = b.dataset.tab !== 'p'; $('#tabC').hidden = b.dataset.tab !== 'c'; $('#tabV').hidden = b.dataset.tab !== 'v'; $('#tabD').hidden = b.dataset.tab !== 'd'; msg(''); });
   function descU() { const u = U[key], o = OWN[key]; $('#ulD').innerHTML = `<b>${u.name}</b>　${u.who}（${tname(o.id)}・${u.type}・${o.q.no}番）<br><small>発動：</small>${u.when}<br><small>効果：</small>${u.what}`; }
   function descP() { const v = PAS[pasType]; $('#ulPD').innerHTML = `<b>${v.name}</b>（${pasType}）<br><small>効果：</small>${v.what}${v.rad ? `（${v.rad}m以内の味方）` : ''}`; }
   $('#ulK').onchange = (e) => { key = e.target.value; descU(); $('#ulJ').innerHTML = ''; msg(''); $('#ulSR').hidden = !SHOOTERS.has(key); };
@@ -340,6 +348,36 @@
         $('#uvJ').querySelectorAll('[data-t]').forEach((bt) => bt.onclick = () => { M.seek(Math.max(0.2, +bt.dataset.t - 3)); M.setSpeed(1); if (!M.playing) M.play(); });
         msg(`この試合で${esc0(V.ap)}と${esc0(V.dp)}が直接ぶつかった場面は${list.length}回です（${esc0(V.dp)}は${esc0(V.ap)}にぴったり付いて守ります）。ボタンを押すと、その3秒前から見られます。`);
         box.classList.add('min'); $('#ulMin').textContent = 'ひらく';
+      }, 300);
+    }, 30);
+  };
+
+  // ---- 版667：ドリブル技を試合で見る（ヒールリフトなど）。技を1つに決めて試合を回し、出た場面へジャンプ。スローでも見られる ----
+  const DRIBS = ['heelLift', 'nutmeg', 'scissors', 'elastico', 'doubleTouch', 'bodyFeint', 'roulette', 'kickFeint', 'cutIn'].filter((k) => D.SKILLS[k]);
+  $('#udK').innerHTML = DRIBS.map((k) => `<option value="${k}">${D.SKILLS[k].name}</option>`).join('');
+  let dSp = 1;
+  box.querySelectorAll('[data-sp]').forEach((b) => b.onclick = () => { dSp = +b.dataset.sp; box.querySelectorAll('[data-sp]').forEach((x) => x.classList.toggle('on', x === b)); M.setSpeed(dSp); });
+  const plain = (id) => { const t = C.cpuTeam(id); for (const p of t.players) delete p.uniq; return t; };
+  $('#udW').onclick = () => {
+    const sk = $('#udK').value, oid = $('#udO').value, aid = OPPS.find((x) => x !== oid) || OPPS[0], nm = D.SKILLS[sk].name;
+    msg(nm + 'が出る試合を作っています…');
+    setTimeout(() => {
+      let seed = 0, bestN = -1; const s0 = 700 + Math.floor(Math.random() * 9000);
+      globalThis.__forceSkill = sk;
+      try { for (let k = 0; k < 6 && bestN < 5; k++) { const m = D.simulateMatch(plain(aid), plain(oid), s0 + k * 31, { frames: false, acts: true }); const n = (m.actions || []).filter((x) => x.a === 'skill' && x.k === sk).length; if (n > bestN) { bestN = n; seed = s0 + k * 31; } } } finally { globalThis.__forceSkill = null; }   // 技がたくさん出る試合を選ぶ
+      const a = plain(aid), b = plain(oid);
+      document.querySelectorAll('.lk-wrap').forEach((el) => { el.hidden = true; });
+      globalThis.__forceSkill = sk;
+      try { A.startWith(a, b, seed, a.short || tname(aid), b.short || tname(oid), () => {}, { noIntro: true, kits: [a.kit, b.kit] }); } finally { globalThis.__forceSkill = null; }
+      setTimeout(() => {
+        const mt = A.match, acts = mt.actions || [];
+        const list = acts.filter((x) => x.a === 'skill' && x.k === sk && x.t > 1);
+        const res = (x) => { if (sk !== 'heelLift') return ''; const l = acts.find((y) => y.a === 'hlLook' && y.t > x.t && y.t - x.t < 0.8); return !l ? '（とられた）' : l.read ? '（読まれた）' : '（成功）'; };
+        const clock = (t) => Math.floor(t * (mt.clockScale || 1) / 60);
+        $('#udJ').innerHTML = list.slice(0, 30).map((x, j) => `<button data-t="${x.t}">${j + 1}回目 ${clock(x.t)}分${res(x)}</button>`).join('');
+        $('#udJ').querySelectorAll('[data-t]').forEach((bt) => bt.onclick = () => { M.seek(Math.max(0.2, +bt.dataset.t - 2)); M.setSpeed(dSp); if (!M.playing) M.play(); });
+        msg(list.length ? `この試合で${nm}が${list.length}回出ます。ボタンを押すと、その2秒前から見られます。スローにすると、足の動きとボールの高さが見やすいです。` : `${nm}が出ませんでした。もう一度「試合で見る」を押してください。`);
+        if (list.length) { M.seek(Math.max(0.2, list[0].t - 2)); M.setSpeed(dSp); box.classList.add('min'); $('#ulMin').textContent = 'ひらく'; }
       }, 300);
     }, 30);
   };
