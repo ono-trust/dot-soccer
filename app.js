@@ -2650,7 +2650,7 @@
       const rival = st.players.map((p, i) => ({ i, d: Math.hypot(p.x - o.x, p.y - o.y) })).filter((x) => (x.i < 11) !== (st.owner < 11) && x.d < 3.5).sort((a, b) => a.d - b.d)[0];
       if (rival) tagged.add(rival.i);
     }
-    let sjLine = null; const defFx = [], tactFx = [], tags = [], skillChips = [], flashes = [], chargeFx = [], dusts = [], speedFx = [], scisFx = [], dtFx = [], moonFx = [];
+    let hiBall = null; let sjLine = null; const defFx = [], tactFx = [], tags = [], skillChips = [], flashes = [], chargeFx = [], dusts = [], speedFx = [], scisFx = [], dtFx = [], moonFx = [];
     for (const it of items) {
       if (it.ball) {
         let bb = st.ball;
@@ -2662,6 +2662,7 @@
             else if (o) bb = { ...st.ball, x: st.ball.x + a.dx * o[0] + a.fx * o[1], y: st.ball.y + a.dy * o[0] + a.fy * o[1], z: (st.ball.z || 0) + (o[2] || 0) };
           }
         }
+        if (!(goalDefer && (goalDefer.before.length || goalDefer.after.length)) && (bb.z || 0) > 1.6) { hiBall = [bb, st.spin, st.bs, st.owner >= 0]; continue; }   // 版670：高い浮き球（ヒールリフトなど）は、名前・スキルの吹き出しに隠れないよう、いちばん最後に描く
         if (goalDefer && goalDefer.before.length) goalDraw(goalDefer.gx, goalDefer.before);   // ボールの奥にある柱・手前のネット
         ballOwned = st.owner >= 0; ballDraw(bb, st.spin, st.bs);
         if (goalDefer && goalDefer.after.length) goalDraw(goalDefer.gx, goalDefer.after);   // ボールの手前にある奥のネット（ゴールの裏・天井の上など）
@@ -3548,6 +3549,7 @@
       if (kk) ctx.restore();
       ctx.fillStyle = uq ? cc[2] : oc ? oc[2] : '#3a2a00'; ctx.textAlign = 'center'; ctx.fillText(k, x, y - 2);
     });
+    if (hiBall) { ballOwned = hiBall[3]; ballDraw(hiBall[0], hiBall[1], hiBall[2]); }
     if (radarOn) minimap(st);
     if (cardPanel && simT >= cardPanel.t && simT - cardPanel.t < 3.8) {
       const a = Math.min(1, (simT - cardPanel.t) * 4, (3.8 - (simT - cardPanel.t)) * 3);
