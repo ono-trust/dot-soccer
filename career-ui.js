@@ -577,7 +577,7 @@
   const COACH_LOOK = [
     [{ hair: 0, hairColor: 0, skin: 1 }, '#26282c', '#3d4046', '#151618', '#26282c', true],
     [{ hair: 2, hairColor: 3, skin: 0 }, '#6a6e74', '#8a8f96', '#4a4e54', '#2a2c30', false],
-    [{ hair: 1, hairColor: 1, skin: 0 }, '#efe6d2', '#ffffff', '#c9bea6', '#2a2c30', false],
+    [{ hair: 1, hairColor: 1, skin: 0 }, '#3c3f45', '#565a61', '#2a2c31', '#1e2024', false],   // 版646：白いジャンパー → 濃いグレーの練習着
   ];
   const coachCache = new Map();
   function coachImg(k, view, frame, run) {
@@ -1062,7 +1062,7 @@
         const eff = tz >= 3 ? '' : g1 !== g0 ? `育てられる上限が <b class="gr-${g0}">${g0}</b> → <b class="gr-${g1}">${g1}</b> に上がります。` : 'もう上限はSです。凸でサポート効果・固有スキルが強くなります。';
         const body = `<div class="aw-box"><div class="aw-row"><span>レア度</span><b class="aw-star">${'★'.repeat(st)}</b></div>
           <div class="aw-row"><span>凸</span><b class="aw-pips">${pips(tz)}</b>${tz < 3 ? `<em>→</em><b class="aw-pips">${pips(tz + 1)}</b>` : '<em class="aw-max">完凸</em>'}</div>
-          ${tz < 3 ? `<div class="aw-row"><span>必要なカケラ</span><b class="aw-cost${have < cost ? ' ng' : ''}"><i>◆</i>${cost}</b><small>（持っている：${have.toLocaleString()}）</small></div>` : ''}
+          ${tz < 3 ? `<div class="aw-row"><span>必要なカケラ</span><b class="aw-cost${have < cost ? ' ng' : ''}"><img class="kk-ico" src="icons/kakera.png" alt="カケラ" draggable="false">${cost}</b><small>（持っている：${have.toLocaleString()}）</small></div>` : ''}
           <p class="pe-note">${tz >= 3 ? 'この選手はもう完凸（3凸）です。' : eff}${tz < 3 && have < cost ? '<br><b class="aw-ng">カケラが足りません。</b>カケラは、選手の放出やスカウトでかぶった時にもらえます。' : ''}</p></div>
           ${tz < 3 && have >= cost ? '<div class="pe-btns"><button class="pe-ok primary ib ib-ok">覚醒する</button></div>' : ''}`;
         dlg(`${esc(p.name)}を覚醒`, body, (d) => { const ok = d.querySelector('.pe-ok'); if (ok) ok.onclick = () => { if (C.awaken(save, p)) { try { window.DotSound && DotSound.play('skill'); } catch (_) {} done(); coachAsk(`${esc(p.name)}が覚醒しました！<br>凸 ${p.totsu}／3　育てられる上限：<b>${C.capGrade(p)}</b>`, [{ label: 'OK', value: true }]); } }; });
@@ -1104,8 +1104,11 @@
 
   // ================= 特訓 =================
   const sprURL = new Map();
+  // 版646：ユニフォームを変えたら、選手の小さい絵も作り直す（絵の覚えておく名前に、今のユニフォームを入れる）
+  const kitSig = () => { try { const k = C.ensureClub(save).kit || {}; return [k.pat, k.shirt, k.sub, k.shorts, k.socks].join(','); } catch (_) { return ''; } };
+  const sprKey = (p) => p.name + (p.position === 'GK' ? 'g' : '') + p.hair + p.hairColor + p.skin + '|' + kitSig();
   function portrait(p, big) {
-    const key = p.name + (p.position === 'GK' ? 'g' : '') + p.hair + p.hairColor + p.skin;
+    const key = sprKey(p);
     if (!sprURL.has(key)) sprURL.set(key, A().spriteCanvas(p, 0, 'front', 0, false, p.position === 'GK').toDataURL());
     return `<img class="pt${big ? ' big' : ''}" src="${sprURL.get(key)}" alt="">`;
   }
@@ -1210,7 +1213,7 @@
     if (url) return `<img class="fc ${cls || ''}" src="${url}" alt="" draggable="false">`;
     const id = 'f' + (p.name || '') + (p.number || '') + (bib ? 'b' : ''); facePending.set(id, { p, bib });
     faceRetry();   // 版513：読み込みが終わったのに入れ替わらない顔が残らないよう、少し待って入れ直す
-    return `<img class="fc ${cls || ''}" data-face="${esc(id)}" src="${sprURL.get(p.name + (p.position === 'GK' ? 'g' : '') + p.hair + p.hairColor + p.skin) || BLANK}" alt="" draggable="false">`;
+    return `<img class="fc ${cls || ''}" data-face="${esc(id)}" src="${sprURL.get(sprKey(p)) || BLANK}" alt="" draggable="false">`;
   }
   // コーチのドット絵：選手の絵の服を黒いジャージに塗り替える
   let coachURL = null;
@@ -1306,7 +1309,7 @@
         <div class="ts-h"><span class="ts-ttl">${HG_ICO.sp}SPメニューをつくる</span></div>
         <div class="ts-in">${camp ? `<span class="tauto camp">⛺ ${esc(camp.name)}（${camp.week}/${camp.weeks}週目）特訓は週${camp.trains}回・効果${camp.mult}倍</span>` : ''}
         <div class="tslots2">${slots}</div>${sp}${msg ? `<p class="ts-msg"><span>${msg}</span></p>` : ''}
-        <div class="ts-btns"><button id="spList" class="splist2">SPメニュー一覧</button><button id="trAwk" class="tr-awk" title="覚醒のカケラで、この選手を覚醒"><img src="icons/pc_awake.png" alt=""><span><small>覚醒のカケラ</small><b>◆${(save.kakera || 0).toLocaleString()}</b></span></button>${mine.length && !done && !(p.injury > 0) ? '<button id="doTrain" class="dotrain">特訓する！</button>' : ''}</div></div>
+        <div class="ts-btns"><button id="spList" class="splist2">SPメニュー一覧</button><button id="trAwk" class="tr-awk" title="覚醒のカケラで、この選手を覚醒"><img src="icons/pc_awake.png" alt=""><span><small>覚醒のカケラ</small><b><img class="kk-ico" src="icons/kakera.png" alt="カケラ" draggable="false">${(save.kakera || 0).toLocaleString()}</b></span></button>${mine.length && !done && !(p.injury > 0) ? '<button id="doTrain" class="dotrain">特訓する！</button>' : ''}</div></div>
       </div>
       <div class="trb-lw"><button class="trb-arw l" data-arw="-1" aria-label="左へ"></button><div class="trb-line">${line}</div><button class="trb-arw r" data-arw="1" aria-label="右へ"></button></div>
       <div class="trb-hand">${hand}</div>
@@ -3590,7 +3593,7 @@
         ${SCOUT_ART[bn.key] ? `<img class="gc3-art" src="${SCOUT_ART[bn.key]}" alt="">` : `<div class="gc3-fc">${gcFace(bn.tid, q, 'gc3-face')}</div>`}
         <div class="gc3-ttl"><b>スカウト</b></div>
         <div class="gc3-pills"><span class="gc3-coin">${COIN}<b>${(save.coins || 0).toLocaleString()}</b></span>
-        <span class="gc3-kk"><i>◆</i>覚醒のカケラ<b>${(save.kakera || 0).toLocaleString()}</b></span></div>
+        <span class="gc3-kk"><img class="kk-ico" src="icons/kakera.png" alt="カケラ" draggable="false">覚醒のカケラ<b>${(save.kakera || 0).toLocaleString()}</b></span></div>
         <button class="std-back gc-back gc3-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button>
         <div class="gc3-rib"><span>今月のピックアップ</span><span>${esc(bn.until)}まで</span></div>
         <div class="gc3-star">${'<i>★</i>'.repeat(5)}</div>
@@ -4323,7 +4326,7 @@
           <div class="ap-stats">${statRow('muscle', '総合力', Math.round(C.teamLevel(save)))}${statRow('trophy2', 'ランクマッチ', wdl(on.w, on.d, on.l))}${statRow('shield', '守備', wdl(on.dw, on.dd, on.dl))}${statRow('hand2', 'フレンド', wdl(on.fw, on.fd, on.fl))}</div></div></div>
         <div class="ap-pnl ap-rankp"><h3>監督ライセンス${net ? `<button class="ap-rkbtn" data-a="ranking">${AP_SVG.trophy2}全国ランキング</button>` : ''}</h3><div class="ap-pb"><div class="ap-rk-row">${apMedal(i, 150)}<div class="ap-rk-info"><b class="ap-rk-n">${RANKS[i].n}ライセンス</b><div class="ap-rk-rp"><b>${on.rp}</b> RP</div>
             ${last ? '<div class="ap-sm2">最高の S級ライセンス！</div>' : `<div class="ap-bar2"><i style="width:${pct}%"></i><span>${into} / ${span}</span></div><div class="ap-sm2">${RANKS[i + 1].n}まであと <b>${hi - on.rp}</b> RP${i > 0 ? `<small>（${lo} RP を割ると降格）</small>` : ''}</div>`}</div></div>
-          ${last ? '' : `<div class="ap-rw2"><span class="ap-rw2-h">${gotNx ? '受け取りずみ' : `${RANKS[i + 1].n}ライセンス取得のごほうび`}</span><span class="ap-rw2-i"><img class="coin-ico" src="icons/coin.png" alt="">${nx.coins}</span><span class="ap-rw2-i">${AP_SVG.card}×${nx.cards}</span>${nx.kak ? `<span class="ap-rw2-i">${AP_SVG.gem}×${nx.kak}</span>` : ''}</div>`}
+          ${last ? '' : `<div class="ap-rw2"><span class="ap-rw2-h">${gotNx ? '受け取りずみ' : `${RANKS[i + 1].n}ライセンス取得のごほうび`}</span><span class="ap-rw2-i"><img class="coin-ico" src="icons/coin.png" alt="">${nx.coins}</span><span class="ap-rw2-i">${AP_SVG.card}×${nx.cards}</span>${nx.kak ? `<span class="ap-rw2-i"><img class="kk-ico" src="icons/kakera.png" alt="カケラ" draggable="false">×${nx.kak}</span>` : ''}</div>`}
           <div class="ap-ladder">${ladder}</div></div></div>
       </div>
       <div class="ap-modes"><button class="ap-mode ap-gold" data-a="rank">${AP_SVG.gtrophy}<div><b>ランクマッチ</b><small>勝ち +${RP_WIN} ／ 引き分け ${RP_DRAW} ／ 負け −${RP_LOSE} RP</small></div><i class="ap-chev"></i></button>

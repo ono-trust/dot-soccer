@@ -3363,3 +3363,11 @@ html.short .nm2-num{width:28px;height:28px;font-size:18px}html.short .nm2-big{fo
 .tr-awk:active{transform:translateY(3px);box-shadow:0 0 0 #3a0a6a}
 .ts-btns:has(.dotrain) .tr-awk span{display:none}
 .ts-btns:has(.dotrain) .tr-awk{padding:0 4px}
+/* 版646：覚醒のカケラの絵・覚醒ボタン（青） */
+.kk-ico{display:inline-block;width:1.25em;height:1.25em;vertical-align:-.25em;margin-right:2px;filter:drop-shadow(0 1px 0 rgba(0,0,0,.3))}
+.tr-awk{border-color:#0a2a6a;background:linear-gradient(#5aa8ff,#1f62d8 60%,#1446b0);box-shadow:0 3px 0 #0a2a6a}
+.tr-awk b{display:flex;align-items:center;text-shadow:0 2px 0 #0a2a6a}
+.tr-awk:active{box-shadow:0 0 0 #0a2a6a}
+.aw-cost{color:#1d4fb8}.aw-cost .kk-ico{width:30px;height:30px}
+.aw-pip.on{background:radial-gradient(circle at 35% 30%,#e0f2ff,#3a9aff 60%,#1446b0);border-color:#0a2a6a}
+.ap2 .ap-rw2-i .kk-ico{width:30px;height:30px}
