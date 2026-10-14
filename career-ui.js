@@ -3907,7 +3907,7 @@
       // フレンド申請・承認
       let ml = []; try { ml = await DotNet.mailbox(); } catch (_) {}
       for (const m of ml) {
-        if (m.type === 'freq') { if (!on.flist.some((f) => f.uid === m.from) && !ensurePost().items.some((x) => x.kind === 'freq' && x.uid === m.from && !x.done)) addPost({ kind: 'freq', uid: m.from, name: m.name, mgr: m.mgr, emb: m.emb, fid: m.fid, rank: m.rank }); }
+        if (m.type === 'freq') { if (!ensurePost().items.some((x) => x.kind === 'freq' && x.uid === m.from && !x.done)) addPost({ kind: 'freq', uid: m.from, name: m.name, mgr: m.mgr, emb: m.emb, fid: m.fid, rank: m.rank }); }
         else if (m.type === 'fok') { if (!on.flist.some((f) => f.uid === m.from)) on.flist.unshift({ uid: m.from, fid: m.fid, name: m.name, mgr: m.mgr, emb: m.emb, rank: m.rank, w: 0, d: 0, l: 0 }); on.fsent = (on.fsent || []).filter((x) => x !== m.from); addPost({ kind: 'fok', uid: m.from, name: m.name, mgr: m.mgr, emb: m.emb }); }
         else if (m.type === 'room') { addPost({ kind: 'room', uid: m.from, room: m.room, name: m.name, mgr: m.mgr, emb: m.emb }); }
         else if (m.type === 'fno') { on.fsent = (on.fsent || []).filter((x) => x !== m.from); }
@@ -4049,7 +4049,6 @@
     if (id === on.fid) return modal('<h2>それはあなたのIDです</h2>', [{ label: 'OK', primary: true }]);
     let p = null; try { p = await DotNet.byFid(id); } catch (_) {}
     if (!p) return modal('<h2>見つかりませんでした</h2><p>IDをもう一度たしかめてください。</p>', [{ label: 'OK', primary: true }]);
-    if ((on.flist || []).some((f) => f.uid === p.uid)) return modal('<h2>もうフレンドです</h2>', [{ label: 'OK', primary: true }]);
     const ok = await modal(`<h2>フレンド申請</h2><div class="ap-vs"><img src="${embFromLook(p.emb, 64)}" alt=""><b>${esc(p.name)}</b></div><p>${p.mgr ? esc(p.mgr) + '監督　' : ''}${rankBadge(Math.max(0, Math.min(4, p.rank || 0)))}</p><p class="hintp">相手のポストに申請が届きます。相手が承認すると、フレンドになります。</p>`, [{ label: '申請する', primary: true, value: true }, { label: 'やめる', value: false }]);
     if (!ok) return false;
     try { await DotNet.sendMail(p.uid, { type: 'freq', ...myCard() }); } catch (_) { return modal('<h2>通信できませんでした</h2>', [{ label: 'OK', primary: true }]); }
