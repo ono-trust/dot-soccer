@@ -409,6 +409,7 @@
     { go: 'stadium', ico: '⚽', t: 'スタジアム', s: '試合会場', x: 240, y: 408, area: [140, 280, 620, 300] },
   ];
   const H2_ICO = {}; ['stadium', 'club', 'online', 'assoc', 'shop', 'lineup'].forEach((k) => { const im = new Image(); im.src = `icons/home_${k}.png`; H2_ICO[k] = im; });
+  const H2_POST = new Image(); H2_POST.src = 'icons/post.png';
   const h2Ok = (im) => im && im.complete && im.naturalWidth > 0;
   const h2Ready = () => h2Ok(H2.last) || h2Ok(H2.cur());
   function h2Tier() { try { return Math.max(0, Math.min(4, (C.LG[save.league.id] || {}).tier ?? 0)); } catch (_) { return 0; } }
@@ -427,6 +428,15 @@
     { const b = H2.cur(); if (h2Ok(b)) H2.last = b; if (H2.last) c.drawImage(H2.last, 0, 0, 1280, 720); }   // 版599：スタジアム込みの絵をそのまま描く（読み込み中は前の絵）
     { const sn = save ? seasonOfMonth(cal(save.week || 1).m) : 'spring'; if (seasonNow !== sn) seasonNow = sn; try { seasonFx(c, (t || 0) / 1000); } catch (_) {} }   // 版593：桜の花びら・落ち葉・雪
     const hs = [];
+    // 版619：クラブハウスの前のポスト（未読があると数字を出して、ぴょこぴょこ）
+    if (H2_POST.complete && H2_POST.naturalWidth) {
+      const n = (() => { try { return postUnread(); } catch (_) { return 0; } })(), tt = (t || 0) / 1000, hop = n ? Math.max(0, Math.sin(tt * 5)) * 5 : 0;
+      const ph = 62, pw = ph * H2_POST.naturalWidth / H2_POST.naturalHeight, px = 700 - pw / 2, py = 322 - ph - hop;
+      c.save(); c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(700, 322, 18, 6, 0, 0, 7); c.fill(); c.drawImage(H2_POST, px, py, pw, ph); c.restore();
+      if (n) { const bx = px + pw - 4, by = py + 6; c.save(); c.fillStyle = '#e8323a'; c.strokeStyle = '#fff'; c.lineWidth = 3; c.beginPath(); c.arc(bx, by, 14, 0, 7); c.fill(); c.stroke();
+        c.fillStyle = '#fff'; c.font = '900 17px "M PLUS 1p",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(n > 9 ? '9+' : String(n), bx, by + 1); c.restore(); }
+      hs.push({ go: 'post', r: { x: px - 14, y: py - 14, w: pw + 28, h: ph + 26 } });
+    }
     for (const L of H2_LBL) { hs.push({ go: L.go, area: true, r: { x: L.area[0], y: L.area[1], w: L.area[2], h: L.area[3] } }); }
     for (const L of H2_LBL) hs.push({ go: L.go, r: h2Label(c, L) });
     hot = hs;
@@ -467,7 +477,7 @@
     for (const h of areas) if (x >= h.r.x && x <= h.r.x + h.r.w && y >= h.r.y && y <= h.r.y + h.r.h) return h;
     return null;
   }
-  hc.addEventListener('click', (e) => { const h = hitAt(e); if (!h) return; if (h.go === 'online') { airport(); return; } if (h.go === 'stadium') stadium(); else if (h.go === 'shop') shop(); else if (h.go === 'lineup') openOffice(); else go(h.go); });
+  hc.addEventListener('click', (e) => { const h = hitAt(e); if (!h) return; if (h.go === 'online') { airport(); return; } if (h.go === 'post') { openPost(() => renderHome()); return; } if (h.go === 'stadium') stadium(); else if (h.go === 'shop') shop(); else if (h.go === 'lineup') openOffice(); else go(h.go); });
   hc.addEventListener('mousemove', (e) => { hc.style.cursor = hitAt(e) ? 'pointer' : 'default'; });
   const TIPS = ['選手は試合に出るほど「判断」が伸びます。', 'スペシャル（スキル）の特訓は、関係する能力が高いほど成功しやすい。', '同じスキルを持つ先輩がいると、スキルを覚えやすくなります。', '疲れたまま特訓すると伸びが落ち、ケガをすることも。休養も大事。', 'スキル枠は、能力が上がると増えていきます。', '特訓で動きのくせ（裏パラ）が変わり、選手タイプが変わることがあります。'];
   function renderHome() {
@@ -499,11 +509,10 @@
     let bar = home.querySelector('.h2-bar');
     if (!bar) {
       bar = document.createElement('div'); bar.className = 'h2-bar';
-      bar.innerHTML = '<img class="h2-emb" alt=""><b class="h2-team"></b><i class="h2-sep"></i><span class="h2-date"><b class="m"></b><small>月</small><b class="w"></b><small>週</small></span><span class="h2-next-slot"></span><span class="h2-coin" data-go="coin">' + COIN + '<b></b><img class="h2-plus" src="icons/ui_plus.png" alt="コインを買う"></span><button class="h2-post" title="ポスト">' + POST_SVG + '<i hidden></i></button>';
+      bar.innerHTML = '<img class="h2-emb" alt=""><b class="h2-team"></b><i class="h2-sep"></i><span class="h2-date"><b class="m"></b><small>月</small><b class="w"></b><small>週</small></span><span class="h2-next-slot"></span><span class="h2-coin" data-go="coin">' + COIN + '<b></b><img class="h2-plus" src="icons/ui_plus.png" alt="コインを買う"></span>';
       home.appendChild(bar);
       bar.querySelector('.h2-next-slot').appendChild($('#hmNext'));
       bar.querySelector('.h2-coin').onclick = () => coinShop(() => renderHome());
-      bar.querySelector('.h2-post').onclick = () => openPost(() => renderHome());
     }
     $('#hmNext').innerHTML = '<i class="h2-arr">➜</i><b>週を進める</b>';
     bar.querySelector('.h2-emb').src = emblemURL(save.team.name, 64);
@@ -3919,7 +3928,7 @@
         const emb = it.emb ? `<img src="${embFromLook(it.emb, 56)}" alt="">` : `<span class="po-ico">${POST_ICO[it.kind] || '✉️'}</span>`;
         return `<div class="po-it${it.read ? '' : ' new'}${it.kind === 'def' ? ' def-' + it.r : ''}" data-id="${it.id}">${emb}<div class="po-b"><div class="po-t"><b>${esc(t)}</b><small>${fmtAt(it.at)}</small></div><p>${body}</p>${btns ? `<div class="po-btns">${btns}</div>` : ''}</div>${it.read ? '' : '<i class="po-dot"></i>'}</div>`;
       };
-      box.innerHTML = `${apBg()}<div class="ap-top"><span class="po-top-ico">${POST_SVG}</span><div><b>ポスト</b><small>フレンド申請・対戦の結果・お知らせが届きます</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
+      box.innerHTML = `${apBg()}<div class="ap-top"><img class="po-top-img" src="icons/post.png" alt=""><div><b>ポスト</b><small>フレンド申請・対戦の結果・お知らせが届きます</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
         <div class="po-bar"><span>${list.filter((x) => !x.read).length}件の未読</span><button class="po-all" data-a="allread">すべて既読にする</button><button class="po-all" data-a="clear">読んだものを消す</button></div>
         <div class="po-list">${list.length ? list.map(row).join('') : '<p class="ap-note po-empty">ポストは空っぽです。</p>'}</div>`;
       el.hidden = false; el._fit && el._fit();
