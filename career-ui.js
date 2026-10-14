@@ -394,10 +394,10 @@
   // ================= 版589：新しいホーム（監督の絵）：街の背景＋リーグで育つスタジアム＋建物の名前の札 =================
   const H2 = { bg: null, st: [], ok: false };
   { const L = (src) => { const im = new Image(); im.decoding = 'async'; im.src = src; return im; };
-    H2.bgs = {}; ['spring', 'summer', 'autumn', 'winter'].forEach((s) => { H2.bgs[s] = null; }); H2.L = L;
-    H2.bgOf = (s) => H2.bgs[s] || (H2.bgs[s] = L(`img/home/bg_${s}.jpg`));   // 版593：季節の背景（使う季節だけ読む）
-    H2.bg = H2.bgOf('spring'); H2.st = [0, 1, 2, 3, 4].map((k) => L(`img/home/s4_${k}.webp`)); }
-  const H2_FIT = [[1.015, 0, 0, 1.015, 44.0, 92.0], [1.055, 0, 0, 1.055, 83.0, 42.0], [1.085, 0, 0, 1.085, 53.0, 44.0], [1.120, 0, 0, 1.120, 71.0, 36.0], [1.040, 0, 0, 1.040, 107.0, 142.0]];   // 版595：ゆがめない（縦横同じ倍率で大きさと位置だけ合わせる）
+    H2.bgs = {}; H2.L = L;
+    H2.bgOf = (s, k) => H2.bgs[`${s}_${k}`] || (H2.bgs[`${s}_${k}`] = L(`img/home/${s}_${k}.jpg`));   // 版599：季節×スタジアム段階ごとの1枚絵（使う絵だけ読む）
+    H2.cur = () => { let sn = 'spring'; try { if (save) sn = seasonOfMonth(cal(save.week || 1).m); } catch (_) {} return H2.bgOf(sn, h2Tier()); };
+    H2.bg = null; H2.last = null; }
   const H2_ST = [{ w: 560, cx: 0.51, cy: 0.5 }, { w: 575, cx: 0.5, cy: 0.5 }, { w: 590, cx: 0.5, cy: 0.52 }, { w: 610, cx: 0.5, cy: 0.52 }, { w: 620, cx: 0.5, cy: 0.52 }];
   const H2_LBL = [
     { go: 'club', ico: '🏃', t: 'クラブハウス', s: '選手データ・特訓', x: 605, y: 118, area: [540, 168, 440, 135] },
@@ -407,7 +407,8 @@
     { go: 'lineup', ico: '👥', t: 'クラブ事務所', s: 'チーム編成', x: 1046, y: 446, area: [980, 468, 190, 168] },
     { go: 'stadium', ico: '⚽', t: 'スタジアム', s: '試合会場', x: 240, y: 408, area: [140, 280, 620, 300] },
   ];
-  const h2Ready = () => H2.bg.complete && H2.bg.naturalWidth > 0;
+  const h2Ok = (im) => im && im.complete && im.naturalWidth > 0;
+  const h2Ready = () => h2Ok(H2.last) || h2Ok(H2.cur());
   function h2Tier() { try { return Math.max(0, Math.min(4, (C.LG[save.league.id] || {}).tier ?? 0)); } catch (_) { return 0; } }
   function h2Label(c, L) {
     c.save(); c.font = '900 21px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; const tw = c.measureText(L.t).width; c.font = '800 13px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; const sw = c.measureText(L.s).width;
@@ -421,9 +422,7 @@
   }
   function drawHome2(t) {
     const c = hx; c.clearRect(0, 0, 1280, 720);
-    { const sn = save ? seasonOfMonth(cal(save.week || 1).m) : 'spring', b = H2.bgOf(sn); c.drawImage(b.complete && b.naturalWidth ? b : H2.bg, 0, 0, 1280, 720); }
-    const k = h2Tier(), im = H2.st[k], S = H2_ST[k];
-    if (im.complete && im.naturalWidth) { const M = H2_FIT[k]; c.save(); c.transform(M[0], M[1], M[2], M[3], M[4], M[5]); c.drawImage(im, 0, 0, 820, 820 * im.naturalHeight / im.naturalWidth); c.restore(); }   // 版591：空き地の形に合わせる（たて線はまっすぐのまま、横と縦の大きさを合わせる）
+    { const b = H2.cur(); if (h2Ok(b)) H2.last = b; if (H2.last) c.drawImage(H2.last, 0, 0, 1280, 720); }   // 版599：スタジアム込みの絵をそのまま描く（読み込み中は前の絵）
     { const sn = save ? seasonOfMonth(cal(save.week || 1).m) : 'spring'; if (seasonNow !== sn) seasonNow = sn; try { seasonFx(c, (t || 0) / 1000); } catch (_) {} }   // 版593：桜の花びら・落ち葉・雪
     const hs = [];
     for (const L of H2_LBL) { hs.push({ go: L.go, area: true, r: { x: L.area[0], y: L.area[1], w: L.area[2], h: L.area[3] } }); }
