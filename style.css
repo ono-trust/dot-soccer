@@ -3222,3 +3222,22 @@ html.short .h2-post{width:40px;height:40px}
 .rm-go{height:66px;width:440px}.rm-go b{font-size:34px}
 .rm-hint{margin-top:2px;font-size:14px}
 .ap2 .rm-foot{bottom:4px;height:36px}
+/* 版635：太い文字の時に、マイクラブ・監督ライセンスの下が見切れていた → パネルを高く、ボタンを少し低く */
+.ap2 .ap-main{height:410px;grid-template-rows:410px}
+.ap2 .ap-modes{top:432px;height:100px}
+.ap2 .ap-mode b{font-size:48px}
+.ap2 .ap-mode>svg{width:88px;height:88px}
+.ap2 .ap-vsm img,.ap2 .ap-vsm svg{width:62px;height:62px}
+.ap2 .ap-pnl h3{height:52px;font-size:30px}
+.ap2 .ap-emb{width:60px;height:60px}
+.ap2 .ap-tn{font-size:28px;line-height:1.15}
+.ap2 .ap-fidl b{font-size:22px}
+.ap2 .ap-stats{gap:4px}.ap2 .ap-stats>div{min-height:34px;box-sizing:border-box}
+.ap2 .ap-stats small{font-size:16px}.ap2 .ap-stats b{font-size:18px}
+.ap2 .ap-rankp .ap-medal{--sz:124px!important}
+.ap2 .ap-rk-n{font-size:46px}
+.ap2 .ap-rk-rp{line-height:1.1}.ap2 .ap-rk-rp b{font-size:36px}
+.ap2 .ap-bar2{height:26px}.ap2 .ap-bar2 span{line-height:1;font-size:15px;align-items:center;display:flex}
+.ap2 .ap-sm2{font-size:17px}.ap2 .ap-sm2 b{font-size:21px}
+.ap2 .ap-rw2-h{font-size:19px}.ap2 .ap-rw2-i{font-size:23px}
+.ap2 .ap-ladder{padding-bottom:2px}
