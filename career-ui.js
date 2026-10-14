@@ -2319,7 +2319,7 @@
     const res = C.playFixture(save, fx, score, played);
     if (!champ && res.champion) Object.assign(res, { champNow: { kind: 'cup', title: '国内カップ', n: (save.history || []).filter((h) => h.cup).length + 1 } });   // PK戦で優勝
     if (champ) res.champNow = champ;
-    if (res.champNow) { (save.titles = save.titles || []).push({ season: save.season, kind: res.champNow.kind, title: res.champNow.title }); }
+    if (res.champNow) { (save.trophies = save.trophies || []).push({ season: save.season, kind: res.champNow.kind, title: res.champNow.title }); }
     C.recordStats(save, ev, played);
     C.recordGoals(save, fx, ev);
     const got = C.rewardCards(save, score, ev);
@@ -2976,14 +2976,14 @@
     <path d="M14 18h92c0 34-14 58-38 66v26h-16V84C28 76 14 52 14 18z" fill="url(#tg${c1.slice(1)})" stroke="#555" stroke-width="2"/><path d="M14 26C2 26 2 52 22 58M106 26c12 0 12 26-8 32" fill="none" stroke="${c1}" stroke-width="7" stroke-linecap="round"/>
     <path d="M44 110h32l8 30H36z" fill="url(#tg${c1.slice(1)})" stroke="#555" stroke-width="2"/><rect x="28" y="140" width="64" height="24" rx="3" fill="#2a2a2a" stroke="#777" stroke-width="2"/><rect x="40" y="146" width="40" height="10" rx="2" fill="${c1}"/></svg>`;
   function trophyHTML(ch, anim) {
-    const lgName = (C.LG[save.league.id] || {}).name || 'リーグ', got = (save.titles || []).filter((t) => t.season === save.season);
+    const lgName = (C.LG[save.league.id] || {}).name || 'リーグ', got = (save.trophies || []).filter((t) => t.season === save.season);
     const slots = [{ kind: 'league', label: lgName, c: ['#d9dde3', '#7d8590'] }, { kind: 'cup', label: '国内カップ', c: ['#ffd84a', '#a86f00'] }];
     return `<div class="tr-bg"></div><div class="tr-floor"></div>${slots.map((s, i) => { const has = got.some((g) => g.kind === s.kind), now = anim && s.kind === ch.kind;
       return `<div class="tr-slot${has ? ' has' : ''}${now ? ' now' : ''}" style="left:${300 + i * 560}px"><i class="tr-spot"></i>${TROPHY_SVG(s.c[0], s.c[1])}<b>${esc(s.label)}</b></div>`; }).join('')}`;
   }
   function trophyRoom(ch) {
     const el = fullScreen('trophyScreen', 'tr-wrap'), box = el.querySelector('.lk-box');
-    const lgName = (C.LG[save.league.id] || {}).name || 'リーグ', got = (save.titles || []).filter((t) => t.season === save.season);
+    const lgName = (C.LG[save.league.id] || {}).name || 'リーグ', got = (save.trophies || []).filter((t) => t.season === save.season);
     const slots = [{ kind: 'league', label: lgName, c: ['#d9dde3', '#7d8590'] }, { kind: 'cup', label: '国内カップ', c: ['#ffd84a', '#a86f00'] }];
     box.innerHTML = trophyHTML(ch, true);
     el.hidden = false; el._fit();
@@ -2999,7 +2999,7 @@
     lines.push({ name: p.name, face: faceOf(p), text: `監督、${title}を制覇しましたね！\n${name}でプレーできて幸せです。` });
     await talkScreen(lines, `<img class="sec-bg" src="${clubhouseBg()}" alt="">`);
     await trophyRoom(ch);
-    const k = (save.titles || []).filter((t) => t.season === save.season).length;
+    const k = (save.trophies || []).filter((t) => t.season === save.season).length;
     const sec = { name: '秘書', face: staffFace('sec'), art: !!staffImg.sec };
     const lines2 = [{ ...sec, text: k >= 2 ? `監督、今期${k}つ目のタイトルです！\n二冠達成、おめでとうございます！` : `監督、今期1つ目のタイトルを獲得しましたね！` },
       { ...sec, text: k >= 2 ? 'このチームなら、どこまでも行けそうですね。\n来シーズンも、もっと上を目指しましょう。' : 'このタイトルを自信にして、\n来シーズンはもっと上を目指しましょう。' }];
@@ -3601,8 +3601,8 @@
     { const pc = document.getElementById('pcModal'); if (pc) pc.hidden = true; }
     const m0 = A().match;
     runMatch('優勝の演出', '', fx.opp, async () => {
-      const keep = save.titles; save.titles = [...(keep || []), { season: save.season, kind: 'league', title: ch.title }];
-      try { open(); await blackFade(200); await champAfter(ch); } catch (err) { console.error(err); try { const t = document.getElementById('errTip') || document.body.appendChild(Object.assign(document.createElement('p'), { id: 'errTip' })); t.textContent = 'エラー：' + (err && err.message || err) + '（優勝のあと）'; t.hidden = false; } catch (_) {} document.querySelectorAll('.lk-wrap').forEach((w) => { w.hidden = true; }); } finally { save.titles = keep; }
+      const keep = save.trophies; save.trophies = [...(Array.isArray(keep) ? keep : []), { season: save.season, kind: 'league', title: ch.title }];
+      try { open(); await blackFade(200); await champAfter(ch); } catch (err) { console.error(err); try { const t = document.getElementById('errTip') || document.body.appendChild(Object.assign(document.createElement('p'), { id: 'errTip' })); t.textContent = 'エラー：' + (err && err.message || err) + '（優勝のあと）'; t.hidden = false; } catch (_) {} document.querySelectorAll('.lk-wrap').forEach((w) => { w.hidden = true; }); } finally { save.trophies = keep; }
       await blackClear(350); open();
     }, { comp: fx.comp, label: fx.label, home: !!fx.home, skipPre: true });
     { const t0 = Date.now(); const tryGo = () => { const m = A().match, vis = !document.getElementById('match').hidden; if (m && m !== m0 && vis && A().champDemo(v)) return; if (Date.now() - t0 < 20000) setTimeout(tryGo, 300); }; setTimeout(tryGo, 600); }
