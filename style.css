@@ -3268,3 +3268,5 @@ html.short .h2-post{width:40px;height:40px}
 .ap2 .ap-vsm{gap:4px;margin-right:6px}.ap2 .ap-vsm em{margin:0;font-size:30px}
 /* 版638：「VS」が右のエンブレムに寄って見えた（斜めの文字のため） → 少し左へ */
 .ap2 .ap-vsm em{transform:translateX(-5px)}
+/* 版640：青・白のボタン（決定・やめる・購入する・外す など）の文字が少し上にずれていた → 絵の表の面の真ん中にそろえる */
+button.ib{padding:0 0 4px!important;line-height:1!important}
