@@ -3354,3 +3354,12 @@ html.short .nm2-num{width:28px;height:28px;font-size:18px}html.short .nm2-big{fo
 #pcModal .pc-awk button{width:96px;height:96px}
 #pcModal.pc-club .pc-card{margin:0;transform-origin:left center}
 #pcModal.pc-club .pc-awk{right:12px;left:auto;top:50%}
+/* 版645：特訓画面に覚醒のカケラ */
+.tr-awk{flex:none;display:flex;align-items:center;gap:6px;height:40px;padding:0 12px 0 4px;border:3px solid #3a0a6a;border-radius:10px;background:linear-gradient(#c070ff,#8a2ae0 60%,#6a18b8);color:#fff;box-shadow:0 3px 0 #3a0a6a;cursor:pointer}
+.tr-awk img{width:44px;height:44px;margin:-6px 0;filter:drop-shadow(0 2px 0 rgba(0,0,0,.3))}
+.tr-awk span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.05}
+.tr-awk small{font-size:10px;font-weight:900;opacity:.9}
+.tr-awk b{font:900 17px/1 "Arial Black",'M PLUS 1p',sans-serif;text-shadow:0 2px 0 #3a0a6a}
+.tr-awk:active{transform:translateY(3px);box-shadow:0 0 0 #3a0a6a}
+.ts-btns:has(.dotrain) .tr-awk span{display:none}
+.ts-btns:has(.dotrain) .tr-awk{padding:0 4px}

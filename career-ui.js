@@ -1050,7 +1050,7 @@
     side.innerHTML = '<button data-ed="awk" title="覚醒"><img src="icons/pc_awake.png" alt="覚醒"></button>';
     el.appendChild(side);
     { const card = el.querySelector('.pc-card'); if (card) { card.style.transform = ''; const W = el.clientWidth, H = el.clientHeight, cw = card.offsetWidth, ch = card.offsetHeight, avail = W - 96 - 12 - 24 - 16; const k = Math.min(1, avail / cw, (H - 16) / ch); card.style.position = 'absolute'; card.style.left = Math.max(12, (avail - cw * k) / 2 + 12) + 'px'; card.style.top = ((H - ch * k) / 2) + 'px'; card.style.transform = `scale(${k.toFixed(3)})`; card.style.transformOrigin = '0 0'; } }
-    const done = () => { store(); playerDetail(i, o); };
+    const done = () => { store(); playerDetail(i, o); if (o.onChange) o.onChange(); };
     const dlg = (title, body, bind) => {
       const d = document.createElement('div'); d.className = 'pc-edit'; d.innerHTML = `<div class="pe-in"><h3>${title}</h3>${body}<div class="pe-btns"><button class="pe-no ib ib-no ib-img">やめる</button></div></div>`;
       el.appendChild(d); d.onclick = (e) => { e.stopPropagation(); if (e.target === d) d.remove(); }; { const okb = d.querySelector('.pe-ok'), nob = d.querySelector('.pe-no'); if (okb && nob) okb.parentElement.appendChild(nob); } d.querySelector('.pe-no').onclick = () => d.remove(); bind(d);
@@ -1306,7 +1306,7 @@
         <div class="ts-h"><span class="ts-ttl">${HG_ICO.sp}SPメニューをつくる</span></div>
         <div class="ts-in">${camp ? `<span class="tauto camp">⛺ ${esc(camp.name)}（${camp.week}/${camp.weeks}週目）特訓は週${camp.trains}回・効果${camp.mult}倍</span>` : ''}
         <div class="tslots2">${slots}</div>${sp}${msg ? `<p class="ts-msg"><span>${msg}</span></p>` : ''}
-        <div class="ts-btns"><button id="spList" class="splist2">SPメニュー一覧</button>${mine.length && !done && !(p.injury > 0) ? '<button id="doTrain" class="dotrain">特訓する！</button>' : ''}</div></div>
+        <div class="ts-btns"><button id="spList" class="splist2">SPメニュー一覧</button><button id="trAwk" class="tr-awk" title="覚醒のカケラで、この選手を覚醒"><img src="icons/pc_awake.png" alt=""><span><small>覚醒のカケラ</small><b>◆${(save.kakera || 0).toLocaleString()}</b></span></button>${mine.length && !done && !(p.injury > 0) ? '<button id="doTrain" class="dotrain">特訓する！</button>' : ''}</div></div>
       </div>
       <div class="trb-lw"><button class="trb-arw l" data-arw="-1" aria-label="左へ"></button><div class="trb-line">${line}</div><button class="trb-arw r" data-arw="1" aria-label="右へ"></button></div>
       <div class="trb-hand">${hand}</div>
@@ -1321,6 +1321,7 @@
       mine.push(c); save.plan.cards[selIdx] = mine; store(); renderTrain();
     });
     $('#spList').onclick = () => spList();
+    $('#trAwk').onclick = () => { playerDetail(selIdx, { club: true, onChange: renderTrain }); setTimeout(() => { const ab = document.querySelector('#pcModal .pc-awk button'); if (ab) ab.click(); }, 0); };   // 版645：特訓画面からも覚醒
     L.querySelectorAll('.trb-arw').forEach((b) => b.onclick = () => { const ln = L.querySelector('.trb-line'); ln.scrollBy({ left: +b.dataset.arw * ln.clientWidth * 0.8, behavior: 'smooth' }); });   // 版632：◀▶で選手の列を送る
     const bt = $('#doTrain'); if (bt) bt.onclick = () => doTrain(selIdx);
   }
