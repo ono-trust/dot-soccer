@@ -461,7 +461,7 @@
     const n = show.list.length; show.k = ((k % n) + n) % n; show.tr = 0;
     simT = show.list[show.k].t0; cam.init = false; lastBall = null; ballTrail.length = 0;
   }
-  function showErr(err, where) { console.error(err); try { let t = document.getElementById('errTip'); if (!t) { t = document.createElement('p'); t.id = 'errTip'; document.body.appendChild(t); } t.textContent = 'エラー：' + (err && err.message || err) + '（' + where + '）'; t.hidden = false; setTimeout(() => { t.hidden = true; }, 10000); } catch (_) {} }
+  function showErr(err, where) { console.error(err); try { let t = document.getElementById('errTip'); if (!t) { t = document.createElement('p'); t.id = 'errTip'; document.body.appendChild(t); } const st = (err && err.stack || '').split('\n').map((l) => (l.match(/([a-z-]+\.js)[^:]*:(\d+)/) || []).slice(1).join(':')).filter(Boolean).slice(0, 3).join(' < '); t.textContent = 'エラー：' + (err && err.message || err) + '（' + where + '）' + (st ? ' @' + st : '') + ' 版' + (document.querySelector('script[src*="app.js"]') || { src: '' }).src.replace(/.*v=/, ''); t.hidden = false; setTimeout(() => { t.hidden = true; }, 10000); } catch (_) {} }
   // 版584：ダイジェストのあと、試合結果へ。うまくいかない時も止まらずに次（ロッカールームなど）へ進む
   function digestEnd() {
     try { digestCtl(false); } catch (_) {}
