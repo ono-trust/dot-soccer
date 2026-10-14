@@ -940,7 +940,10 @@
       quad(a, proj(x1, y0), proj(x1, y1), proj(x0, y1), GR[1]);
     }
     if (venue <= 1) {   // 市民グラウンド：ゴール前と真ん中の芝がはげて土が見える
-      const patch = (x, y, rx, ry, col) => { const c = proj(x, y); if (c.f < 4) return; const e = proj(x + rx, y), f = proj(x, y + ry); ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(c.x, c.y, Math.abs(e.x - c.x) + 1, Math.abs(f.y - c.y) + 1, 0, 0, 7); ctx.fill(); };
+      const patch = (x, y, rx, ry, col) => {   // 版606：だ円の周りの点を1つずつ地面に写して描く（カメラが近い時に、画面いっぱいの茶色にならないように）
+        const pts = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, q = proj(x + Math.cos(a) * rx, y + Math.sin(a) * ry); if (!(q.f >= 4) || !isFinite(q.x) || !isFinite(q.y)) return; pts.push(q); }
+        const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y); if (Math.max(...xs) - Math.min(...xs) > CW * 0.9 || Math.max(...ys) - Math.min(...ys) > CH * 0.9) return;
+        ctx.fillStyle = col; ctx.beginPath(); pts.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.closePath(); ctx.fill(); };
       const dirt = venue === 0 ? 'rgba(150,118,70,0.75)' : 'rgba(150,118,70,0.45)';
       for (const gx of [5, 100]) { patch(gx, 34, 6, 9, dirt); patch(gx + (gx < 50 ? 9 : -9), 34, 4, 5, dirt); }
       patch(52.5, 34, 5, 4, dirt);
