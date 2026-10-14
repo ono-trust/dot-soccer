@@ -3255,3 +3255,14 @@ html.short .h2-post{width:40px;height:40px}
 .ap2 .ap-rw2{margin-top:0;padding:5px 16px}
 .ap2 .ap-lad i{width:44px;height:44px;font-size:23px}.ap2 .ap-lad.on i{width:52px;height:52px;font-size:28px}
 .ap2 .ap-lad small{font-size:14px}.ap2 .ap-lad.on small{font-size:16px}
+/* 版637：下の2つのボタンが白い枠の下のふちにかかっていた → 上下左右の余白をそろえる */
+.ap2 .ap-modes{top:430px;height:90px}
+.ap2 .ap-mode{box-shadow:0 0 0 3px #0f3290,0 5px 0 3px rgba(10,30,80,.4)}
+.ap2 .ap-mode b{font-size:46px}
+.ap2 .ap-mode>svg{width:80px;height:80px}
+.ap2 .ap-vsm img,.ap2 .ap-vsm svg{width:58px;height:58px}
+.ap2 .ap-main{height:396px;grid-template-rows:396px}
+.ap2 .ap-modes{top:424px;height:88px}
+.ap2 .ap-stats{gap:5px}.ap2 .ap-stats>div{min-height:34px}
+.ap2 .ap-emb{width:70px;height:70px}
+.ap2 .ap-vsm{gap:4px;margin-right:6px}.ap2 .ap-vsm em{margin:0;font-size:30px}
