@@ -896,6 +896,7 @@
     if (!save.club) save.club = { kit: { ...KIT_DEFAULT }, emb: { ...EMB_DEFAULT } };
     save.club.kit = { ...KIT_DEFAULT, ...save.club.kit }; save.club.emb = { ...EMB_DEFAULT, ...save.club.emb };
     if (!save.club.kit2) { const k = save.club.kit; save.club.kit2 = { pat: 'solid', shirt: '#f4f4f0', sub: k.shirt, shorts: k.shirt, socks: '#f4f4f0' }; }   // アウェーのユニフォーム（はじめは白）
+    if (!save.club.gk) save.club.gk = { pat: 'solid', shirt: '#f2c230', sub: '#2a2a2a', shorts: '#2a2a2a', socks: '#f2c230' };   // 版651：GKのユニフォーム
     return save.club;
   }
   // クラブ名を変える：セーブの中の「自分のチーム名」をすべて置きかえる（順位表・カップ・記録）
@@ -924,7 +925,8 @@
     const away = { pat: 'solid', shirt: light, sub: home.shirt, shorts: home.shirt === light ? '#1a1a1a' : home.shirt, socks: light };
     return { home, away };
   }
-  function kitsFor(save, oppName, sel, oppSel) {
+  function kitsFor(save, oppName, sel, oppSel) { const r = kitsFor0(save, oppName, sel, oppSel); r[0] = { ...r[0], gk: { ...ensureClub(save).gk } }; return r; }   // 版651：自分のGKのユニフォームもつける
+  function kitsFor0(save, oppName, sel, oppSel) {
     const cl = ensureClub(save); let mine = { ...(sel === 'away' ? cl.kit2 : cl.kit) };
     if (!sel || sel === 'auto') { const t0 = findTeam(save, oppName), r0 = t0 && (t0.guest ? (t0.kit ? { kit: t0.kit } : null) : ROSTERS[t0.id]); if (r0 && colDist(mine.shirt, r0.kit.shirt) < 120 && colDist(cl.kit2.shirt, r0.kit.shirt) >= 120) mine = { ...cl.kit2 }; }   // おまかせ：相手と色がかぶったらアウェー
     const t = findTeam(save, oppName), ro = t && (t.guest ? (t.kit ? { kit: t.kit } : null) : ROSTERS[t.id]);

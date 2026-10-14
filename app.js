@@ -1196,6 +1196,7 @@
   function kitCol(k) { return { W: k.shirt, L: hexMul(k.shirt, 1.3), D: hexMul(k.shirt, 0.65), P: k.shorts, K: k.socks, pat: k.pat || 'solid', S: k.sub || k.shirt }; }
   function applyKits(kits) {
     for (const t of [0, 1]) { TEAM[t] = kits && kits[t] ? kitCol(kits[t]) : { ...TEAM_DEF[t] }; TEAM_MAIN[t] = TEAM[t].W; TEAM_DARK[t] = TEAM[t].D; }
+    for (const t of [0, 1]) { const g = kits && kits[t] && kits[t].gk; GKC[t] = g ? { ...kitCol({ ...g, pat: 'solid' }), pat: 'solid' } : { ...GKC_DEF[t] }; }   // 版651：GKのユニフォーム
   }
   // 設定画面の見本用：ユニフォームを着た選手の絵（正面・ななめ）
   function kitSprite(kit, info, view) {
@@ -1211,6 +1212,7 @@
     { W: '#f2c230', L: '#ffe27a', D: '#b08a12', P: '#2a2a2a', K: '#f2c230' },
     { W: '#2fb36a', L: '#7ddca4', D: '#1d7a48', P: '#2a2a2a', K: '#2fb36a' },
   ];
+  const GKC_DEF = GKC.map((c) => ({ ...c }));
   // ---------- 選手のドット絵（カルチョビットA風：大きな丸い頭・短い手足・太い縁取り） ----------
   // 部品（頭・髪・胴・腕・脚）を組み立てて 20×26 ドットの絵を作り、縁取りを自動で付けてキャッシュする
   // 向きは5種（side 横 / f34 斜め前 / front 正面 / b34 斜め後ろ / back 背中）＋左右反転で8方向

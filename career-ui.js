@@ -56,7 +56,7 @@
     if (v === 'assoc') { go('home'); openAssoc({ tab: 'sched' }); return; }   // サッカー協会は全画面
     if (v === 'lineup' && view !== 'lineup') sqFromHome = view === 'home';   // クラブ事務所から来た時だけ、クラブ設定のボタンを出す
     view = v; try { window.DotSound && (DotSound.crowd(false), DotSound.bgm(v === 'home' ? 'home' : liveBack ? 'prematch' : 'club')); } catch (_) {}   /* 版559：試合前（LIVE）から開いたスタメン・戦術は、試合前の曲のまま */   /* 版532：ホームに来たら試合の音を止める */   // 版499：BGM
-    try { const cl = C.ensureClub(save); A().applyKits([{ ...cl.kit }, { ...cl.kit2 }]); } catch (_) {}   // 版536：観戦（D1）などで変わったユニフォームを、自分のクラブのものに戻す
+    try { const cl = C.ensureClub(save); A().applyKits([{ ...cl.kit, gk: { ...cl.gk } }, { ...cl.kit2 }]); } catch (_) {}   // 版536：観戦（D1）などで変わったユニフォームを、自分のクラブのものに戻す
     $('#cv-home').hidden = v !== 'home';
     $('#cv-club').hidden = v === 'home';
     $('#cvBack').hidden = v === 'home';
@@ -1105,9 +1105,10 @@
   }
 
   // ================= 特訓 =================
+  const hexRgbU = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
   const sprURL = new Map();
   // 版646：ユニフォームを変えたら、選手の小さい絵も作り直す（絵の覚えておく名前に、今のユニフォームを入れる）
-  const kitSig = () => { try { const k = C.ensureClub(save).kit || {}; return [k.pat, k.shirt, k.sub, k.shorts, k.socks].join(','); } catch (_) { return ''; } };
+  const kitSig = () => { try { const cl = C.ensureClub(save), k = cl.kit || {}, g = cl.gk || {}; return [k.pat, k.shirt, k.sub, k.shorts, k.socks, g.shirt, g.shorts, g.socks].join(','); } catch (_) { return ''; } };
   const sprKey = (p) => p.name + (p.position === 'GK' ? 'g' : '') + p.hair + p.hairColor + p.skin + '|' + kitSig();
   function portrait(p, big) {
     const key = sprKey(p);
@@ -1164,7 +1165,7 @@
     faceLoad();
     if (!faceTotal || faceLoaded < faceTotal) return null;
     const g = faceGenes(p), set = window.FACE_SET, F = set[g.id], skin = FACE_SKIN[p.skin || 0] || FACE_SKIN[0], hair = FACE_HAIR[p.hairColor || 0] || FACE_HAIR[0], gk = p.position === 'GK';
-    const key = [g.id, g.hs, g.iris, skin, hair, gk ? 1 : 0, bib ? 1 : 0].join('|');
+    const key = [g.id, g.hs, g.iris, skin, hair, gk ? ((C.ensureClub(save).gk) || {}).shirt : 0, bib ? 1 : 0].join('|');
     if (faceCache.has(key)) return faceCache.get(key);
     const B = faceDataOf(g.id), W = B.W, H = B.H;
     const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
@@ -1181,7 +1182,7 @@
     }
     const ts = hexRgb(skin), th = hexRgb(hair), bs = F.skin;
     const thL = th[0] * 0.3 + th[1] * 0.59 + th[2] * 0.11, hairK = (thL > 90 ? 1.08 : 1) / set[g.hs].hairL;   // 明るい髪は少し持ち上げる
-    const tg = [242, 200, 30];
+    const tg = hexRgbU(((C.ensureClub(save).gk) || {}).shirt || '#f2c230');   // 版651：GKのユニフォームの色
     for (let i = 0; i < px.length; i += 4) {
       if (!px[i + 3]) continue;
       const r = px[i], gg = px[i + 1], b = px[i + 2];
@@ -2976,7 +2977,7 @@
   // 版513：自分のチームに来た選手の顔は、ほかの選手と同じ大きさに見えるよう縮めて下にそろえる
   const STAR_FIT = 0.8;
   function starFace(key, shirt, gk, fit) {
-    const ck = key + '|' + shirt + '|' + (gk ? 1 : 0) + '|' + (fit || 1); if (starURLs.has(ck)) return starURLs.get(ck);
+    const ck = key + '|' + shirt + '|' + (gk ? ((C.ensureClub(save).gk) || {}).shirt : 0) + '|' + (fit || 1); if (starURLs.has(ck)) return starURLs.get(ck);
     let L = starImgs[key];
     if (!L) { L = starImgs[key] = { img: new Image(), n: 0 }; L.img.onload = L.img.onerror = () => { L.n = 1; starFill(); try { faceFill(); } catch (_) {} }; L.img.src = `faces/star/${key}.png`; }
     if (!L.n) return null;
@@ -2992,7 +2993,7 @@
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = xx + dx, ny = yy + dy; if (nx < 0 || nx >= W || ny < y0 || ny >= H) continue; const n = ny * W + nx; if (!mask[n] && blue(n * 4)) { mask[n] = 1; st.push(n); } } }
       // 線の内側のすき間（しわの線など）も塗る：上下左右が青の画素
       for (let yy = y0 + 1; yy < H - 1; yy++) for (let xx = 1; xx < W - 1; xx++) { const k = yy * W + xx; if (!mask[k] && px[k * 4 + 3] > 0 && mask[k - 1] && mask[k + 1] && mask[k - W] && mask[k + W]) mask[k] = 2; }
-      const t = gk ? [242, 200, 30] : hexRgb(shirt || '#2f6fd6'), base = window.STAR_FACES[key] || 80;
+      const t = gk ? hexRgb(((C.ensureClub(save).gk) || {}).shirt || '#f2c230') : hexRgb(shirt || '#2f6fd6'), base = window.STAR_FACES[key] || 80;
       for (let k = 0; k < W * H; k++) if (mask[k]) { const i = k * 4, l = (px[i] * 0.3 + px[i + 1] * 0.59 + px[i + 2] * 0.11) / base; px[i] = Math.min(255, t[0] * l); px[i + 1] = Math.min(255, t[1] * l); px[i + 2] = Math.min(255, t[2] * l); }
       x.putImageData(d, 0, 0);
       if (fit && fit < 1) { const c2 = document.createElement('canvas'), H2 = Math.round(W * 308 / 320); c2.width = W; c2.height = H2; c2.getContext('2d').drawImage(c, (W - W * fit) / 2, H2 - H * fit, W * fit, H * fit); url = c2.toDataURL(); /* ほかの選手の顔（320×308）と同じ形・同じ頭の大きさに */ } else url = c.toDataURL();
@@ -3164,7 +3165,7 @@
     opt = opt || {};
     const el = fullScreen('clubScreen', 'std-wrap club-wrap'), box = el.querySelector('.lk-box');
     const club = C.ensureClub(save);
-    const st = { name: save.team.name, short: save.team.short || '', kit: null, kits: { home: { ...club.kit }, away: { ...club.kit2 } }, kside: 'home', emb: { ...club.emb }, err: '' }; st.kit = st.kits.home;
+    const st = { name: save.team.name, short: save.team.short || '', kit: null, kits: { home: { ...club.kit }, away: { ...club.kit2 }, gk: { ...club.gk } }, kside: 'home', emb: { ...club.emb }, err: '' }; st.kit = st.kits.home;
     clubTab = opt.first ? 'name' : clubTab;
     const embOf = () => ({ ...st.emb, ch: st.emb.ch || (st.short || st.name || 'H')[0] });
     const embCanvas = (lk, size) => { const cv = document.createElement('canvas'); cv.width = size; cv.height = size; drawEmblem(cv.getContext('2d'), size / 2, size / 2, size * 0.92, lk); return cv.toDataURL(); };
@@ -3174,8 +3175,8 @@
       const preview = `<div class="cl-prev"><img class="cl-emb" src="${embCanvas(lk, 240)}" alt=""><div class="cl-name"><b>${esc(st.name || 'クラブ名')}</b><small>略称：${esc(st.short || '―')}</small></div><div class="cl-kits" id="clKits"></div></div>`;
       let body = '';
       if (clubTab === 'name') body = `<div class="cl-form"><label>クラブ名<input id="clName" maxlength="12" value="${esc(st.name)}" placeholder="例：宿毛サンライズFC"></label><p class="cl-note">12文字まで。ほかのチームと同じ名前は使えません。</p><label>略称（試合の点数の横に出る名前）<input id="clShort" maxlength="6" value="${esc(st.short)}" placeholder="例：宿毛"></label><p class="cl-note">6文字まで。空にすると、クラブ名から自動で作ります。</p>${st.err ? `<p class="cl-err">${esc(st.err)}</p>` : ''}</div>`;   /* 版474：やり直し（初期化）はクラブ事務所の「退任」だけ */
-      else if (clubTab === 'kit') body = `<div class="cl-form"><div class="cl-kside">${[['home', 'ホーム'], ['away', 'アウェー']].map(([k, l]) => `<button data-kside="${k}" class="${st.kside === k ? 'on' : ''}">${l}</button>`).join('')}</div><div class="cl-h">柄</div><div class="cl-opts">${KIT_PATS.map(([k, l]) => `<button data-kpat="${k}" class="${st.kit.pat === k ? 'on' : ''}">${l}</button>`).join('')}</div>
-        <div class="cl-h">シャツの色</div>${sw('shirt', st.kit.shirt)}<div class="cl-h">シャツの柄の色${st.kit.pat === 'solid' ? '<small>（無地のときは使いません）</small>' : ''}</div>${sw('sub', st.kit.sub)}<div class="cl-h">パンツの色</div>${sw('shorts', st.kit.shorts)}<div class="cl-h">ソックスの色</div>${sw('socks', st.kit.socks)}</div>`;
+      else if (clubTab === 'kit') body = `<div class="cl-form"><div class="cl-kside">${[['home', 'ホーム'], ['away', 'アウェー'], ['gk', 'GK']].map(([k, l]) => `<button data-kside="${k}" class="${st.kside === k ? 'on' : ''}">${l}</button>`).join('')}</div>${st.kside === 'gk' ? '<p class="cl-note">GK（ゴールキーパー）のユニフォームです。試合の時、GKだけこの色になります（無地）。</p>' : `<div class="cl-h">柄</div><div class="cl-opts">${KIT_PATS.map(([k, l]) => `<button data-kpat="${k}" class="${st.kit.pat === k ? 'on' : ''}">${l}</button>`).join('')}</div>`}
+        <div class="cl-h">シャツの色</div>${sw('shirt', st.kit.shirt)}${st.kside === 'gk' ? '' : `<div class="cl-h">シャツの柄の色${st.kit.pat === 'solid' ? '<small>（無地のときは使いません）</small>' : ''}</div>${sw('sub', st.kit.sub)}`}<div class="cl-h">パンツの色</div>${sw('shorts', st.kit.shorts)}<div class="cl-h">ソックスの色</div>${sw('socks', st.kit.socks)}</div>`;
       else body = `<div class="cl-form"><div class="cl-h">形</div><div class="cl-opts img">${EMB_SHAPES.map(([k, l]) => `<button data-eshape="${k}" class="${st.emb.shape === k ? 'on' : ''}"><img src="${embCanvas({ ...lk, shape: k }, 56)}" alt="">${l}</button>`).join('')}</div>
         <div class="cl-h">模様</div><div class="cl-opts img">${EMB_PATS.map(([k, l]) => `<button data-epat="${k}" class="${st.emb.pat === k ? 'on' : ''}"><img src="${embCanvas({ ...lk, pat: k }, 56)}" alt="">${l}</button>`).join('')}</div>
         <div class="cl-h">マーク</div><div class="cl-opts img">${EMB_ICONS.map(([k, l]) => `<button data-eicon="${k}" class="${st.emb.icon === k ? 'on' : ''}"><img src="${embCanvas({ ...lk, icon: k }, 56)}" alt="">${l}</button>`).join('')}</div>
@@ -3206,7 +3207,7 @@
         keep();
         if (!String(st.name).trim()) { st.err = 'クラブ名を入れてください'; clubTab = 'name'; draw(); return; }
         if (!C.renameClub(save, st.name, st.short)) { st.err = 'その名前は使えません（ほかのチームと同じ名前です）'; clubTab = 'name'; draw(); return; }
-        save.club.kit = { ...st.kits.home }; save.club.kit2 = { ...st.kits.away }; save.club.emb = { ...st.emb }; save.clubSet = true;
+        save.club.kit = { ...st.kits.home }; save.club.kit2 = { ...st.kits.away }; save.club.gk = { ...st.kits.gk, pat: 'solid' }; save.club.emb = { ...st.emb }; save.clubSet = true;
         embURL.clear(); bannerCache.clear(); store();
         el.hidden = true; if (opt.onDone) opt.onDone(true); else if (view === 'home') renderHome();
       };
