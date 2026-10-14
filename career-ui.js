@@ -3810,7 +3810,7 @@
   const RANKS = [
     { n: 'ビギナー', c: '#8fa3b8', lg: ['regW2', 'regE2'] }, { n: 'ブロンズ', c: '#c07a3a', lg: ['regW1', 'regE1'] }, { n: 'シルバー', c: '#b8c2cc', lg: ['d3'] },
     { n: 'ゴールド', c: '#f2c21c', lg: ['d2'] }, { n: 'プラチナ', c: '#5fd3c8', lg: ['d1'], part: [0.5, 1] }, { n: 'ダイヤ', c: '#6aa8ff', lg: ['d1'], part: [0.2, 0.6] }, { n: 'マスター', c: '#d66aff', lg: ['d1'], part: [0, 0.25] }];
-  const RP_STEP = 100, RP_WIN = 30, RP_DRAW = 10, RP_LOSE = 15;
+  const RP_STEP = 100, RP_WIN = 30, RP_DRAW = -5, RP_LOSE = 15, RP_DEF = 10;   // 版616：引き分けは −5。守備で勝つと +10
   // 版611：ランク到達のごほうび（上のランクほど豪華。マスターはコイン500枚）
   const RANK_REWARD = [null, { coins: 30, cards: 3, kak: 0 }, { coins: 60, cards: 5, kak: 5 }, { coins: 100, cards: 10, kak: 10, pack: '金のパック×1' }, { coins: 180, cards: 20, kak: 20, pack: '金のパック×2' }, { coins: 300, cards: 20, kak: 35, pack: '金のパック×2' }, { coins: 500, cards: 30, kak: 60, pack: '金のパック×3' }];
   function ensureOnline() { if (!save.online) save.online = { rp: 0, best: 0, w: 0, d: 0, l: 0, fw: 0, fd: 0, fl: 0, friends: [] }; return save.online; }
@@ -3842,25 +3842,60 @@
     await modal(`<h2>チームコード</h2><p>下の文字をすべてコピーして、友達に送ってください。</p><textarea class="ap-code" readonly onclick="this.select()">${esc(url)}</textarea>`, [{ label: 'とじる', primary: true }]);
     return 'shown';
   }
+  // はじめて上がったランクだけ、ごほうび（攻めでも守りでも）
+  function rankReward(i0, i1) {
+    const on = ensureOnline();
+    if (!(i1 > i0 && i1 > rankIdx(on.best || 0))) return null;
+    const RW = RANK_REWARD[i1] || RANK_REWARD[1];
+    const main = Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat !== 'sup' && !C.CARDS[c].sp), sup = Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat === 'sup');
+    const cards = Array.from({ length: RW.cards }, () => (Math.random() < 0.25 && sup.length ? sup[Math.floor(Math.random() * sup.length)] : main[Math.floor(Math.random() * main.length)]));
+    save.cards = save.cards || {}; for (const c of cards) save.cards[c] = Math.min(C.CARD_MAX, (save.cards[c] || 0) + 1);
+    C.ensureGacha(save); save.kakera = (save.kakera || 0) + RW.kak; save.coins = (save.coins || 0) + RW.coins;
+    return { cards, kak: RW.kak, coins: RW.coins, rank: i1 };
+  }
+  const rewardHTML = (rw) => `<h2>${rankBadge(rw.rank, true)} 到達のごほうび！</h2><p class="coin big">${COIN}+${rw.coins} コイン${rw.kak ? `　／　覚醒のカケラ +${rw.kak}` : ''}</p><p>特訓カード ${rw.cards.length}枚${RANK_REWARD[rw.rank].pack ? `（${RANK_REWARD[rw.rank].pack}）` : ''}</p><div class="hrow rw ap-rw">${[...new Set(rw.cards)].map((c) => { const n = rw.cards.filter((x) => x === c).length; return `<div class="ap-rwc">${artCard(c, { ups: true })}${n > 1 ? `<b>×${n}</b>` : ''}</div>`; }).join('')}</div>`;
+  // 版616：守備の記録（ほかの監督に挑まれた結果）をまとめて受け取る
+  async function takeDefense() {
+    if (!(window.DotNet && DotNet.on)) return;
+    let list = []; try { list = await DotNet.inbox(); } catch (_) { return; }
+    if (!list.length) return;
+    const on = ensureOnline(), before = on.rp, i0 = rankIdx(before);
+    let dw = 0, dd = 0, dl = 0;
+    for (const b of list) { if (b.res === 'L') dw++; else if (b.res === 'D') dd++; else dl++; }   // res は挑んだ側から見た結果
+    on.rp = before + dw * RP_DEF; on.dw = (on.dw || 0) + dw; on.dd = (on.dd || 0) + dd; on.dl = (on.dl || 0) + dl;
+    const i1 = rankIdx(on.rp), rw = rankReward(i0, i1); on.best = Math.max(on.best || 0, on.rp);
+    on.dlog = [...list.map((b) => ({ name: b.name, mgr: b.mgr, s: [b.s[1], b.s[0]], at: b.at })), ...(on.dlog || [])].slice(0, 20);
+    store(); try { await DotNet.clearInbox(list.map((b) => b.id)); } catch (_) {}
+    publishMe();
+    const rows = list.slice(0, 8).map((b) => { const my = b.s[1], op = b.s[0], r = my > op ? 'win' : my === op ? 'draw' : 'lose'; return `<div class="ap-dl ${r}"><b>${r === 'win' ? '守った！' : r === 'draw' ? '引き分け' : 'やられた…'}</b><span>${esc(b.name)}${b.mgr ? `（${esc(b.mgr)}監督）` : ''}</span><em>${my} − ${op}</em></div>`; }).join('');
+    await modal(`<h2>留守のあいだの対戦</h2><p>あなたのクラブが、ほかの監督から${list.length}回 挑まれました。</p><div class="ap-dls">${rows}</div><p class="ap-up">${dw ? `守備で ${dw}勝！　+${dw * RP_DEF} RP` : '守備での勝ちはありませんでした（RPは減りません）'}</p>${i1 > i0 ? `<p class="ap-up">ランクアップ！ ${RANKS[i0].n} → <b>${RANKS[i1].n}</b></p>` : ''}`, [{ label: 'OK', primary: true }]);
+    if (rw) await modal(rewardHTML(rw), [{ label: 'OK', primary: true }]);
+  }
+  // 版616：ランキング（全国のRP順）
+  async function ranking() {
+    const on = ensureOnline(); let top = [];
+    try { top = await DotNet.top(50); } catch (_) {}
+    const el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box');
+    const myI = top.findIndex((p) => p.uid === DotNet.uid);
+    const row = (p, k) => `<div class="ap-rkr${p.uid === DotNet.uid ? ' me' : ''}${k < 3 ? ' top' + (k + 1) : ''}"><span class="ap-rkr-no">${k + 1}</span><img src="${embFromLook(p.emb, 48)}" alt=""><div class="ap-rkr-n"><b>${esc(p.name)}</b><small>${p.mgr ? esc(p.mgr) + '監督' : ''}</small></div>${rankBadge(Math.max(0, Math.min(6, p.rank || 0)))}<b class="ap-rkr-rp">${p.rp || 0}<small>RP</small></b></div>`;
+    box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>全国ランキング</b><small>RPの多い監督 TOP50</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
+      <div class="ap-rkl">${top.length ? top.map(row).join('') : '<p class="ap-note">まだランキングを読みこめませんでした。</p>'}</div>
+      <div class="ap-rkme">あなた：${myI >= 0 ? `<b>${myI + 1}位</b>` : '<b>圏外</b>'}　${rankBadge(rankIdx(on.rp))}　<b>${on.rp}</b> RP</div>`;
+    el.hidden = false; el._fit && el._fit();
+    box.querySelector('.std-back').onclick = () => airport();
+  }
   function onlineDone(kind, op, score) {
     const on = ensureOnline(), res = score[0] > score[1] ? 'W' : score[0] === score[1] ? 'D' : 'L';
     let html = '', rewards = null;
     const resTxt = res === 'W' ? '勝利！' : res === 'D' ? '引き分け' : '敗北…';
     if (kind === 'rank') {
       const before = on.rp, i0 = rankIdx(before), floor = i0 * RP_STEP;
-      on.rp = res === 'W' ? before + RP_WIN : res === 'D' ? before + RP_DRAW : Math.max(floor, before - RP_LOSE);
+      on.rp = res === 'W' ? before + RP_WIN : res === 'D' ? Math.max(floor, before + RP_DRAW) : Math.max(floor, before - RP_LOSE);
       on[res.toLowerCase()]++;
       const i1 = rankIdx(on.rp);
-      if (i1 > i0 && i1 > rankIdx(on.best || 0)) {   // はじめて上がったランクだけ、ごほうび
-        const RW = RANK_REWARD[i1] || RANK_REWARD[1];
-        const main = Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat !== 'sup' && !C.CARDS[c].sp), sup = Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat === 'sup');
-        const cards = Array.from({ length: RW.cards }, () => (Math.random() < 0.25 && sup.length ? sup[Math.floor(Math.random() * sup.length)] : main[Math.floor(Math.random() * main.length)]));
-        save.cards = save.cards || {}; for (const c of cards) save.cards[c] = Math.min(C.CARD_MAX, (save.cards[c] || 0) + 1);
-        const kak = RW.kak, coins = RW.coins;
-        C.ensureGacha(save); save.kakera = (save.kakera || 0) + kak; save.coins = (save.coins || 0) + coins;
-        rewards = { cards, kak, coins, rank: i1 };
-      }
+      rewards = rankReward(i0, i1);
       on.best = Math.max(on.best || 0, on.rp);
+      if (op.ruid && window.DotNet && DotNet.on) { try { DotNet.report(op.ruid, { res, s: score.slice(), name: save.team.name, mgr: save.manager || '' }); } catch (_) {} }   // 版616：相手に守備の結果を届ける
       const d = on.rp - before;
       html = `<h2>ランクマッチ　${resTxt}</h2><p class="cr-score">${esc(save.team.short)} ${score[0]} − ${score[1]} ${esc(op.short || op.name)}</p>
         <div class="ap-rp">${rankBadge(rankIdx(on.rp), true)}<b>${on.rp} RP</b><em class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '+' : ''}${d}</em></div>
@@ -3874,7 +3909,7 @@
     store(); open(); publishMe();
     (async () => {
       await modal(html, [{ label: 'OK', primary: true }]);
-      if (rewards) await modal(`<h2>${rankBadge(rewards.rank, true)} 到達のごほうび！</h2><p class="coin big">${COIN}+${rewards.coins} コイン${rewards.kak ? `　／　覚醒のカケラ +${rewards.kak}` : ''}</p><p>特訓カード ${rewards.cards.length}枚${RANK_REWARD[rewards.rank].pack ? `（${RANK_REWARD[rewards.rank].pack}）` : ''}</p><div class="hrow rw ap-rw">${[...new Set(rewards.cards)].map((c) => { const n = rewards.cards.filter((x) => x === c).length; return `<div class="ap-rwc">${artCard(c, { ups: true })}${n > 1 ? `<b>×${n}</b>` : ''}</div>`; }).join('')}</div>`, [{ label: 'OK', primary: true }]);
+      if (rewards) await modal(rewardHTML(rewards), [{ label: 'OK', primary: true }]);
       store(); try { renderHome(); } catch (_) {}
     })();
   }
@@ -3902,11 +3937,11 @@
     const on = ensureOnline(), ri = rankIdx(on.rp), R = RANKS[ri];
     let op = null, who = '', live = null;
     if (window.DotNet && DotNet.on) {   // 版613：オンライン：同じくらいのランクの、ほかの監督のクラブ
-      try { const rv = await DotNet.rankRival(ri); if (rv && rv.code) { const d = await unpackCode(rv.code); const g = C.registerGuest(save, d); op = { name: g.name, short: g.short }; who = `${rv.mgr ? esc(rv.mgr) + '監督の' : ''}クラブ　${rankBadge(Math.max(0, Math.min(6, rv.rank || 0)))}`; live = rv; } } catch (_) {}
+      try { const rv = await DotNet.rankRival(ri); if (rv && rv.code) { const d = await unpackCode(rv.code); const g = C.registerGuest(save, d); op = { name: g.name, short: g.short, ruid: rv.uid }; who = `${rv.mgr ? esc(rv.mgr) + '監督の' : ''}クラブ　${rankBadge(Math.max(0, Math.min(6, rv.rank || 0)))}`; live = rv; } } catch (_) {}
     }
     if (!op) { op = rankOpponent(); who = 'CPUのクラブ'; }
     if (!op) return;
-    const ok = await modal(`<h2>ランクマッチ</h2><p>${rankBadge(ri)}　の相手が見つかりました！</p><div class="ap-vs"><img src="${emblemURL(op.name, 64)}" alt=""><b>${esc(op.name)}</b></div><p class="ap-sm">${who}</p><p class="hintp">勝つと +${RP_WIN}RP、引き分け +${RP_DRAW}RP、負けると −${RP_LOSE}RP（ランクは下がりません）。<br>選手の疲れ・ケガ・週は進みません。</p>`, [{ label: '対戦する', primary: true, value: true }, { label: 'やめる', value: false }]);
+    const ok = await modal(`<h2>ランクマッチ</h2><p>${rankBadge(ri)}　の相手が見つかりました！</p><div class="ap-vs"><img src="${emblemURL(op.name, 64)}" alt=""><b>${esc(op.name)}</b></div><p class="ap-sm">${who}</p><p class="hintp">勝つと +${RP_WIN}RP、引き分け ${RP_DRAW}RP、負けると −${RP_LOSE}RP（ランクは下がりません）。<br>選手の疲れ・ケガ・週は進みません。</p>`, [{ label: '対戦する', primary: true, value: true }, { label: 'やめる', value: false }]);
     if (!ok) return airport();
     runMatch('ランクマッチ', '', op, (score) => onlineDone('rank', op, score), { comp: 'ランクマッチ', label: R.n, home: true, online: 'rank' });
   }
@@ -3985,8 +4020,8 @@
     box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>空港　対戦ロビー</b><small>ランクを上げて、ごほうびをゲット！</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
       <div class="ap-main">
         <div class="ap-pnl ap-club"><h3>マイクラブ</h3><img class="ap-emb" src="${emblemURL(save.team.name, 128)}" alt=""><b class="ap-tn">${esc(save.team.name)}</b><small>${save.manager ? esc(save.manager) + '監督' : ''}</small>
-          <div class="ap-fidl">${window.DotNet && DotNet.on ? `フレンドID <b id="apFidL">${on.fid ? fmtFid(on.fid) : '…'}</b>` : 'オフライン'}</div><div class="ap-stats"><div><small>総合力</small><b>${Math.round(C.teamLevel(save))}</b></div><div><small>ランクマッチ</small><b>${on.w}<i>勝</i>${on.d}<i>分</i>${on.l}<i>敗</i></b></div><div><small>フレンド</small><b>${on.fw}<i>勝</i>${on.fd}<i>分</i>${on.fl}<i>敗</i></b></div></div></div>
-        <div class="ap-pnl ap-rankp"><div class="ap-rk-row">${apMedal(i, 150)}<div class="ap-rk-info"><small>現在のランク</small><b class="ap-rk-n" style="color:${RANKS[i].c}">${RANKS[i].n}</b><div class="ap-rk-rp"><b>${on.rp}</b> RP</div>
+          <div class="ap-fidl">${window.DotNet && DotNet.on ? `フレンドID <b id="apFidL">${on.fid ? fmtFid(on.fid) : '…'}</b>` : 'オフライン'}</div><div class="ap-stats"><div><small>総合力</small><b>${Math.round(C.teamLevel(save))}</b></div><div><small>ランクマッチ</small><b>${on.w}<i>勝</i>${on.d}<i>分</i>${on.l}<i>敗</i></b></div><div><small>守備</small><b>${on.dw || 0}<i>勝</i>${on.dd || 0}<i>分</i>${on.dl || 0}<i>敗</i></b></div><div><small>フレンド</small><b>${on.fw}<i>勝</i>${on.fd}<i>分</i>${on.fl}<i>敗</i></b></div></div></div>
+        <div class="ap-pnl ap-rankp">${window.DotNet && DotNet.on ? '<button class="ap-rkbtn" data-a="ranking">🏆 全国ランキング</button>' : ''}<div class="ap-rk-row">${apMedal(i, 150)}<div class="ap-rk-info"><small>現在のランク</small><b class="ap-rk-n" style="color:${RANKS[i].c}">${RANKS[i].n}</b><div class="ap-rk-rp"><b>${on.rp}</b> RP</div>
             ${last ? '<div class="ap-sm2">最高ランク到達！</div>' : `<div class="ap-bar2"><i style="width:${into}%"></i><span>${into} / ${RP_STEP}</span></div><div class="ap-sm2">次の「${RANKS[i + 1].n}」まで あと <b>${RP_STEP - into}</b> RP</div>`}</div></div>
           ${last ? '' : `<div class="ap-rw2"><span class="ap-rw2-h">${gotNx ? '受け取りずみ' : `${RANKS[i + 1].n} 到達のごほうび`}</span><span class="ap-rw2-i"><img class="coin-ico" src="icons/coin.png" alt="">${nx.coins}</span><span class="ap-rw2-i">${AP_SVG.card}×${nx.cards}</span>${nx.kak ? `<span class="ap-rw2-i">${AP_SVG.gem}×${nx.kak}</span>` : ''}</div>`}
           <div class="ap-ladder">${ladder}</div></div>
@@ -4000,6 +4035,9 @@
     box.querySelector('[data-a="rank"]').onclick = () => { close(); startRank(); };
     box.querySelector('[data-a="friend"]').onclick = () => friendMenu();
     publishMe().then((fid) => { const e = box.querySelector('#apFidL'); if (e) e.textContent = fid ? fmtFid(fid) : 'つながりません'; });
+    if (box.querySelector('[data-a="ranking"]')) box.querySelector('[data-a="ranking"]').onclick = () => ranking();
+    if (!airport.busy) { airport.busy = true; takeDefense().then(() => { airport.busy = false; if (!el.hidden && on.rp !== (airport.lastRp ?? on.rp)) airport(); }).catch(() => { airport.busy = false; }); }
+    airport.lastRp = on.rp;
   }
   // リンク（#vs=...）から開いたとき：その友達と対戦するか聞く
   async function checkVsLink() {

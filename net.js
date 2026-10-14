@@ -64,5 +64,19 @@
       return null;
     })());
   }
-  window.DotNet = { get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival };
+  // 版616：守備の記録（挑んだ側が相手の受け箱に入れる。読むのと消すのは本人だけ）
+  async function report(to, b) {
+    if (!(await ready())) return;
+    return withTimeout(db.collection('battles').add({ to, from: uid, res: b.res, s: b.s, name: String(b.name || '').slice(0, 20), mgr: String(b.mgr || '').slice(0, 12), at: Date.now() }));
+  }
+  async function inbox() {
+    if (!(await ready())) return [];
+    return withTimeout(db.collection('battles').where('to', '==', uid).limit(50).get().then((q) => q.docs.map((d) => ({ id: d.id, ...d.data() }))));
+  }
+  async function clearInbox(ids) { if (!(await ready())) return; await Promise.all(ids.map((id) => db.collection('battles').doc(id).delete().catch(() => {}))); }
+  async function top(n) {
+    if (!(await ready())) return [];
+    return withTimeout(db.collection('players').orderBy('rp', 'desc').limit(n || 50).get().then((q) => q.docs.map((d) => ({ uid: d.id, name: d.data().name, mgr: d.data().mgr, emb: d.data().emb, rank: d.data().rank, rp: d.data().rp }))));
+  }
+  window.DotNet = { get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top };
 })();
