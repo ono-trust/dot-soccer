@@ -4367,6 +4367,24 @@
   const html = document.documentElement, app = $('#app');
   const touch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
   if (touch) html.classList.add('touch');
+  // 版656：iPhoneでボタンを押しても反応しないことがあった
+  //  原因：タップ中に指が少し（10ドットほど）動くと、iPhoneが「スクロールしようとした」と見なして、押した合図（click）を出さない
+  //  対策：指の動きが小さく（28ドット以内）、画面がスクロールしていなくて、合図が出なかった時は、こちらで押したことにする
+  if (touch) {
+    let ts = null;
+    const NO = '.sq2,.s2board,.s2p,.s2sc,.dg-track,.lk-zl,input,select,textarea,#pitch,.sb2-box';
+    addEventListener('touchstart', (e) => { if (e.touches.length !== 1) { ts = null; return; } const t = e.touches[0]; ts = { x: t.clientX, y: t.clientY, tg: e.target, at: Date.now(), clicked: false, scrolled: false, max: 0 }; }, { passive: true, capture: true });
+    addEventListener('touchmove', (e) => { if (!ts || e.touches.length !== 1) return; const t = e.touches[0]; ts.max = Math.max(ts.max, Math.hypot(t.clientX - ts.x, t.clientY - ts.y)); }, { passive: true, capture: true });
+    addEventListener('scroll', () => { if (ts) ts.scrolled = true; }, { passive: true, capture: true });
+    addEventListener('click', () => { if (ts) ts.clicked = true; }, true);
+    addEventListener('touchend', (e) => {
+      const s = ts; ts = null; if (!s || s.scrolled || s.max > 28 || Date.now() - s.at > 900) return;
+      const t = e.changedTouches[0]; if (!t || !(s.tg instanceof Element) || s.tg.closest(NO)) return;
+      ts = s; setTimeout(() => { if (ts === s) ts = null; if (s.clicked || s.scrolled || !s.tg.isConnected) return;
+        const el = document.elementFromPoint(t.clientX, t.clientY); if (!el || !(el === s.tg || s.tg.contains(el) || el.contains(s.tg))) return;
+        el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: t.clientX, clientY: t.clientY, view: window })); }, 350);
+    }, { passive: true, capture: true });
+  }
   html.classList.add('stage');
   // 端の切り欠き（iPhoneのノッチ）ぶんを避ける
   const probe = document.createElement('div');
