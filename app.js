@@ -927,13 +927,36 @@
     paths.forEach((pa, k) => { ctx.fillStyle = CROWD_COL[k]; ctx.fill(pa); });
   }
 
+  // 版607：はげ跡の形（会場ごとに一度だけ作る）
+  const blobCache = {};
+  function groundBlobs(v) {
+    if (blobCache[v]) return blobCache[v];
+    let s = 9173 + v * 31; const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+    const out = [];
+    const heavy = v === 0;
+    // はげやすい所：真ん中、ゴール前、両サイドのライン際、ペナルティエリアの前
+    const hot = heavy ? [[52.5, 34, 14, 1.4], [6, 34, 9, 1.5], [99, 34, 9, 1.5], [17, 34, 9, 1], [88, 34, 9, 1], [30, 34, 18, 0.9], [75, 34, 18, 0.9], [52.5, 6, 30, 0.6], [52.5, 62, 30, 0.6]]
+      : [[52.5, 34, 6, 1], [5, 34, 6, 1.1], [100, 34, 6, 1.1]];
+    const N = heavy ? 230 : 40;
+    const blob = (cx, cy, rad, col) => { const n = 12, ph = r() * 6, ell = 0.6 + r() * 0.8, v2 = []; for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2, rr = rad * (0.45 + r() * 0.75); v2.push([Math.cos(a + ph) * rr * ell, Math.sin(a + ph) * rr / ell * 0.85]); } out.push({ x: cx, y: cy, v: v2, col }); };
+    for (let k = 0; k < N; k++) {
+      let x, y;
+      if (r() < (heavy ? 0.25 : 0)) { x = -3 + r() * 111; y = -2 + r() * 72; }   // 全体にちらばる
+      else { const h = hot[Math.floor(r() * hot.length)], a = r() * 6.283, d = Math.sqrt(r()) * h[2]; x = h[0] + Math.cos(a) * d * 1.2; y = h[1] + Math.sin(a) * d * (h[2] > 20 ? 0.25 : 1); }
+      const big = heavy ? 0.7 + r() * 2.6 : 0.5 + r() * 1.3;
+      blob(x, y, big, heavy ? (r() < 0.6 ? 'rgba(176,146,84,0.82)' : 'rgba(160,136,78,0.7)') : 'rgba(170,140,82,0.45)');
+      if (heavy && r() < 0.5) blob(x + (r() - 0.5) * big * 2, y + (r() - 0.5) * big * 2, big * 0.5, 'rgba(196,170,104,0.75)');   // 乾いた明るい土
+    }
+    if (heavy) for (let k = 0; k < 160; k++) blob(-3 + r() * 111, -2 + r() * 72, 0.25 + r() * 0.45, 'rgba(170,144,86,0.7)');   // 小さなはげ
+    blobCache[v] = out; return out;
+  }
   function pitch() {
     ctx.fillStyle = venue <= 1 ? '#3f6d2c' : '#6b6862'; ctx.fillRect(0, 0, CW, CH);
     // 芝（ピッチの外側も芝）。会場の格で、芝の質が変わる
-    const GR = [['#5b9a2e', '#5b9a2e'], ['#4c9f26', '#55a72c'], ['#43a020', '#4cab24'], ['#3f9b1b', '#4aaa22'], ['#3c9a18', '#4bae22']][venue] || ['#3f9b1b', '#4aaa22'];
+    const GR = [['#5aa22a', '#60a82e'], ['#4c9f26', '#55a72c'], ['#43a020', '#4cab24'], ['#3f9b1b', '#4aaa22'], ['#3c9a18', '#4bae22']][venue] || ['#3f9b1b', '#4aaa22'];
     quad(proj(-9, -5), proj(114, -5), proj(114, 90), proj(-9, 90), GR[0]);
     const cs = 105 / 12;
-    if (venue >= 1) for (let i = -1; i < 13; i++) for (let j = -1; j < 10; j++) {
+    for (let i = -1; i < 13; i++) for (let j = -1; j < 10; j++) {
       if (venue <= 2 ? i % 2 === 0 : (i + j) % 2 === 0) continue;   // 地域1部・D3はしま模様、D2・D1は市松模様の刈り込み
       const x0 = i * cs, y0 = j * (68 / 8), x1 = x0 + cs, y1 = y0 + 68 / 8;
       const a = proj(x0, y0); if (a.f < 3 && proj(x1, y1).f < 3) continue;
@@ -944,10 +967,16 @@
         const pts = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, q = proj(x + Math.cos(a) * rx, y + Math.sin(a) * ry); if (!(q.f >= 4) || !isFinite(q.x) || !isFinite(q.y)) return; pts.push(q); }
         const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y); if (Math.max(...xs) - Math.min(...xs) > CW * 0.9 || Math.max(...ys) - Math.min(...ys) > CH * 0.9) return;
         ctx.fillStyle = col; ctx.beginPath(); pts.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.closePath(); ctx.fill(); };
-      const dirt = venue === 0 ? 'rgba(150,118,70,0.75)' : 'rgba(150,118,70,0.45)';
-      for (const gx of [5, 100]) { patch(gx, 34, 6, 9, dirt); patch(gx + (gx < 50 ? 9 : -9), 34, 4, 5, dirt); }
-      patch(52.5, 34, 5, 4, dirt);
-      if (venue === 0) for (let k = 0; k < 14; k++) patch(8 + hsh2(k, 1) * 90, 4 + hsh2(k, 2) * 60, 1.5 + hsh2(k, 3) * 3, 1 + hsh2(k, 4) * 2, 'rgba(140,150,60,0.5)');
+      // 版607：はげ跡（地域2部はガッツリ、地域1部は少し）。形は世界座標で一度だけ作り、毎回地面に写して描く
+      const B = groundBlobs(venue);
+      for (const bl of B) {
+        const pts = []; let ok = true;
+        for (const [dx, dy] of bl.v) { const q = proj(bl.x + dx, bl.y + dy); if (!(q.f >= 4) || !isFinite(q.x)) { ok = false; break; } pts.push(q); }
+        if (!ok) continue;
+        let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const q of pts) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); }
+        if (x1 < 0 || x0 > CW || y1 < 0 || y0 > CH || x1 - x0 > CW * 0.9 || y1 - y0 > CH * 0.9) continue;
+        ctx.fillStyle = bl.col; ctx.beginPath(); pts.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.closePath(); ctx.fill();
+      }
     }
     walls();
     // ライン
