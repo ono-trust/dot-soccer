@@ -524,10 +524,17 @@
     const fx = C.nextFixture(save), st = C.standings(save), rank = (t) => st.findIndex((s) => s.name === t.name) + 1, cs = C.campState(save);
     let body;
     if (fx) {
-      const fk = cal(fx.week), me = fx.kind === 'league' ? `${esc(save.team.name)}（${rank(save.league.teams.find((t) => t.me))}位）` : esc(save.team.name);
-      const op = fx.kind === 'league' ? `${esc(fx.opp.name)}（${rank(fx.opp)}位）` : `${esc(fx.opp.name)}`;
-      const top = fx.home ? `<em>${me}</em>` : op, bot = fx.home ? op : `<em>${me}</em>`;
-      body = `<p class="h2-h">次の試合</p><p class="h2-sub">${fk.m}月${fk.w}週｜${esc(fx.label || '')}<i class="h2-lg${fx.kind !== 'league' ? ' cup' : ''}">${esc(fx.comp)}</i></p><p class="h2-vs">${top}<span>VS</span>${bot}</p><p class="h2-left">${fx.weeksLeft <= 0 ? '今週は試合の日！' : `あと${fx.weeksLeft}週`}</p>`;
+      // 版642：エンブレムを左右に並べた対戦カード（左が自分。下にHOME／AWAY。いつの試合かを大きく）
+      const fk = cal(fx.week), lgName = (t) => esc((C.LG[t.lg] || {}).name || '');
+      const meSub = fx.kind === 'league' ? `${rank(save.league.teams.find((t) => t.me))}位` : '';
+      const opSub = fx.kind === 'league' ? `${rank(fx.opp)}位` : lgName(fx.opp);
+      const wl = fx.weeksLeft;
+      const when = wl <= 0 ? '<b>今週</b>試合の日！' : wl === 1 ? `<b>来週</b>${fk.m}月${fk.w}週` : `<b>あと${wl}週</b>${fk.m}月${fk.w}週`;
+      body = `<div class="nm2-hd"><b>次の試合</b><i class="h2-lg${fx.kind !== 'league' ? ' cup' : ''}">${esc(fx.comp)}</i>${fx.label ? `<small>${esc(fx.label)}</small>` : ''}</div>
+        <div class="nm2-vs"><div class="nm2-t me"><img src="${emblemURL(save.team.name, 96)}" alt=""><b>${esc(save.team.name)}</b>${meSub ? `<small>${meSub}</small>` : ''}<i class="nm2-ha ${fx.home ? 'h' : 'a'}">${fx.home ? 'HOME' : 'AWAY'}</i></div>
+          <span class="nm2-x">VS</span>
+          <div class="nm2-t"><img src="${emblemURL(fx.opp.name, 96)}" alt=""><b>${esc(fx.opp.name)}</b>${opSub ? `<small>${opSub}</small>` : ''}</div></div>
+        <p class="nm2-when${wl <= 0 ? ' today' : ''}">${when}</p>`;
     } else if (cs) body = `<p class="h2-h">${esc(cs.name)}</p><p class="h2-sub">${cs.week}/${cs.weeks}週目</p><p class="h2-vs">特訓は週${cs.trains}回・効果${cs.mult}倍</p>`;
     else { const left = C.SEASON_WEEKS - save.week + 1; body = `<p class="h2-h">オフシーズン</p><p class="h2-sub">${esc(save.league.name)}</p><p class="h2-left">新シーズンまであと${left}週</p>`; }
     let card = home.querySelector('.h2-card'); if (!card) { card = document.createElement('div'); card.className = 'h2-card'; home.appendChild(card); card.onclick = () => go('assoc'); }
@@ -1038,7 +1045,7 @@
   function officeSide(el, i, o) {
     const p = save.team.players[i];
     const side = document.createElement('div'); side.className = 'pc-side';
-    side.innerHTML = [['num', 'pc_number', '背番号'], ['pos', 'pc_pos', '登録ポジション'], ['name', 'pc_name', '登録名'], ['rel', 'pc_release', '放出']].map(([a, f, l]) => `<button data-ed="${a}" title="${l}"><img src="icons/${f}.png" alt="${l}"></button>`).join('');
+    side.innerHTML = [['awk', 'pc_awake', '覚醒'], ['num', 'pc_number', '背番号'], ['pos', 'pc_pos', '登録ポジション'], ['name', 'pc_name', '登録名'], ['rel', 'pc_release', '放出']].map(([a, f, l]) => `<button data-ed="${a}" title="${l}"><img src="icons/${f}.png" alt="${l}"></button>`).join('');
     el.appendChild(side);
     // 版506：カードは画面に収まる大きさに縮めて、右のボタンと重ならない所へ（スマホで見切れないように）
     { const card = el.querySelector('.pc-card'); if (card) { card.style.transform = ''; const W = el.clientWidth, H = el.clientHeight, cw = card.offsetWidth, ch = card.offsetHeight, avail = W - 96 - 12 - 24 - 16; const k = Math.min(1, avail / cw, (H - 16) / ch); card.style.position = 'absolute'; card.style.left = Math.max(12, (avail - cw * k) / 2 + 12) + 'px'; card.style.top = ((H - ch * k) / 2) + 'px'; card.style.transform = `scale(${k.toFixed(3)})`; card.style.transformOrigin = '0 0'; } }
@@ -1049,6 +1056,19 @@
     };
     side.querySelectorAll('[data-ed]').forEach((b) => b.onclick = async (e) => { e.stopPropagation(); const a = b.dataset.ed;
       if (a === 'rel') { releasePlayer(i, () => { el.hidden = true; if (o.onChange) o.onChange(); }); return; }   // 版512：放出
+      if (a === 'awk') {   // 版642：覚醒のカケラで凸
+        const st = C.ensureStar(p), tz = p.totsu || 0, cost = C.awakeCost(p), have = save.kakera || 0, g0 = C.capGrade(p);
+        const g1 = tz < 3 ? (() => { p.totsu = tz + 1; const g = C.capGrade(p); p.totsu = tz; return g; })() : g0;
+        const pips = (n) => [0, 1, 2].map((k) => `<i class="aw-pip${k < n ? ' on' : ''}"></i>`).join('');
+        const eff = tz >= 3 ? '' : g1 !== g0 ? `育てられる上限が <b class="gr-${g0}">${g0}</b> → <b class="gr-${g1}">${g1}</b> に上がります。` : 'もう上限はSです。凸でサポート効果・固有スキルが強くなります。';
+        const body = `<div class="aw-box"><div class="aw-row"><span>レア度</span><b class="aw-star">${'★'.repeat(st)}</b></div>
+          <div class="aw-row"><span>凸</span><b class="aw-pips">${pips(tz)}</b>${tz < 3 ? `<em>→</em><b class="aw-pips">${pips(tz + 1)}</b>` : '<em class="aw-max">完凸</em>'}</div>
+          ${tz < 3 ? `<div class="aw-row"><span>必要なカケラ</span><b class="aw-cost${have < cost ? ' ng' : ''}"><i>◆</i>${cost}</b><small>（持っている：${have.toLocaleString()}）</small></div>` : ''}
+          <p class="pe-note">${tz >= 3 ? 'この選手はもう完凸（3凸）です。' : eff}${tz < 3 && have < cost ? '<br><b class="aw-ng">カケラが足りません。</b>カケラは、選手の放出やスカウトでかぶった時にもらえます。' : ''}</p></div>
+          ${tz < 3 && have >= cost ? '<div class="pe-btns"><button class="pe-ok primary ib ib-ok">覚醒する</button></div>' : ''}`;
+        dlg(`${esc(p.name)}を覚醒`, body, (d) => { const ok = d.querySelector('.pe-ok'); if (ok) ok.onclick = () => { if (C.awaken(save, p)) { try { window.DotSound && DotSound.play('skill'); } catch (_) {} done(); coachAsk(`${esc(p.name)}が覚醒しました！<br>凸 ${p.totsu}／3　育てられる上限：<b>${C.capGrade(p)}</b>`, [{ label: 'OK', value: true }]); } }; });
+        return;
+      }
       if (a === 'num') {
         const used = new Map(save.team.players.map((q) => [q.number, q]));
         let h = '<div class="pe-nums">'; for (let n = 1; n <= 99; n++) { const q = used.get(n); h += `<button data-n="${n}" class="${q === p ? 'me' : q ? 'used' : ''}" title="${q ? esc(q.name) : ''}">${n}${q && q !== p ? `<small>${esc(q.name)}</small>` : ''}</button>`; } h += '</div><p class="pe-note">ほかの選手の番号を選ぶと、その選手と番号を入れかえます。</p>';
