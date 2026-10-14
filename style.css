@@ -2670,7 +2670,7 @@ html.short .h2-bar #hmNext{height:36px !important;font-size:15px;padding-right:1
 html.short .h2-coin{height:36px}html.short .h2-coin b{font-size:16px;min-width:52px}html.short .h2-coin .h2-plus{width:28px;height:28px}html.short .h2-coin .coin-ico{width:24px;height:24px}
 html.short .h2-card{top:60px;width:230px;padding:7px 10px 9px}html.short .h2-h{font-size:15px}html.short .h2-sub{font-size:12px}html.short .h2-vs{font-size:14px}html.short .h2-vs span{font-size:16px}html.short .h2-left{font-size:13px}
 /* ===== 版601：試合前の入場通路（新しい見た目） ===== */
-#liveScr.lv2{--u:calc(var(--lh,720px) / 720);background:#1b2233}
+#liveScr.lv2{--u:calc(var(--lh,720px) / 720);background:#8f96a3 url("img/tunnel.jpg") center/cover no-repeat}
 #liveScr.lv2 canvas{image-rendering:auto}
 .lv2-head{position:absolute;left:calc(var(--u) * 17);top:calc(var(--u) * 34);width:calc(var(--u) * 570);border-radius:calc(var(--u) * 6);overflow:hidden;box-shadow:0 calc(var(--u) * 4) calc(var(--u) * 10) rgba(0,0,0,.35);font-family:"M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif}
 .lv2-t{display:flex;align-items:center;gap:calc(var(--u) * 14);height:calc(var(--u) * 46);padding:0 calc(var(--u) * 16);background:rgba(244,246,250,.94);color:#14204a;font-weight:900;font-size:calc(var(--u) * 24);white-space:nowrap}

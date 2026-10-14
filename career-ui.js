@@ -1920,6 +1920,7 @@
   function preMatch(op, meta) {
     let el = document.getElementById('liveScr');
     if (!el) { el = document.createElement('div'); el.id = 'liveScr'; $('#career').appendChild(el); }
+    el.hidden = true; el.className = 'lv2';   // 版623：絵が描けるまで出さない（前は空の画面が一瞬見えていた）
     const home = meta.home ? { name: save.team.name, me: true } : { name: op.name }, away = meta.home ? { name: op.name } : { name: save.team.name, me: true };
     const lgH = lgOf(home.name), lgA = lgOf(away.name), stad = stadiumName(op, meta);
     const title = `${esc(meta.comp)}${meta.label ? '　' + esc(meta.label) : ''}`;
@@ -1946,6 +1947,7 @@
         let tInfo = { home: home.name, away: away.name, homeCol: '#2f5fc8', awayCol: '#c8322a' };
         try { const kk = C.kitsFor(save, op.name, meta.kitSel, meta.oppSel), mine = kk[0].shirt, opc = kk[1].shirt; tInfo = { ...tInfo, homeCol: meta.home ? mine : opc, awayCol: meta.home ? opc : mine }; } catch (_) {}
         const loop = (t) => { drawTunnel2(ctx2, rows, t, tInfo); liveRaf = requestAnimationFrame(loop); };   // 版601：新しい入場通路
+        try { drawTunnel2(ctx2, rows, 0, tInfo); } catch (_) {}   // 版623：最初の1枚をすぐ描く（描くまでの一瞬、暗い背景が見えていた）
         liveRaf = requestAnimationFrame(loop);
         el.querySelectorAll('button[data-a]').forEach((b) => b.onclick = () => {
           const a = b.dataset.a;
@@ -1991,7 +1993,10 @@
         liveRaf = requestAnimationFrame(loop);
         el.querySelector('.vs-go').onclick = finish;
       };
-      showLive();
+      // 版623：通路の絵とエンブレムが読めてから出す（最大1.5秒）。待つ間も画面は暗くしない
+      const imgs = [TUN.bg, tunImg(emblemURL(home.name, 128)), tunImg(emblemURL(away.name, 128))];
+      const ready = () => imgs.every((im) => im.complete && im.naturalWidth);
+      if (ready()) showLive(); else { const t0 = Date.now(); const w = () => (ready() || Date.now() - t0 > 1500 ? showLive() : setTimeout(w, 40)); w(); }
     });
   }
   // 入場口（カルチョビットAの画面を写したレイアウト）：実況席のガラス・奥へ続く通路・ピッチへ出る帯と手すり・カメラマン・運営スタッフ・審判・記録係の机
@@ -2147,6 +2152,7 @@
   }
   // ---------- 版601：試合前の入場通路（絵の背景＋旗＋並んだ両チーム） ----------
   const TUN = { bg: null, emb: new Map() };
+  TUN.bg = new Image(); TUN.bg.src = 'img/tunnel.jpg';   // 版623：はじめから読んでおく（入った瞬間に真っ暗にならないように）
   const REF_BLACK = ['#1e1f24', '#34363d', '#0d0e11', '#1a1a1e', ''];
   function tunImg(src) { let im = TUN.emb.get(src); if (!im) { im = new Image(); im.src = src; TUN.emb.set(src, im); } return im; }
   const tunOk = (im) => im && im.complete && im.naturalWidth > 0;
@@ -2170,7 +2176,7 @@
   }
   function drawTunnel2(c, rows, t, info) {
     if (!TUN.bg) TUN.bg = tunImg('img/tunnel.jpg');
-    if (tunOk(TUN.bg)) c.drawImage(TUN.bg, 0, 0, 1280, 720); else { c.fillStyle = '#2a3346'; c.fillRect(0, 0, 1280, 720); }
+    if (tunOk(TUN.bg)) c.drawImage(TUN.bg, 0, 0, 1280, 720); else { c.fillStyle = '#8f96a3'; c.fillRect(0, 0, 1280, 720); }
     // 壁の旗：左の壁にホーム、奥の壁にアウェー
     try { tunPutFlag(c, tunFlag(info.home, info.homeCol), [74, 388], [196, 356], [74, 612]); tunPutFlag(c, tunFlag(info.away, info.awayCol), [612, 150], [688, 112], [612, 268]); } catch (_) {}
     const objs = [];
