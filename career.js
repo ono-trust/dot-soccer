@@ -1242,7 +1242,7 @@
   //  skill：覚えるスキル / type：裏パラをそのタイプへ / up：大きく上がる育成ポイント
   const SP = [
     // シュート
-    ['ナックルシュート', 'shoot placeKick lifting', { skill: 'knuckle', up: { kick: 15, technique: 9 } }],
+    ['無回転シュート', 'shoot placeKick lifting', { skill: 'knuckle', up: { kick: 15, technique: 9 } }],
     ['パワーシュート', 'shoot kickTr weight', { skill: 'powerMid', up: { kick: 16, physical: 10 } }],
     ['コントロールショット', 'shoot lifting image', { skill: 'controlShot', up: { kick: 11, technique: 13 } }],
     ['ニア上ぶち抜き', 'shoot kickTr dash', { skill: 'nearPost', up: { kick: 18, speed: 7, dash: 4 } }],
