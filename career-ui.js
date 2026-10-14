@@ -1944,6 +1944,7 @@
       // 本家の流れ：暗転 → 動くスタンドに両チームの帯とTOTO → 帯がはけて入場 → サポーターの旗とコール → （試合画面で）入場とズーム → キックオフ
       const showVs = () => {
         el.className = '';
+        try { const kk = C.kitsFor(save, op.name, meta.kitSel, meta.oppSel); crowdCol = meta.home ? [kk[0].shirt, kk[1].shirt] : [kk[1].shirt, kk[0].shirt]; } catch (_) {}   // 版604：観客の服（ホームのサポーターが多い）
         const tt = totoOf(op, meta);
         const sub = (nm, side, lg) => { const rk = rankOf(nm); return `<div class="vs-sub">${side}${lgBadge(lg)}${rk ? `<b>${rk}位</b>` : ''}</div>`; };
         el.innerHTML = `<canvas width="1280" height="720"></canvas><div class="vs2">
@@ -2248,11 +2249,50 @@
   function venImg(kind) { const k = kind + '_' + Math.max(0, Math.min(4, venueNow ?? 4)); if (!VEN[k]) { const im = new Image(); im.src = `img/venue/${k}.jpg`; VEN[k] = im; } return VEN[k]; }
   const VEN_DOOR = [[134, 277, 335, 445], [129, 268, 349, 445], [134, 273, 373, 478], [139, 263, 407, 493], [153, 268, 440, 524]];   // 入場口（絵の1600×900の座標：左・右・上・下）
   const VEN_S = 0.9, VEN_PAN = 1600 * VEN_S - 1280;   // 絵を少し大きくして、横にゆっくり流す
+  // 版604：観客のドット絵（席の位置は img/venue/crowd.json。リーグが上がるほど埋まる）
+  const CROWD_OCC = [0.55, 0.3, 0.5, 0.72, 0.9];   // 地域2部は立ち見（数はもともと少ない）
+  let crowdPos = null, crowdLoading = false, crowdCol = ['#2f5fc8', '#c8322a'];
+  const crowdCache = {};
+  function loadCrowd() { if (crowdPos || crowdLoading) return; crowdLoading = true; fetch('img/venue/crowd.json').then((r) => r.json()).then((j) => { crowdPos = j; }).catch(() => { crowdLoading = false; }); }
+  function venCrowd(kind) {
+    const tier = Math.max(0, Math.min(4, venueNow ?? 4)), key = kind + '_' + tier, im = venImg(kind);
+    loadCrowd();
+    if (!(im.complete && im.naturalWidth)) return null;
+    if (!crowdPos) return [im, im];
+    const ck = key + '|' + crowdCol.join(',');
+    if (crowdCache[ck]) return crowdCache[ck];
+    const pos = crowdPos[key] || [], r = seeded(77 + tier * 13 + (kind === 'goal' ? 5 : 0)), occ = CROWD_OCC[tier];
+    const SKIN = ['#f2c99c', '#e8b384', '#d9a46e', '#b9824e', '#8a5a34'], HAIR = ['#1e1a18', '#2a2420', '#4a3426', '#6a4a2a', '#9a9a9a', '#c88a3a'], WEAR = ['#f2f2f0', '#2a2a2e', '#e8e2d2', '#3a8a4a', '#f2c21c', '#7a4a9a', '#d96a2a', '#5a6a7a'];
+    const people = [];
+    for (const q of pos) { if (r() > occ) continue; const fan = r(); people.push({ x: q[0], y: q[1], p: q[2], st: q[3] === 1, skin: SKIN[Math.floor(r() * 5)], hair: HAIR[Math.floor(r() * 6)], wear: fan < 0.5 ? crowdCol[kind === 'goal' ? 0 : (r() < 0.6 ? 0 : 1)] : WEAR[Math.floor(r() * WEAR.length)], jump: r() < 0.5, arms: r() < 0.25 }); }
+    const frames = [0, 1].map((f) => {
+      const cv = document.createElement('canvas'); cv.width = 1600; cv.height = 900; const x = cv.getContext('2d');
+      x.drawImage(im, 0, 0, 1600, 900);
+      for (const h of people) {
+        const p = h.p, up = f && h.jump ? Math.max(1, Math.round(p * 0.12)) : 0, R = (v) => Math.round(v);
+        if (h.st) {   // 立ち見：足から上まで
+          const hh = R(p * 0.38), bw = R(p * 0.5), by = h.y - R(p * 0.95) - up;
+          x.fillStyle = '#2a2f45'; x.fillRect(R(h.x - bw * 0.4), by + hh + R(p * 0.38), R(bw * 0.8), R(p * 0.2) + up);
+          x.fillStyle = h.wear; x.fillRect(R(h.x - bw / 2), by + hh, bw, R(p * 0.4));
+          x.fillStyle = h.skin; x.fillRect(R(h.x - hh / 2), by, hh, hh); x.fillStyle = h.hair; x.fillRect(R(h.x - hh / 2), by, hh, R(hh * 0.4));
+          continue;
+        }
+        const hh = R(p * 0.42), bw = R(p * 0.7), top = h.y - R(p * 0.32) - up;
+        x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(R(h.x - bw / 2), h.y + R(p * 0.48), bw, R(p * 0.08));
+        x.fillStyle = h.wear; x.fillRect(R(h.x - bw / 2), top + hh - 1, bw, R(p * 0.82) - hh + 2 + up);
+        if (f && h.arms) { x.fillRect(R(h.x - bw / 2) - R(p * 0.12), top - R(p * 0.2), R(p * 0.14), R(p * 0.5)); x.fillRect(R(h.x + bw / 2) - R(p * 0.02), top - R(p * 0.2), R(p * 0.14), R(p * 0.5)); }
+        x.fillStyle = h.skin; x.fillRect(R(h.x - hh / 2), top, hh, hh);
+        x.fillStyle = h.hair; x.fillRect(R(h.x - hh / 2), top, hh, Math.max(1, R(hh * 0.38)));
+      }
+      return cv;
+    });
+    crowdCache[ck] = frames; return frames;
+  }
   function drawStandsPan(c, t, homeRow, awayRow, hT, aT) {
     const im = venImg('side'), tier = Math.max(0, Math.min(4, venueNow ?? 4));
     // カメラ：右から左へゆっくり流れて、入場口が見えてくる
     const u = Math.min(1, t / 9.5), camX = VEN_PAN * (1 - u * u * (3 - 2 * u)) , camY = (900 * VEN_S - 720) / 2;
-    if (im.complete && im.naturalWidth) c.drawImage(im, -camX, -camY, 1600 * VEN_S, 900 * VEN_S); else { c.fillStyle = '#3fa83a'; c.fillRect(0, 0, 1280, 720); }
+    { const fr = venCrowd('side'); if (fr) c.drawImage(fr[Math.floor(t * 2.6) % 2], -camX, -camY, 1600 * VEN_S, 900 * VEN_S); else { c.fillStyle = '#3fa83a'; c.fillRect(0, 0, 1280, 720); } }
     const [dl, dr, dtp, db] = VEN_DOOR[tier].map((v) => v * VEN_S), DX = (dl + dr) / 2 - camX, DB = db - camY, DT = dtp - camY;
     // 入場：入場口から2列で出てきて、ピッチの手前右へななめに走っていく
     if (t > 4.6) {
@@ -2312,7 +2352,7 @@
   function drawFlagsScene(c, t, teamName) {
     const im = venImg('goal'), tier = Math.max(0, Math.min(4, venueNow ?? 4));
     const camX = Math.min(VEN_PAN, 20 + t * 34), camY = (900 * VEN_S - 720) / 2;
-    if (im.complete && im.naturalWidth) c.drawImage(im, -camX, -camY, 1600 * VEN_S, 900 * VEN_S); else { c.fillStyle = '#3fa83a'; c.fillRect(0, 0, 1280, 720); }
+    { const fr = venCrowd('goal'); if (fr) c.drawImage(fr[Math.floor(t * 3.2) % 2], -camX, -camY, 1600 * VEN_S, 900 * VEN_S); else { c.fillStyle = '#3fa83a'; c.fillRect(0, 0, 1280, 720); } }
     const baseY = VEN_STAND[tier] * VEN_S - camY;
     const emb = embImgFor(teamName);
     const N = [3, 5, 8, 11, 14][tier] ?? 14, FK = [1, 7, 3, 11, 5, 9, 0, 13, 2, 12, 4, 10, 6, 8];   /* 版469：地域リーグは旗も少ない */
@@ -2384,7 +2424,7 @@
     ov.querySelector('.kp-ok').onclick = () => { ov.remove(); apply(); back(); };
   }
   async function runMatch(title, sub, opTeamInfo, done, meta) {
-    venueNow = venueOf(opTeamInfo, meta); try { venImg('side'); venImg('goal'); } catch (_) {}   // 版603：会場の絵を先に読む
+    venueNow = venueOf(opTeamInfo, meta); try { venImg('side'); venImg('goal'); loadCrowd(); } catch (_) {}   // 版603：会場の絵を先に読む
     const how = meta && meta.skipPre ? 'watch' : await preMatch(opTeamInfo, meta || { comp: title, label: '', home: true });
     const mt = C.matchTeam(save), opp = C.opponentTeam(save, opTeamInfo), seed = 1 + Math.floor(Math.random() * 999999);
     if (how === 'watch') {
