@@ -2243,33 +2243,36 @@
     }
     standPano = cv; standPanos[venueNow] = cv; standTier = venueNow;
   }
+  // 版603：会場の絵（リーグごと）。side＝入場口のある横から、goal＝ゴール裏から
+  const VEN = {};
+  function venImg(kind) { const k = kind + '_' + Math.max(0, Math.min(4, venueNow ?? 4)); if (!VEN[k]) { const im = new Image(); im.src = `img/venue/${k}.jpg`; VEN[k] = im; } return VEN[k]; }
+  const VEN_DOOR = [[134, 277, 335, 445], [129, 268, 349, 445], [134, 273, 373, 478], [139, 263, 407, 493], [153, 268, 440, 524]];   // 入場口（絵の1600×900の座標：左・右・上・下）
+  const VEN_S = 0.9, VEN_PAN = 1600 * VEN_S - 1280;   // 絵を少し大きくして、横にゆっくり流す
   function drawStandsPan(c, t, homeRow, awayRow, hT, aT) {
-    if (!standPano || standTier !== venueNow) buildStandPano();
-    // カメラ：はじめはスタンド、だんだん下へ（ピッチの端が見える）、入場の場面では選手を追って横へ
-    const ty = Math.min(1, Math.max(0, (t - 1.5) / 6)), sy = ty * ty * (3 - 2 * ty);
-    const camY = 150 + sy * 300, camX = 300 + t * 46;
-    c.drawImage(standPano, -camX, -camY);
-    // 入場：スタンド下のゲートから2列で出てきて、トラックを越えてピッチの中（センターサークルのある手前側）へ斜めに走っていく
-    if (t > 5.4) {
-      const S = A().SPR, d = (t - 5.4) * 115, list = [];
-      const GX = 820, GY = 852, OUT = 950, dx = 0.93, dy = 0.37, L1 = OUT - GY;
+    const im = venImg('side'), tier = Math.max(0, Math.min(4, venueNow ?? 4));
+    // カメラ：右から左へゆっくり流れて、入場口が見えてくる
+    const u = Math.min(1, t / 9.5), camX = VEN_PAN * (1 - u * u * (3 - 2 * u)) , camY = (900 * VEN_S - 720) / 2;
+    if (im.complete && im.naturalWidth) c.drawImage(im, -camX, -camY, 1600 * VEN_S, 900 * VEN_S); else { c.fillStyle = '#3fa83a'; c.fillRect(0, 0, 1280, 720); }
+    const [dl, dr, dtp, db] = VEN_DOOR[tier].map((v) => v * VEN_S), DX = (dl + dr) / 2 - camX, DB = db - camY, DT = dtp - camY;
+    // 入場：入場口から2列で出てきて、ピッチの手前右へななめに走っていく
+    if (t > 4.6) {
+      const S = A().SPR, d = (t - 4.6) * 120, list = [], doorH = DB - DT, L1 = 40;
       [[homeRow, hT, 0], [awayRow, aT, 1]].forEach(([row, team, li]) => row.forEach((p, k) => {
-        const sd = d - k * 46; if (sd < 0) return;
-        const off = li ? 15 : -15;
-        let wx, wy, view;
-        if (sd < L1) { wx = GX + off; wy = GY + sd; view = 'front'; }
-        else { const e = sd - L1; wx = GX + off * (1 - Math.min(1, e / 60)) + e * dx - (li ? 1 : 0) * 22 * dy * Math.min(1, e / 60); wy = OUT + e * dy + (li ? 22 * dx : 0) * Math.min(1, e / 60); view = e < 30 ? 'front' : 'f34'; }
-        list.push({ p, team, k, x: wx - camX, y: wy - camY, wy, view });
+        const sd = d - k * 58; if (sd < 0) return;
+        const off = li ? 16 : -16;
+        let x, y, view;
+        if (sd < L1) { x = DX + off; y = DB - 12 + sd * 0.6; view = 'front'; }
+        else { const e = sd - L1, m = Math.min(1, e / 90), side = li ? 1 : -1;   // 2列：進む向きに対して横に並ぶ（アウェーが手前）
+          x = DX + off * (1 - m) + e * 0.9 - side * 0.44 * 34 * m; y = DB - 12 + L1 * 0.6 + e * 0.44 + side * 0.9 * 34 * m; view = e < 24 ? 'front' : 'f34'; }
+        list.push({ p, team, k, x, y, inside: sd < L1 * 0.5, view });
       }));
-      c.save();
-      // ゲートの中にいる間は入口の枠の内側だけ見える
-      c.beginPath(); c.rect(760 - camX, 772 - camY, 120, 200); c.rect(-50, 922 - camY, 1400, 900); c.clip();
-      list.sort((a2, b2) => a2.y - b2.y).forEach(({ p, team, k, x, y, wy, view }) => {
-        const sc = wy < 950 ? 1.6 + (wy - 852) / 98 * 0.5 : 2.1 + Math.max(0, (wy - 950) / 180) * 0.8;
+      c.save(); c.beginPath(); c.rect(DX - (dr - dl) / 2 + 4, DT, dr - dl - 8, doorH); c.rect(-50, DB - 4, 1400, 900); c.clip();
+      list.sort((a2, b2) => a2.y - b2.y).forEach(({ p, team, k, x, y, inside, view }) => {
+        const sc = (doorH * 0.78) / S.H * (1 + Math.max(0, y - DB) / 260);
         const img = A().spriteCanvas(p, team, view, Math.floor(t * 10 + k) % 4, true, k === 0);
         c.imageSmoothingEnabled = false;
-        if (wy > 922) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(x, y, 7 * sc, 2 * sc, 0, 0, 7); c.fill(); }
-        if (wy < 922) c.filter = `brightness(${0.35 + (wy - 852) / 70 * 0.65})`;
+        if (!inside) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(x, y, 7 * sc, 2 * sc, 0, 0, 7); c.fill(); }
+        if (inside) c.filter = 'brightness(0.55)';
         c.drawImage(img, x - S.W * sc / 2, y - (S.H - 2) * sc, S.W * sc, S.H * sc);
         c.filter = 'none';
       });
@@ -2305,15 +2308,17 @@
     c.beginPath(); c.moveTo(960, gy); c.lineTo(935, 660); c.lineTo(1335, 660); c.lineTo(1300, gy); c.stroke();
     flagBg = cv; flagTier = venueNow;
   }
+  const VEN_STAND = [531, 493, 469, 497, 536];   // ゴール裏の絵：観客席（フェンス）の下の高さ
   function drawFlagsScene(c, t, teamName) {
-    if (!flagBg || flagTier !== venueNow) buildFlagBg();
-    const camX = 120 + t * 30;
-    c.drawImage(flagBg, -camX, 0);
+    const im = venImg('goal'), tier = Math.max(0, Math.min(4, venueNow ?? 4));
+    const camX = Math.min(VEN_PAN, 20 + t * 34), camY = (900 * VEN_S - 720) / 2;
+    if (im.complete && im.naturalWidth) c.drawImage(im, -camX, -camY, 1600 * VEN_S, 900 * VEN_S); else { c.fillStyle = '#3fa83a'; c.fillRect(0, 0, 1280, 720); }
+    const baseY = VEN_STAND[tier] * VEN_S - camY;
     const emb = embImgFor(teamName);
-    const N = [3, 5, 8, 11, 14][venueNow ?? 4] ?? 14, FK = [1, 7, 3, 11, 5, 9, 0, 13, 2, 12, 4, 10, 6, 8];   /* 版469：地域リーグは旗も少ない */
+    const N = [3, 5, 8, 11, 14][tier] ?? 14, FK = [1, 7, 3, 11, 5, 9, 0, 13, 2, 12, 4, 10, 6, 8];   /* 版469：地域リーグは旗も少ない */
     for (let k0 = 0; k0 < N; k0++) { const k = FK[k0];
-      const bx = 60 + k * 100 - camX * 0.9 + (k % 2) * 30, by = 300 + (k % 3) * 60;
-      const ang = Math.sin(t * 3.4 + k * 1.7) * 0.75 - 0.15, L = 190;
+      const bx = 80 + k * 98 - camX + (k % 2) * 30, by = baseY - 6 - (k % 3) * 34;
+      const ang = Math.sin(t * 3.4 + k * 1.7) * 0.75 - 0.15, L = 170;
       const px = bx + Math.sin(ang) * L, py = by - Math.cos(ang) * L;
       c.strokeStyle = '#d0d2d6'; c.lineWidth = 4; c.beginPath(); c.moveTo(bx, by); c.lineTo(px, py); c.stroke();
       // 布（波打つ白い旗にエンブレム）
@@ -2379,7 +2384,7 @@
     ov.querySelector('.kp-ok').onclick = () => { ov.remove(); apply(); back(); };
   }
   async function runMatch(title, sub, opTeamInfo, done, meta) {
-    venueNow = venueOf(opTeamInfo, meta);
+    venueNow = venueOf(opTeamInfo, meta); try { venImg('side'); venImg('goal'); } catch (_) {}   // 版603：会場の絵を先に読む
     const how = meta && meta.skipPre ? 'watch' : await preMatch(opTeamInfo, meta || { comp: title, label: '', home: true });
     const mt = C.matchTeam(save), opp = C.opponentTeam(save, opTeamInfo), seed = 1 + Math.floor(Math.random() * 999999);
     if (how === 'watch') {
@@ -3161,9 +3166,8 @@
     const from = (C.LEAGUES.find((l) => l.name === se.from) || {}).tier, to = (C.LG[save.league.id] || {}).tier;
     if (from == null || to == null || from === to) return;
     const up = to > from;
-    venueNow = to; buildStandPano();
-    let pic = '';
-    try { const c = document.createElement('canvas'); c.width = 560; c.height = 300; const x = c.getContext('2d'); x.drawImage(standPano, -560, to <= 1 ? -470 : -330); pic = c.toDataURL('image/jpeg', 0.85); } catch (e) {}
+    venueNow = to;
+    let pic = `img/venue/side_${Math.max(0, Math.min(4, to))}.jpg`;   // 版603：新しい会場の絵
     const nm = stadiumName({ name: save.team.name }, { home: true });
     const lines = up ? [`監督、${esc(save.league.name)}への昇格、おめでとうございます！`, '昇格して、クラブの予算が増えました。', ...VENUE_TALK[to], `新しいホームは「${esc(nm)}」です。`]
       : [`${esc(save.league.name)}に降格して、クラブの予算が減ってしまいました…。`, `ホームの会場は「${esc(nm)}」に変わります。`, 'また昇格して、大きなスタジアムを取り戻しましょう！'];
@@ -3759,7 +3763,7 @@
   }
   // 版570：コインの数が出ているところ（スカウト・ホーム）を押しても、コイン購入へ
   document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('.gc3-coin, .hm-next .coin'); if (!t) return; e.stopPropagation(); coinShop(() => { const b = document.querySelector('.gc3-coin b'); if (b) b.textContent = (save.coins || 0).toLocaleString(); try { renderHome(); } catch (_) {} }); }, true);
-  window.__career = { champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
+  window.__career = { setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====
