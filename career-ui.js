@@ -65,7 +65,7 @@
     document.querySelector('#cv-club .rbtns').hidden = v !== 'club';
     if (v === 'club') pickDrill();
     if (v === 'club') { const l = document.getElementById('rbLineup'), tt = document.getElementById('rbTac'); if (l) l.innerHTML = rbLineupSVG(); if (tt) tt.innerHTML = RB_TAC_SVG; rbLast = -1; }
-    if (v === 'home') renderHome();
+    if (v === 'home') { renderHome(); try { drawHome(performance.now()); } catch (_) {} }   // 版624：すぐ今のホームを描く（前に描いた古い絵が一瞬見えないように）
     if (v === 'data') renderData();
     if (v === 'train') renderTrain();
     if (v === 'lineup') renderLineup();
@@ -3780,7 +3780,8 @@
   let clubAsked = false;
   function open() {
     ensure(); A().stop(); A().showScreen('career'); go('home');
-    if (/vs=/.test(location.hash) && save.clubSet) setTimeout(() => checkVsLink(), 600);   // 版610：対戦のリンクから開いた
+    if (/vs=/.test(location.hash) && save.clubSet) setTimeout(() => checkVsLink(), 600);
+    setTimeout(() => { try { watchPost(); } catch (_) {} }, 800);   // 版624   // 版610：対戦のリンクから開いた
     if (window.__tut && window.__tut.boot(save)) return;   // はじめて遊ぶ人：チュートリアル（クラブ作りもその中で）
     if (!save.clubSet && !clubAsked && (save.week || 1) <= 1 && save.season === 1) { clubAsked = true; openClub({ first: true, onDone: () => go('home') }); }   // はじめて：クラブを作る
     if (save.migratedWorld) { delete save.migratedWorld; store(); modal('<h2>リーグが新しくなりました</h2><p>地域2部（東・西）→ 地域1部（東・西）→ D3 → D2 → D1 の7リーグになりました。選手はそのままで、<b>地域2部リーグ西</b>の開幕（3月1週）からのスタートです。</p>', [{ label: 'OK', primary: true }]); }
@@ -4019,6 +4020,23 @@
       const my = me === 'host' ? score.slice() : [score[1], score[0]];
       onlineDone('friend', op, my);
     }, { venue: venueNow, kits: [k0, k1], noIntro: true, lockEdit: true, comp: 'フレンド対戦', label: 'ルーム', homeName: hd.name, awayName: gd.name, embH: embFromLook(hd.emb, 48), embA: embFromLook(gd.emb, 48), grade: (q, k) => C.rankInfo(C.toPts((q.params || q)[k])).g });
+  }
+  // 版624：ポストの見張り（申請・招待・挑戦が届いたら、すぐポストに入れて知らせる）
+  let mailWatching = false;
+  function watchPost() {
+    if (mailWatching || !(window.DotNet && DotNet.on && DotNet.watchMail)) return; mailWatching = true;
+    DotNet.ready().then((ok) => { if (!ok) { mailWatching = false; return; }
+      DotNet.watchMail((n) => { if (!n) return; syncPost(true).then(() => { postBadge(); const sc = document.getElementById('postScreen'); if (sc && !sc.hidden) return; postToast(); }); });
+    });
+  }
+  function postToast() {
+    const n = postUnread(); if (!n) return;
+    let t = document.getElementById('postToast'); if (!t) { t = document.createElement('div'); t.id = 'postToast'; (document.getElementById('app') || document.body).appendChild(t); }
+    const last = ensurePost().items[0];
+    const msg = last && !last.read ? ({ freq: `${esc(last.name)}からフレンド申請が届きました`, room: `${esc(last.name)}がルームを作りました`, fok: `${esc(last.name)}とフレンドになりました`, def: 'ランクマッチで挑まれました' }[last.kind] || 'ポストにお知らせが届きました') : 'ポストにお知らせが届きました';
+    t.innerHTML = `<img src="icons/post.png" alt=""><span>${msg}</span>`; t.className = 'on';
+    t.onclick = () => { t.className = ''; openPost(() => { try { renderHome(); } catch (_) {} }); };
+    clearTimeout(postToast.tm); postToast.tm = setTimeout(() => { t.className = ''; }, 4500);
   }
   // フレンド申請を送る（空港・事務所の「フレンド」から）
   async function sendFriendReq(idText) {

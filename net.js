@@ -110,5 +110,12 @@
     const ref = db.collection('rooms').doc(id);
     return db.runTransaction(async (tx) => { const d = await tx.get(ref); const r = d.data(); if (!r || r.state !== 'open' || !r.hostReady || !r.guestReady) return; tx.update(ref, { state: 'go', seed: 1 + Math.floor(Math.random() * 999999), startAt: Date.now() + 4000 }); });
   }
-  window.DotNet = { get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news, createRoom, roomUpdate, roomGet, roomWatch, roomInvites, roomStart };
+  // 版624：自分あての mail・battles が増えたら、すぐ知らせる（onSnapshot）
+  function watchMail(cb) {
+    if (!db) return () => {};
+    const u1 = db.collection('mail').where('to', '==', uid).onSnapshot((q) => cb(q.size), () => {});
+    const u2 = db.collection('battles').where('to', '==', uid).onSnapshot((q) => cb(q.size), () => {});
+    return () => { u1(); u2(); };
+  }
+  window.DotNet = { get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news, createRoom, roomUpdate, roomGet, roomWatch, roomInvites, roomStart, watchMail };
 })();
