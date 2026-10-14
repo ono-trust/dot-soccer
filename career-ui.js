@@ -4061,18 +4061,17 @@
     const on = ensureOnline(); on.flist = on.flist || [];
     const el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box'), net = !!(window.DotNet && DotNet.on);
     const card = (f, k) => `<div class="ap-fc"><img src="${embFromLook(f.emb, 64)}" alt=""><div class="ap-fc-n"><b>${esc(f.name)}</b><small>${f.mgr ? esc(f.mgr) + '監督　' : ''}${f.rank != null ? rankBadge(f.rank) : ''}</small><small>${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><button class="ap-fc-go" data-fu="${k}">対戦</button><button class="ap-fc-x" data-fx="${k}" title="登録をやめる">×</button></div>`;
-    const recent = on.friends.filter((f) => f.code).map((f, k) => `<button class="ap-frc" data-fk="${k}"><div class="ap-frc-n"><b>${esc(f.name)}</b><small>${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><span class="ap-frc-go">再戦</span></button>`).join('');
     box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>フレンド</b><small>フレンド申請して、いつでも対戦！</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
       <div class="ap-fgrid2">
         <div class="ap-pnl ap-reg"><h3>フレンド申請</h3>
           <div class="ap-myid"><small>あなたのフレンドID</small><b id="apMyId">${net ? (on.fid ? fmtFid(on.fid) : '取得中…') : '――――'}</b>${net ? '<button class="ap-copy" data-a="copyid">コピー</button>' : ''}</div>
-          ${net ? `<p class="ap-note">友達のフレンドIDを入れて「申請」。相手が承認するとフレンドになり、いつでも最新のチームで対戦できます。${(on.fsent || []).length ? `<br><b class="ap-wait">返事待ち ${on.fsent.length}件</b>` : ''}</p>
+          ${net ? `<p class="ap-note">友達のフレンドIDを入れて「申請」。相手が承認するとフレンドになります。<b>フレンド対戦は、フレンドどうしだけ</b>できます。${(on.fsent || []).length ? `<br><b class="ap-wait">返事待ち ${on.fsent.length}件</b>` : ''}</p>
           <div class="ap-idrow"><input id="apFid" inputmode="numeric" maxlength="9" placeholder="8けたのID"><button class="ap-big ap-gold ap-reg-go" data-a="add"><b>申請</b></button></div>`
-          : '<p class="ap-note">フレンド申請は、オンラインの準備ができたら使えます。<br>今は下の「リンクで送る」で対戦できます。</p>'}
-          <div class="ap-linkrow"><button class="ap-mini ap-blue" data-a="share">${AP_SVG.send}リンクで送る</button><input id="apCode" placeholder="届いたリンクを貼りつけ"><button class="ap-mini ap-gold" data-a="go">対戦</button></div></div>
+          : '<p class="ap-note">フレンドの機能は、インターネットにつながっている時だけ使えます。</p>'}
+        </div>
         <div class="ap-pnl ap-flist"><h3>フレンド一覧 <small>${on.flist.length}人</small></h3>
           <div class="ap-fcs">${on.flist.length ? on.flist.map(card).join('') : `<p class="ap-note">まだフレンドがいません。${net ? '左でフレンドIDを入れて申請しましょう。' : ''}</p>`}</div>
-          ${recent ? `<h3 class="ap-h3b">リンクで対戦した相手</h3><div class="ap-frs3">${recent}</div>` : ''}</div>
+          </div>
       </div>`;
     el.hidden = false; el._fit && el._fit();
     const close = () => { el.hidden = true; };
@@ -4088,10 +4087,6 @@
       try { const d = await unpackCode(p.code); close(); await startFriend(d, { uid: f.uid }); } catch (_) { modal('<h2>読みこめませんでした</h2>', [{ label: 'OK' }]); }
     });
     box.querySelectorAll('[data-fx]').forEach((b) => b.onclick = async () => { const f = on.flist[+b.dataset.fx]; if (await modal(`<h2>${esc(f.name)} の登録をやめますか？</h2>`, [{ label: 'やめる', value: true }, { label: 'キャンセル', primary: true, value: false }])) { on.flist.splice(+b.dataset.fx, 1); store(); } friendMenu(); });
-    q('[data-a="share"]').onclick = async () => { const s = await shareMyTeam(); if (s === 'copied') modal('<h2>コピーしました</h2><p>LINEなどに貼りつけて、友達に送ってください。</p>', [{ label: 'OK', primary: true }]); };
-    q('[data-a="go"]').onclick = async () => { try { const d = await unpackCode(q('#apCode').value); close(); await startFriend(d); } catch (_) { modal('<h2>リンクを読みこめませんでした</h2><p>友達から届いたリンクを、全部そのまま貼りつけてください。</p>', [{ label: 'OK', primary: true }]); } };
-    const rf = on.friends.filter((f) => f.code);
-    box.querySelectorAll('.ap-frc').forEach((b) => b.onclick = async () => { const f = rf[+b.dataset.fk]; try { const d = await unpackCode(f.code); close(); await startFriend(d); } catch (_) { modal('<h2>読みこめませんでした</h2>', [{ label: 'OK' }]); } });
   }
   async function airport() {
     const on = ensureOnline(), i = rankIdx(on.rp), last = i === RANKS.length - 1, lo = RANK_AT[i], hi = last ? lo : RANK_AT[i + 1], into = on.rp - lo, span = hi - lo, pct = last ? 100 : Math.round(into / span * 100);
@@ -4108,7 +4103,7 @@
           <div class="ap-ladder">${ladder}</div></div>
       </div>
       <div class="ap-modes"><button class="ap-mode ap-gold" data-a="rank">${AP_SVG.trophy}<div><b>ランクマッチ</b><small>勝ち +${RP_WIN} ／ 引き分け ${RP_DRAW} ／ 負け −${RP_LOSE} RP</small></div></button>
-        <button class="ap-mode ap-blue" data-a="friend">${AP_SVG.hands}<div><b>フレンド</b><small>フレンド申請・友達のクラブと対戦</small></div></button></div>
+        <button class="ap-mode ap-blue" data-a="friend">${AP_SVG.hands}<div><b>フレンド</b><small>フレンドになった監督のクラブと対戦</small></div></button></div>
       <p class="ap-foot">${window.DotNet && DotNet.on ? 'ランクマッチは、同じくらいのランクの監督のクラブと当たります' : '※ いまのランクマッチの相手はCPUのクラブです'}　・　対戦では疲れ・ケガ・週は進みません</p>`;
     el.hidden = false; el._fit && el._fit();
     const close = () => { el.hidden = true; };
@@ -4124,7 +4119,7 @@
   async function checkVsLink() {
     const m = location.hash.match(/vs=([A-Za-z0-9_\-]+)/); if (!m || !save) return;
     history.replaceState(null, '', location.pathname + location.search);
-    try { const d = await unpackCode(m[1]); await startFriend(d); } catch (_) { modal('<h2>対戦のリンクを読みこめませんでした</h2>', [{ label: 'OK', primary: true }]); }
+    modal('<h2>フレンド対戦は、フレンドどうしだけです</h2><p>空港かクラブ事務所の「フレンド」で、相手のフレンドIDに申請してください。相手が承認するとフレンドになり、対戦できます。</p>', [{ label: 'OK', primary: true }]);   // 版621：リンクだけでは対戦しない
   }
   window.__career = { airport, openPost, syncPost, onlineDone, setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
 })();
