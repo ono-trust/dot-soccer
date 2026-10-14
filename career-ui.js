@@ -395,7 +395,7 @@
   const H2 = { bg: null, st: [], ok: false };
   { const L = (src) => { const im = new Image(); im.decoding = 'async'; im.src = src; return im; };
     H2.bg = L('img/home/bg.jpg'); H2.st = [0, 1, 2, 3, 4].map((k) => L(`img/home/st${k}.webp`)); }
-  const H2_FIT = [[0.8569, 0.0324, 0, 0.8652, 124.03, 217.19], [0.7695, 0.0981, 0, 0.9718, 150.03, 154.14], [0.8165, 0.0729, 0, 0.7851, 136.77, 178.27], [0.7995, 0.073, 0, 0.8802, 140.48, 179.57], [0.7943, 0.0776, 0, 0.9566, 150.86, 181.88]];
+  const H2_FIT = [[0.8391, 0.021, 0.2158, 0.7535, 75.69, 233.19], [0.799, 0.0702, 0.1579, 0.9254, 100.43, 167.3], [0.8223, 0.0628, 0.0952, 0.7943, 104.45, 161.95], [0.8107, 0.0185, 0.0893, 0.8224, 110.59, 187.53], [0.8143, 0.026, -0.0181, 0.7905, 141.5, 191.58]];   // 版592：土台の左・下・右の角を、空き地の角に合わせる
   const H2_ST = [{ w: 560, cx: 0.51, cy: 0.5 }, { w: 575, cx: 0.5, cy: 0.5 }, { w: 590, cx: 0.5, cy: 0.52 }, { w: 610, cx: 0.5, cy: 0.52 }, { w: 620, cx: 0.5, cy: 0.52 }];
   const H2_LBL = [
     { go: 'club', ico: '🏃', t: 'クラブハウス', s: '選手データ・特訓', x: 605, y: 118, area: [540, 168, 440, 135] },
@@ -420,7 +420,7 @@
   function drawHome2(t) {
     const c = hx; c.clearRect(0, 0, 1280, 720); c.drawImage(H2.bg, 0, 0, 1280, 720);
     const k = h2Tier(), im = H2.st[k], S = H2_ST[k];
-    if (im.complete && im.naturalWidth) { const M = H2_FIT[k]; c.save(); c.transform(M[0], M[1], 0, M[3], M[4], M[5]); c.drawImage(im, 0, 0, 760, 760 * im.naturalHeight / im.naturalWidth); c.restore(); }   // 版591：空き地の形に合わせる（たて線はまっすぐのまま、横と縦の大きさを合わせる）
+    if (im.complete && im.naturalWidth) { const M = H2_FIT[k]; c.save(); c.transform(M[0], M[1], M[2], M[3], M[4], M[5]); c.drawImage(im, 0, 0, 760, 760 * im.naturalHeight / im.naturalWidth); c.restore(); }   // 版591：空き地の形に合わせる（たて線はまっすぐのまま、横と縦の大きさを合わせる）
     const hs = [];
     for (const L of H2_LBL) { hs.push({ go: L.go, area: true, r: { x: L.area[0], y: L.area[1], w: L.area[2], h: L.area[3] } }); }
     for (const L of H2_LBL) hs.push({ go: L.go, r: h2Label(c, L) });
