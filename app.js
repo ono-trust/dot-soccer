@@ -953,10 +953,10 @@
   function pitch() {
     ctx.fillStyle = venue <= 1 ? '#3f6d2c' : '#6b6862'; ctx.fillRect(0, 0, CW, CH);
     // 芝（ピッチの外側も芝）。会場の格で、芝の質が変わる
-    const GR = [['#5aa22a', '#60a82e'], ['#4c9f26', '#55a72c'], ['#43a020', '#4cab24'], ['#3f9b1b', '#4aaa22'], ['#3c9a18', '#4bae22']][venue] || ['#3f9b1b', '#4aaa22'];
+    const GR = [['#5aa22a', '#5aa22a'], ['#4c9f26', '#55a72c'], ['#43a020', '#4cab24'], ['#3f9b1b', '#4aaa22'], ['#3c9a18', '#4bae22']][venue] || ['#3f9b1b', '#4aaa22'];
     quad(proj(-9, -5), proj(114, -5), proj(114, 90), proj(-9, 90), GR[0]);
     const cs = 105 / 12;
-    for (let i = -1; i < 13; i++) for (let j = -1; j < 10; j++) {
+    if (venue >= 1) for (let i = -1; i < 13; i++) for (let j = -1; j < 10; j++) {   // 版608：地域2部はしま模様なし
       if (venue <= 2 ? i % 2 === 0 : (i + j) % 2 === 0) continue;   // 地域1部・D3はしま模様、D2・D1は市松模様の刈り込み
       const x0 = i * cs, y0 = j * (68 / 8), x1 = x0 + cs, y1 = y0 + 68 / 8;
       const a = proj(x0, y0); if (a.f < 3 && proj(x1, y1).f < 3) continue;
