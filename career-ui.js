@@ -34,6 +34,7 @@
     ['btn_players', 'btn_status', 'btn_change', 'off_kit', 'off_emblem', 'off_name', 'off_retire', 'off_setting', 'off_biz', 'off_team', 'ui_back', 'ui_change', 'ui_next', 'pc_number', 'pc_pos', 'pc_name', 'coin', 'dash', 'defense', 'dribble', 'jump', 'kick', 'mental', 'pass', 'physical', 'speed', 'stamina', 'technique', 'top_mark', 'vision'].forEach((k) => pre(`icons/${k}.png`));
     ['d1', 'd2', 'd3', 'reg1', 'reg2', 'regE1', 'regE2', 'regW1', 'regW2'].forEach((k) => pre(`icons/lg/${k}.png`));
     ['coach', 'secretary'].forEach((k) => pre(`staff/${k}.png`));
+    ['reg2', 'reg1', 'd3', 'd2', 'd1'].forEach((k) => pre(`img/trophy/${k}.png`));
     // 自分のチームの顔は、顔の元絵が読めたら少しずつ作っておく
     const t0 = Date.now();
     const mk = () => {
@@ -390,7 +391,42 @@
     }
   }
   let townSeason = null;
+  // ================= 版589：新しいホーム（監督の絵）：街の背景＋リーグで育つスタジアム＋建物の名前の札 =================
+  const H2 = { bg: null, st: [], ok: false };
+  { const L = (src) => { const im = new Image(); im.decoding = 'async'; im.src = src; return im; };
+    H2.bg = L('img/home/bg.jpg'); H2.st = [0, 1, 2, 3, 4].map((k) => L(`img/home/st${k}.webp`)); }
+  const H2_ST = [{ w: 560, cx: 0.51, cy: 0.5 }, { w: 575, cx: 0.5, cy: 0.5 }, { w: 590, cx: 0.5, cy: 0.52 }, { w: 610, cx: 0.5, cy: 0.52 }, { w: 620, cx: 0.5, cy: 0.52 }];
+  const H2_LBL = [
+    { go: 'club', ico: '🏃', t: 'クラブハウス', s: '選手データ・特訓', x: 605, y: 118, area: [540, 168, 440, 135] },
+    { go: 'online', ico: '✈️', t: '空港', s: 'オンライン対戦', x: 1072, y: 106, area: [962, 78, 225, 150] },
+    { go: 'assoc', ico: '📅', t: 'サッカー協会', s: '日程・順位', x: 1062, y: 240, area: [1000, 282, 212, 160] },
+    { go: 'shop', ico: '🛒', t: 'ショップ', s: 'カード・コイン', x: 718, y: 450, area: [700, 486, 218, 146] },
+    { go: 'lineup', ico: '👥', t: 'クラブ事務所', s: 'チーム編成', x: 1046, y: 446, area: [980, 468, 190, 168] },
+    { go: 'stadium', ico: '⚽', t: 'スタジアム', s: '試合会場', x: 240, y: 408, area: [140, 280, 620, 300] },
+  ];
+  const h2Ready = () => H2.bg.complete && H2.bg.naturalWidth > 0;
+  function h2Tier() { try { return Math.max(0, Math.min(4, (C.LG[save.league.id] || {}).tier ?? 0)); } catch (_) { return 0; } }
+  function h2Label(c, L) {
+    c.save(); c.font = '900 21px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; const tw = c.measureText(L.t).width; c.font = '800 13px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; const sw = c.measureText(L.s).width;
+    const w = 52 + Math.max(tw, sw) + 16, h = 50, x = L.x, y = L.y;
+    c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.roundRect(x + 2, y + 4, w, h, 10); c.fill();
+    c.fillStyle = 'rgba(12,30,72,.94)'; c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 2; c.beginPath(); c.roundRect(x, y, w, h, 10); c.fill(); c.stroke();
+    c.font = '26px sans-serif'; c.textBaseline = 'middle'; c.textAlign = 'center'; c.fillText(L.ico, x + 26, y + h / 2 + 1);
+    c.textAlign = 'left'; c.fillStyle = '#fff'; c.font = '900 21px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; c.fillText(L.t, x + 50, y + 17);
+    c.font = '800 13px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; c.fillStyle = '#d7e6ff'; c.fillText(L.s, x + 50, y + 37);
+    c.restore(); return { x, y, w, h };
+  }
+  function drawHome2(t) {
+    const c = hx; c.clearRect(0, 0, 1280, 720); c.drawImage(H2.bg, 0, 0, 1280, 720);
+    const k = h2Tier(), im = H2.st[k], S = H2_ST[k];
+    if (im.complete && im.naturalWidth) { const w = S.w, h = w * im.naturalHeight / im.naturalWidth; c.drawImage(im, 448 - w * S.cx, 428 - h * S.cy, w, h); }
+    const hs = [];
+    for (const L of H2_LBL) { hs.push({ go: L.go, area: true, r: { x: L.area[0], y: L.area[1], w: L.area[2], h: L.area[3] } }); }
+    for (const L of H2_LBL) hs.push({ go: L.go, r: h2Label(c, L) });
+    hot = hs;
+  }
   function drawHome(t) {
+    if (h2Ready()) { if (!document.getElementById('cv-home').classList.contains('home2')) { document.getElementById('cv-home').classList.add('home2'); try { renderHome(); } catch (_) {} } drawHome2(t); return; }
     { const sn = save ? seasonOfMonth(cal(save.week || 1).m) : 'spring'; if (sn !== seasonNow) { seasonNow = sn; townCv = null; } }
     if (!townCv || townSeason !== seasonNow) { buildTown(); townSeason = seasonNow; }
     const c = hx; t = (t || 0) / 1000;
@@ -425,13 +461,14 @@
     for (const h of areas) if (x >= h.r.x && x <= h.r.x + h.r.w && y >= h.r.y && y <= h.r.y + h.r.h) return h;
     return null;
   }
-  hc.addEventListener('click', (e) => { const h = hitAt(e); if (!h) return; if (h.go === 'stadium') stadium(); else if (h.go === 'shop') shop(); else if (h.go === 'lineup') openOffice(); else go(h.go); });
+  hc.addEventListener('click', (e) => { const h = hitAt(e); if (!h) return; if (h.go === 'online') { coachAsk('空港（オンライン対戦）は、ただいま準備中です。<br>もうしばらくお待ちください！', [{ label: 'OK', value: true }], 'sec'); return; } if (h.go === 'stadium') stadium(); else if (h.go === 'shop') shop(); else if (h.go === 'lineup') openOffice(); else go(h.go); });
   hc.addEventListener('mousemove', (e) => { hc.style.cursor = hitAt(e) ? 'pointer' : 'default'; });
   const TIPS = ['選手は試合に出るほど「判断」が伸びます。', 'スペシャル（スキル）の特訓は、関係する能力が高いほど成功しやすい。', '同じスキルを持つ先輩がいると、スキルを覚えやすくなります。', '疲れたまま特訓すると伸びが落ち、ケガをすることも。休養も大事。', 'スキル枠は、能力が上がると増えていきます。', '特訓で動きのくせ（裏パラ）が変わり、選手タイプが変わることがあります。'];
   function renderHome() {
     ensure();
     const k = cal(save.week);
     $('#hmMonth').innerHTML = dotNum(k.m); $('#hmWeek').innerHTML = dotNum(k.w);
+    if (document.getElementById('cv-home').classList.contains('home2')) { renderHome2(k); return; }
     const fx = C.nextFixture(save), st = C.standings(save), rank = (t) => st.findIndex((s) => s.name === t.name) + 1;
     const cs = C.campState(save);
     if (cs) { $('#hmNextMatch').innerHTML = `<div class="nm-card"><p class="hd">${k.m}月${k.w}週　<b class="lg camp">⛺ ${esc(cs.name)}</b>　${cs.week}/${cs.weeks}週目</p><p class="vs">${cs.name === '夏合宿' ? 'リーグ中断期間' : 'オフシーズン'}<br><small>${cs.name === '夏合宿' ? '後半戦まで' : '新シーズン開幕まで'} あと${cs.weeks - cs.week + 1}週</small></p></div><p class="cnt">特訓は<b>週${cs.trains}回</b>・効果<b>${cs.mult}倍</b>　終わったら ▶ で次の週へ</p><p class="coin">${COIN}${(save.coins || 0).toLocaleString()} コイン</p>`; $('#hmTicker').textContent = TIPS.join('　　　'); return; }
@@ -450,6 +487,34 @@
     $('#hmTicker').textContent = TIPS.join('　　　');
   }
 
+  // 版589：新しいホームの上の帯と「次の試合」
+  function renderHome2(k) {
+    const home = document.getElementById('cv-home');
+    let bar = home.querySelector('.h2-bar');
+    if (!bar) {
+      bar = document.createElement('div'); bar.className = 'h2-bar';
+      bar.innerHTML = '<img class="h2-emb" alt=""><b class="h2-team"></b><i class="h2-sep"></i><span class="h2-date"><b class="m"></b><small>月</small><b class="w"></b><small>週</small></span><span class="h2-next-slot"></span><span class="h2-coin" data-go="coin">' + COIN + '<b></b><img class="h2-plus" src="icons/ui_plus.png" alt="コインを買う"></span>';
+      home.appendChild(bar);
+      bar.querySelector('.h2-next-slot').appendChild($('#hmNext'));
+      bar.querySelector('.h2-coin').onclick = () => coinShop(() => renderHome());
+    }
+    $('#hmNext').innerHTML = '<i class="h2-arr">➜</i><b>週を進める</b>';
+    bar.querySelector('.h2-emb').src = emblemURL(save.team.name, 64);
+    bar.querySelector('.h2-team').textContent = save.team.name;
+    bar.querySelector('.m').textContent = k.m; bar.querySelector('.w').textContent = k.w;
+    bar.querySelector('.h2-coin b').textContent = (save.coins || 0).toLocaleString();
+    const fx = C.nextFixture(save), st = C.standings(save), rank = (t) => st.findIndex((s) => s.name === t.name) + 1, cs = C.campState(save);
+    let body;
+    if (fx) {
+      const fk = cal(fx.week), me = fx.kind === 'league' ? `${esc(save.team.name)}（${rank(save.league.teams.find((t) => t.me))}位）` : esc(save.team.name);
+      const op = fx.kind === 'league' ? `${esc(fx.opp.name)}（${rank(fx.opp)}位）` : `${esc(fx.opp.name)}`;
+      const top = fx.home ? `<em>${me}</em>` : op, bot = fx.home ? op : `<em>${me}</em>`;
+      body = `<p class="h2-h">次の試合</p><p class="h2-sub">${fk.m}月${fk.w}週｜${esc(fx.label || '')}<i class="h2-lg${fx.kind !== 'league' ? ' cup' : ''}">${esc(fx.comp)}</i></p><p class="h2-vs">${top}<span>VS</span>${bot}</p><p class="h2-left">${fx.weeksLeft <= 0 ? '今週は試合の日！' : `あと${fx.weeksLeft}週`}</p>`;
+    } else if (cs) body = `<p class="h2-h">${esc(cs.name)}</p><p class="h2-sub">${cs.week}/${cs.weeks}週目</p><p class="h2-vs">特訓は週${cs.trains}回・効果${cs.mult}倍</p>`;
+    else { const left = C.SEASON_WEEKS - save.week + 1; body = `<p class="h2-h">オフシーズン</p><p class="h2-sub">${esc(save.league.name)}</p><p class="h2-left">新シーズンまであと${left}週</p>`; }
+    let card = home.querySelector('.h2-card'); if (!card) { card = document.createElement('div'); card.className = 'h2-card'; home.appendChild(card); card.onclick = () => go('assoc'); }
+    card.innerHTML = body;
+  }
   // ================= クラブハウス：練習グラウンド（カルチョビットAのように、ななめのグラウンドで色んな練習） =================
   const cc = $('#clubCv'), cx = cc.getContext('2d');
   const runners = [];
