@@ -1943,7 +1943,7 @@
     ctx.textAlign = 'left';
     ctx.font = `700 15px ${F}`; ctx.fillStyle = '#ffe680';
     ctx.fillText((team ? match.awayShort : match.homeShort), x + 118, y + 28);
-    ctx.fillStyle = team ? '#d8392f' : '#2a62c9'; rrect(x + 118, y + 38, 30, 24, 4); ctx.fill();
+    ctx.fillStyle = ({ GK: '#8e5bd6', DF: '#d83a3a', MF: '#f08a1c', FW: '#2f7fe0' })[info.position] || '#2a62c9'; /* 版663：ポジションの色（チームの色ではなく） */ rrect(x + 118, y + 38, 30, 24, 4); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.font = `900 16px ${F}`; ctx.textAlign = 'center'; ctx.fillText(info.position, x + 133, y + 56);
     ctx.textAlign = 'left'; ctx.font = `900 22px ${F}`; ctx.fillText(`${info.number}  ${info.name}`, x + 156, y + 59);
     ctx.font = `700 15px ${F}`; ctx.fillStyle = '#e8ece9';

@@ -2424,17 +2424,17 @@
           x = DX + off * (1 - m) + e * 0.9 - side * 0.44 * 34 * m; y = DB - 12 + L1 * 0.6 + e * 0.44 + side * 0.9 * 34 * m; view = e < 24 ? 'front' : 'f34'; }
         list.push({ p, team, k, x, y, inside: sd < L1 * 0.5, view });
       }));
-      c.save(); c.beginPath(); c.rect(DX - (dr - dl) / 2 + 4, DT, dr - dl - 8, doorH); c.rect(-50, DB - 4, 1400, 900); c.clip();
+      // 版663：入場口の中にいる選手だけ入場口の形で切る（外に出た選手の頭が切れないように）
       list.sort((a2, b2) => a2.y - b2.y).forEach(({ p, team, k, x, y, inside, view }) => {
+        c.save(); if (inside) { c.beginPath(); c.rect(DX - (dr - dl) / 2 + 4, DT, dr - dl - 8, doorH); c.rect(-50, DB - 4, 1400, 900); c.clip(); }
         const sc = (doorH * 0.78) / S.H * (1 + Math.max(0, y - DB) / 260);
         const img = A().spriteCanvas(p, team, view, Math.floor(t * 10 + k) % 4, true, k === 0);
         c.imageSmoothingEnabled = false;
         if (!inside) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(x, y, 7 * sc, 2 * sc, 0, 0, 7); c.fill(); }
         if (inside) c.filter = 'brightness(0.55)';
         c.drawImage(img, x - S.W * sc / 2, y - (S.H - 2) * sc, S.W * sc, S.H * sc);
-        c.filter = 'none';
+        c.filter = 'none'; c.restore();
       });
-      c.restore();
     }
   }
   // サポーター席：エンブレムの白い旗がたくさん振られ、チーム名のコール
