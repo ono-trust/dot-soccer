@@ -11,7 +11,7 @@
   const DT = 0.1;                        // 1ステップの秒数
   // ---------- スキル・動きを使うエリア（「スキルのエリア設定」ページで決めた表）----------
   // 15文字＝縦5（自陣ゴール前・自陣・中盤・敵陣・敵ゴール前）×横3（左サイド・中央・右サイド。攻める向きで見る）。0＝使わない 1＝普通 2＝積極的
-  const ZONE_RULES = {"break":"000101111222222","carry":"111111111111111","pace":"000111111222111","speedDribble":"000000212222111","scissors":"000000111222111","bodyFeint":"000000111222222","doubleTouch":"000000111222111","roulette":"000000111222111","elastico":"000000111222111","nutmeg":"000000111222222","cutIn":"000000101202212","heelLift":"000000101202101","kickFeint":"000000000121222","driveShot":"000000000020020","powerMid":"000000000121111","superLong":"000000010121111","controlShot":"000000000111222","nearPost":"000000000111222","toeKick":"000000000111222","lob":"000000000111222","volley":"000000000111222","direct":"000000000111222","divingHeader":"000000000000222","bicycle":"000000000000222","throughPass":"000111222222111","loftedThrough":"000111222222111","longFeed":"111222111000000","switchPlay":"000111222111000","earlyCross":"000000000202101","pinpointCross":"000000000101202","oneTouchPass":"000111111222222","noLook":"000111111222222","heelPass":"000000111222222","wallPass":"000000111222222","slide":"000222111111111","intercept":"111111222111111","manMark":"222222111111111","cover":"222222111000000","shoulder":"111111111111111","aerial":"222111111111222","shotBlock":"222111000000000","pressMonster":"111111222222222","recovery":"222222111111111","behindRun":"000000111222222","postPlay":"000000111121111","nearRun":"000000000000222","farWait":"000000000000222","overlap":"000101202202101","looseBall":"111111111111222","oneTwo":"000000111222222"};
+  const ZONE_RULES = {"break":"000101111222222","carry":"111111111111111","pace":"000111111222111","speedDribble":"000000212222111","scissors":"000000111222111","bodyFeint":"000000111222222","doubleTouch":"000000111222111","roulette":"000000111222111","elastico":"000000111222111","nutmeg":"000000111222222","cutIn":"000000101202212","heelLift":"000000000202101","kickFeint":"000000000121222","driveShot":"000000000020020","powerMid":"000000000121111","superLong":"000000010121111","controlShot":"000000000111222","nearPost":"000000000111222","toeKick":"000000000111222","lob":"000000000111222","volley":"000000000111222","direct":"000000000111222","divingHeader":"000000000000222","bicycle":"000000000000222","throughPass":"000111222222111","loftedThrough":"000111222222111","longFeed":"111222111000000","switchPlay":"000111222111000","earlyCross":"000000000202101","pinpointCross":"000000000101202","oneTouchPass":"000111111222222","noLook":"000111111222222","heelPass":"000000111222222","wallPass":"000000111222222","slide":"000222111111111","intercept":"111111222111111","manMark":"222222111111111","cover":"222222111000000","shoulder":"111111111111111","aerial":"222111111111222","shotBlock":"222111000000000","pressMonster":"111111222222222","recovery":"222222111111111","behindRun":"000000111222222","postPlay":"000000111121111","nearRun":"000000000000222","farWait":"000000000000222","overlap":"000101202202101","looseBall":"111111111111222","oneTwo":"000000111222222"};
   const STAM_K = 3.5;   // スタミナの減り（本家に合わせて、終盤はしっかり疲れる）
   const HALF_REST = 10;
   const KICKOUT_WAIT = 12;               // 交代を待つ時間（実時間の秒。12秒＝試合時間で約2分半）がこれを超えたら、外へ蹴り出す
@@ -4515,6 +4515,14 @@
     }
     // ---------- ドリブル技 ----------
     // いま出せる技（場面と覚えている技から）
+    // 版668：ヒールリフトは、サイドの前の方（相手陣の深い所）で、目の前の相手が1人だけ・その後ろにスペースがある時にしか使わない
+    function hlSpace(own, q) {
+      if (!q || Math.abs(own.y - GOAL_Y) < 15 || fx(own.team, own.x) < 58) return false;
+      const ux = q.x - own.x, uy = q.y - own.y, ul = hyp(ux, uy) || 1, lx = q.x + (ux / ul) * 4.2, ly = q.y + (uy / ul) * 4.2;
+      if (lx < 1.5 || lx > L - 1.5 || ly < 1.5 || ly > W - 1.5) return false;   // 落ちる所がピッチの外
+      for (const o of opps(own)) { if (o === q || o.off) continue; if (hyp(o.x - lx, o.y - ly) < 5 || hyp(o.x - own.x, o.y - own.y) < 3.6) return false; }   // 後ろに別の相手がいる・2人に囲まれている
+      return true;
+    }
     function dribbleCtx(own, q) {
       const xf = fx(own.team, own.x);
       const near = opps(own).filter((o) => !o.gk && hyp(o.x - own.x, o.y - own.y) < 3.6).length;
@@ -4527,7 +4535,7 @@
       };
       const set = new Set();
       const dq = hyp(q.x - own.x, q.y - own.y);
-      for (const z in DRIB_ZONES) for (const k of DRIB_ZONES[z]) if (skZ(own, k) && k !== 'speedDribble' && !(k === 'cutIn' && dq < 2.4)) set.add(k);   // どこで使うかは「スキルのエリア設定」の表で決める（場面は重みだけ）   // カットインは相手に近すぎると仕掛けない（少し離れた所から）
+      for (const z in DRIB_ZONES) for (const k of DRIB_ZONES[z]) if (skZ(own, k) && k !== 'speedDribble' && !(k === 'cutIn' && dq < 2.4) && !(k === 'heelLift' && !hlSpace(own, q))) set.add(k);   // どこで使うかは「スキルのエリア設定」の表で決める（場面は重みだけ）   // カットインは相手に近すぎると仕掛けない（少し離れた所から）
       return { ctx, list: [...set] };
     }
     // ボディフェイント・シザース：逆へ行くと見せて（踏み出す／ボールをまたぐ）体重を乗せる → 反対の足でボールを転がし、踏み出した足の反発でグン！と逆へ
@@ -4573,7 +4581,7 @@
       const wts = list.map((k) => zw(own, k) * (k === 'cutIn' && ctx.side ? 4 : 1) * (ctx.narrow && DRIB_ZONES.narrow.includes(k) ? 3 : 1) * (ctx.side && DRIB_ZONES.side.includes(k) ? 2 : 1) * (ctx.goal && DRIB_ZONES.goal.includes(k) ? 3 : 1));
       let r = R.next() * wts.reduce((a, c) => a + c, 0), k = list[0];
       for (let i = 0; i < list.length; i++) { r -= wts[i]; if (r <= 0) { k = list[i]; break; } }
-      if (globalThis.__forceSkill) k = globalThis.__forceSkill;   // 確認用
+      if (globalThis.__forceSkill) { k = globalThis.__forceSkill; if (k === 'heelLift' && !hlSpace(own, q)) return false; }   // 確認用（ヒールリフトは、使える場面でだけ）
       own.skillCd = S.t + (uOn(own, 'shiden') ? 0.2 : 2.2);   // 紫電の遊戯：フェイントを連続で（抜いたらすぐ次の相手へ）   // 紫電の遊戯：フェイントを続けて何回でも
       const fit = (ctx.narrow && DRIB_ZONES.narrow.includes(k)) || (ctx.side && DRIB_ZONES.side.includes(k)) || (ctx.goal && DRIB_ZONES.goal.includes(k));
       // 成功率：股抜きは（ドリブル＋テクニック）の平均と、相手の守備力の差でほぼ決まる

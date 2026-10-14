@@ -67,7 +67,7 @@
     <div class="row" id="ucJ"></div>
    </div>
    <div id="tabD" hidden>
-    <div class="desc">ドリブル技を<b>1つ選んで</b>、試合で見ます。その試合では、ドリブル技を使う場面で<b>いつもその技</b>を使います（ふだんの試合では、持っている選手が向いている場面でだけ使います）。固有スキルはなし。</div>
+    <div class="desc">ドリブル技を<b>1つ選んで</b>、試合で見ます。その試合では、ドリブル技を使う場面で<b>いつもその技</b>を使います（ふだんの試合では、持っている選手が向いている場面でだけ使います）。ヒールリフトは、この確認でも<b>サイドの前の方で、目の前の相手の後ろにスペースがある時</b>だけ使います。固有スキルはなし。</div>
     <div class="row">技 <select id="udK"></select></div>
     <div class="row">相手 <select id="udO">${OPPS.map((id) => `<option value="${id}">${tname(id)}</option>`).join('')}</select>
       速さ <button id="udS1" class="on" data-sp="1">ふつう</button><button data-sp="0.5">1/2</button><button data-sp="0.25">1/4</button></div>
@@ -360,11 +360,11 @@
   const plain = (id) => { const t = C.cpuTeam(id); for (const p of t.players) delete p.uniq; return t; };
   $('#udW').onclick = () => {
     const sk = $('#udK').value, oid = $('#udO').value, aid = OPPS.find((x) => x !== oid) || OPPS[0], nm = D.SKILLS[sk].name;
-    msg(nm + 'が出る試合を作っています…');
+    msg(nm + 'が出る試合を探しています…' + (sk === 'heelLift' ? '（ヒールリフトは使える場面が少ないので、30秒ほどかかります）' : ''));
     setTimeout(() => {
       let seed = 0, bestN = -1; const s0 = 700 + Math.floor(Math.random() * 9000);
       globalThis.__forceSkill = sk;
-      try { for (let k = 0; k < 6 && bestN < 5; k++) { const m = D.simulateMatch(plain(aid), plain(oid), s0 + k * 31, { frames: false, acts: true }); const n = (m.actions || []).filter((x) => x.a === 'skill' && x.k === sk).length; if (n > bestN) { bestN = n; seed = s0 + k * 31; } } } finally { globalThis.__forceSkill = null; }   // 技がたくさん出る試合を選ぶ
+      try { for (let k = 0; k < (sk === 'heelLift' ? 12 : 6) && bestN < (sk === 'heelLift' ? 3 : 5); k++) { const m = D.simulateMatch(plain(aid), plain(oid), s0 + k * 31, { frames: false, acts: true }); const n = (m.actions || []).filter((x) => x.a === 'skill' && x.k === sk).length; if (n > bestN) { bestN = n; seed = s0 + k * 31; } } } finally { globalThis.__forceSkill = null; }   // 技がたくさん出る試合を選ぶ
       const a = plain(aid), b = plain(oid);
       document.querySelectorAll('.lk-wrap').forEach((el) => { el.hidden = true; });
       globalThis.__forceSkill = sk;
