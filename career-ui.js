@@ -4027,15 +4027,16 @@
     const me = role, other = role === 'host' ? 'guest' : 'host';
     const leave = async (msg) => { if (unsub) unsub(); unsub = null; clearInterval(cdT); el.hidden = true; if (!started) { try { await DotNet.roomUpdate(id, { state: 'closed' }); } catch (_) {} } if (msg) await modal(msg, [{ label: 'OK', primary: true }]); friendMenu(); };
     const side = (who) => { const nm = r[who + 'Name'] || '', mg = r[who + 'Mgr'] || '', inn = r[who + 'In'], rd = r[who + 'Ready'];
-      return `<div class="rm-side${inn ? '' : ' wait'}${rd ? ' ready' : ''}"><small>${who === 'host' ? 'ホーム' : 'アウェー'}</small><img src="${embFromLook(r[who + 'Emb'], 128)}" alt=""><b>${esc(nm)}</b><span>${mg ? esc(mg) + '監督' : ''}</span><em>${!inn ? '入室待ち…' : rd ? '準備OK！' : '準備中'}</em></div>`; };
+      return `<div class="rm-side ${who}${inn ? '' : ' wait'}${rd ? ' ready' : ''}"><small>${who === 'host' ? 'ホーム' : 'アウェー'}</small><div class="rm-sb"><img src="${embFromLook(r[who + 'Emb'], 128)}" alt=""><b>${esc(nm)}</b><span>${mg ? esc(mg) + '監督' : ''}</span><em>${!inn ? '入室待ち…' : rd ? '準備OK！' : '準備中'}</em></div></div>`; };
     const draw = () => {
       if (!r) return;
       const bothIn = r.hostIn && r.guestIn, myReady = r[me + 'Ready'];
-      box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>フレンド対戦ルーム</b><small>ふたりとも「対戦する」を押すと、試合が始まります</small></div><button class="std-back" title="退出"><i class="bk-ico" aria-hidden="true"></i></button></div>
-        <div class="rm-vs">${side('host')}<div class="rm-x">VS</div>${side('guest')}</div>
-        <div class="rm-msg">${r.state === 'go' ? '<b class="rm-cd">まもなくキックオフ！</b>' : !bothIn ? `${me === 'host' ? '相手のポストに招待を送りました。相手がルームに入るのを待っています…' : ''}` : myReady ? `相手の準備を待っています…` : '準備ができたら「対戦する」を押してください'}</div>
-        <div class="rm-btns">${r.state === 'go' ? '' : `<button class="ap-big ${myReady ? 'rm-cancel' : 'ap-gold'}" data-a="ready" ${bothIn ? '' : 'disabled'}><b>${myReady ? '準備を取り消す' : '対戦する'}</b></button>`}</div>
-        <p class="ap-foot">ルーム対戦では、試合中の交代・作戦の変更はできません（2つの画面で同じ試合にするため）</p>`;
+      const msg = r.state === 'go' ? '<b class="rm-cd">まもなくキックオフ！</b>' : !bothIn ? (me === 'host' ? '<b>相手のポストに招待を送りました。</b><small>相手がルームに入るのを待っています…</small>' : '<b>ルームに入りました</b>') : myReady ? '<b>相手の準備を待っています…</b>' : '<b>準備ができたら「対戦する」を押してください</b>';
+      box.innerHTML = `${apBg()}<div class="ap2">${apTop('フレンド対戦ルーム', 'ふたりとも「対戦する」を押すと、試合が始まります')}
+        <div class="rm-vs">${side('host')}<div class="rm-x" style="background-image:url('${AP_VS_BG}')"><i class="ap-vs-t">VS</i></div>${side('guest')}</div>
+        <div class="rm-msg"><img class="rm-post" src="icons/post.png" alt=""><div>${msg}</div></div>
+        <div class="rm-btns">${r.state === 'go' ? '' : `<button class="rm-go ${myReady ? 'rm-cancel' : ''}" data-a="ready" ${bothIn ? '' : 'disabled'}><b>${myReady ? '準備を取り消す' : '対戦する'}</b></button>${bothIn ? '' : '<small class="rm-hint">相手の入室後に準備できます</small>'}`}</div>
+        <p class="ap-foot rm-foot">${AP_SVG.info}<span>ルーム対戦では、試合中の交代・作戦変更はできません。</span><i></i><span>ふたりの画面で同じ試合を再現します。</span></p></div>`;
       el.hidden = false; el._fit && el._fit();
       box.querySelector('.std-back').onclick = () => leave();
       const rb = box.querySelector('[data-a="ready"]'); if (rb) rb.onclick = async () => { rb.disabled = true; try { await DotNet.roomUpdate(id, { [me + 'Ready']: !myReady }); } catch (_) { rb.disabled = false; } };
@@ -4172,9 +4173,33 @@
     }
     if (!op) { op = rankOpponent(); who = 'CPUのクラブ'; }
     if (!op) return;
-    const ok = await modal(`<h2>ランクマッチ</h2><p>${rankBadge(ri)}　の相手が見つかりました！</p><div class="ap-vs"><img src="${emblemURL(op.name, 64)}" alt=""><b>${esc(op.name)}</b></div><p class="ap-sm">${who}</p><p class="hintp">勝つと +${RP_WIN}RP、引き分け ${RP_DRAW}RP、負けると −${RP_LOSE}RP。<br>RPが今の級の下限を割ると、ライセンスが1つ下がります。<br>選手の疲れ・ケガ・週は進みません。</p>`, [{ label: '対戦する', primary: true, value: true }, { label: 'やめる', value: false }]);
+    const ok = await rankConfirm(ri, op, live);   // 版634：専用の画面（ホーム／アウェーのカードとVS）
     if (!ok) return airport();
     runMatch('ランクマッチ', '', op, (score) => onlineDone('rank', op, score), { comp: 'ランクマッチ', label: R.n, home: true, online: 'rank' });
+  }
+  // 版634：ランクマッチの相手が見つかった画面
+  function rankConfirm(ri, op, live) {
+    const el = fullScreen('rkScreen', 'ap-wrap rk-wrap'), box = el.querySelector('.lk-box');
+    const ori = live ? Math.max(0, Math.min(4, live.rank || 0)) : -1;
+    const chip = (k) => (k < 0 ? '<span class="rk-lc cpu"><i>CPU</i>CPUのクラブ</span>' : `<span class="rk-lc" style="--rc:${RANKS[k].c}"><i>${RANKS[k].k}</i>${RANKS[k].n}ライセンス</span>`);
+    const card = (side, emb, nm, mg, k) => `<div class="rk-card ${side}"><small>${side === 'home' ? 'ホーム' : 'アウェー'}</small><div class="rk-cb"><img src="${emb}" alt=""><b>${esc(nm)}</b>${mg ? `<span>${esc(mg)}監督</span>` : ''}${chip(k)}</div></div>`;
+    box.innerHTML = `${apBg()}<div class="ap2 rkm"><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button>
+      <div class="rk-box"><div class="rk-ttl">${AP_SVG.gtrophy}<b>ランクマッチ</b></div>
+        <div class="rk-stage" style="background-image:url('${AP_VS_BG}')">
+          <div class="rk-found"><span class="rk-lc" style="--rc:${RANKS[ri].c}">${RANKS[ri].n}ライセンス</span>の相手が見つかりました！</div>
+          <div class="rk-vs">${card('home', emblemURL(save.team.name, 128), save.team.name, save.manager || '', ri)}<i class="ap-vs-t">VS</i>${card('away', emblemURL(op.name, 128), op.name, live && live.mgr, ori)}</div>
+        </div>
+        <div class="rk-rps"><span class="w"><b>勝利</b><em>+${RP_WIN}<small>RP</small></em></span><span class="d"><b>引き分け</b><em>${RP_DRAW}<small>RP</small></em></span><span class="l"><b>敗北</b><em>−${RP_LOSE}<small>RP</small></em></span></div>
+        <p class="rk-note">RPが今の級の下限を割ると、ライセンスが1つ下がります。<br>選手の疲れ・ケガ・週は進みません。</p>
+        <div class="rk-btns"><button class="rk-no">やめる</button><button class="rk-go">${AP_SVG.ball}対戦する</button></div>
+      </div></div>`;
+    el.hidden = false; el._fit && el._fit();
+    return new Promise((res) => {
+      const done = (v) => { el.hidden = true; res(v); };
+      box.querySelector('.rk-go').onclick = () => done(true);
+      box.querySelector('.rk-no').onclick = () => done(false);
+      box.querySelector('.std-back').onclick = () => done(false);
+    });
   }
   async function startFriend(d, o) {
     o = o || {};
@@ -4193,27 +4218,41 @@
     hands: '<svg viewBox="0 0 48 48"><path d="M4 20l9-8 7 3 4-2 4 2 7-3 9 8-6 6-3-2-9 9c-2 2-5 2-6 0l-8-8-3 2z" fill="#fff"/><path d="M20 22l6-3 6 5-5 5" fill="none" stroke="rgba(0,0,0,.3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     send: '<svg viewBox="0 0 24 24"><path d="M2 11l19-8-6 18-4-7z" fill="#fff"/><path d="M11 14l10-11" stroke="rgba(0,0,0,.3)" stroke-width="1.6"/></svg>',
     card: '<svg viewBox="0 0 24 24"><rect x="5" y="3" width="13" height="17" rx="2" fill="#4a8cff" stroke="#fff" stroke-width="1.6"/><rect x="8" y="6" width="7" height="7" rx="1" fill="#fff" opacity=".8"/></svg>',
-    gem: '<svg viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 13L2 9z" fill="#c76aff" stroke="#fff" stroke-width="1.4"/><path d="M2 9h20M8 3l4 19 4-19" stroke="#fff" stroke-width="1" opacity=".6" fill="none"/></svg>' };
+    gem: '<svg viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 13L2 9z" fill="#c76aff" stroke="#fff" stroke-width="1.4"/><path d="M2 9h20M8 3l4 19 4-19" stroke="#fff" stroke-width="1" opacity=".6" fill="none"/></svg>',
+    // 版634：空港の画面（参考画像の形）で使う絵
+    gtrophy: '<svg viewBox="0 0 64 64"><path d="M18 8h28v8h10c0 11-6 18-14 19-2 5-5 8-7 9v6h9v6H20v-6h9v-6c-2-1-5-4-7-9C14 34 8 27 8 16h10z" fill="#ffd23a" stroke="#8a5a00" stroke-width="2.5" stroke-linejoin="round"/><path d="M13 20c1 6 5 10 8 11-1-3-2-7-2-11zM51 20c-1 6-5 10-8 11 1-3 2-7 2-11z" fill="#b8860b"/><path d="M24 12c0 10 2 18 6 22" stroke="#fff6b0" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="18" y="54" width="28" height="6" rx="2" fill="#c8901a" stroke="#8a5a00" stroke-width="2"/></svg>',
+    muscle: '<svg viewBox="0 0 32 32"><path d="M6 24c-2-6 0-12 4-15l3-4 4 2-2 4 3 2c4-2 9 0 10 4 1 5-3 9-8 9H9c-1 0-2-1-3-2z" fill="#1d3f8f"/></svg>',
+    trophy2: '<svg viewBox="0 0 32 32"><path d="M9 4h14v3h5c0 6-3 9-7 10-1 2-3 4-4 4v4h4v3H11v-3h4v-4c-1 0-3-2-4-4C7 16 4 13 4 7h5z" fill="#1d3f8f"/></svg>',
+    shield: '<svg viewBox="0 0 32 32"><path d="M16 3l11 4v8c0 7-5 12-11 14C10 27 5 22 5 15V7z" fill="#1d3f8f"/><path d="M16 8l6 2v5c0 4-3 7-6 8z" fill="#fff" opacity=".35"/></svg>',
+    hand2: '<svg viewBox="0 0 32 32"><path d="M2 14l6-5 5 2 3-1 3 1 5-2 6 5-4 4-2-1-6 6c-1 1-3 1-4 0l-6-6-2 1z" fill="#1d3f8f"/></svg>',
+    mail: '<svg viewBox="0 0 48 36"><rect x="2" y="4" width="36" height="28" rx="3" fill="#fff6d8" stroke="#d89a1a" stroke-width="2.5"/><path d="M3 6l17 14L37 6" fill="none" stroke="#d89a1a" stroke-width="2.5"/><path d="M40 10h6M41 17h6M40 24h5" stroke="#ffd23a" stroke-width="3" stroke-linecap="round"/></svg>',
+    people: '<svg viewBox="0 0 48 36"><circle cx="16" cy="10" r="7" fill="#fff"/><path d="M3 34c0-8 6-14 13-14s13 6 13 14z" fill="#fff"/><circle cx="33" cy="11" r="6" fill="#cfe0ff"/><path d="M27 21c2-1 4-2 6-2 7 0 12 6 12 15H31c0-5-1-9-4-13z" fill="#cfe0ff"/></svg>',
+    copy: '<svg viewBox="0 0 24 24"><rect x="7" y="6" width="12" height="15" rx="2" fill="none" stroke="#fff" stroke-width="2.2"/><path d="M5 17V5a2 2 0 012-2h9" fill="none" stroke="#fff" stroke-width="2.2"/><path d="M10 11h6M10 15h6" stroke="#fff" stroke-width="2"/></svg>',
+    ball: '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#fff" stroke="#222" stroke-width="2"/><polygon points="16,10 21.5,14 19.5,20.5 12.5,20.5 10.5,14" fill="#222"/><path d="M16 2v8M29 13l-7.5 1M24 27l-4.5-6.5M8 27l4.5-6.5M3 13l7.5 1" stroke="#222" stroke-width="1.8"/></svg>',
+    info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#1d4fb8"/><rect x="10.6" y="10" width="2.8" height="8" rx="1" fill="#fff"/><circle cx="12" cy="6.6" r="1.7" fill="#fff"/></svg>',
+    qshield: '<svg viewBox="0 0 64 64"><path d="M32 4l24 8v18c0 15-11 26-24 30C19 56 8 45 8 30V12z" fill="#e8ecf4" stroke="#9aa6bc" stroke-width="3"/><text x="32" y="42" text-anchor="middle" font-size="28" font-weight="900" fill="#9aa6bc">?</text></svg>' };
+  const AP_VS_BG = 'img/venue/goal_4.jpg';
   // 空港の背景：ホームの絵の空港あたりを大きく写して、ぼかす
   function apBg() { let src = ''; try { const im = H2.cur(); src = im && im.src; } catch (_) {} return src ? `<div class="ap-bg" style="background-image:url('${src}')"></div>` : '<div class="ap-bg"></div>'; }
+  function apTop(t, sub, ic) { return `<div class="ap-top"><img src="${ic || 'icons/home_online.png'}" alt=""><div><b>${t}</b><small>${sub}</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>`; }
   function apMedal(i, size) { const R = RANKS[i]; return `<div class="ap-medal" style="--rc:${R.c};--sz:${size}px"><i>${R.k}</i><b>LICENSE</b></div>`; }
   async function friendMenu(back) {
     if (typeof back === 'function') friendMenu.back = back; else if (back !== 'keep') friendMenu.back = null;
     const on = ensureOnline(); on.flist = on.flist || [];
     const el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box'), net = !!(window.DotNet && DotNet.on);
-    const card = (f, k) => `<div class="ap-fc"><img src="${embFromLook(f.emb, 64)}" alt=""><div class="ap-fc-n"><b>${esc(f.name)}</b><small>${f.mgr ? esc(f.mgr) + '監督　' : ''}${f.rank != null ? rankBadge(f.rank) : ''}</small><small>${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><button class="ap-fc-go${(friendMenu.inv || []).some((r) => r.host === f.uid) ? ' inv' : ''}" data-fu="${k}">${(friendMenu.inv || []).some((r) => r.host === f.uid) ? 'ルームに入る' : 'ルームを作る'}</button><button class="ap-fc-x xbtn" data-fx="${k}" title="フレンドをやめる"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></button></div>`;
-    box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>フレンド</b><small>フレンド申請して、いつでも対戦！</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
+    const card = (f, k) => `<div class="ap-fc"><img src="${embFromLook(f.emb, 96)}" alt=""><div class="ap-fc-n"><b>${esc(f.name)}</b>${f.mgr ? `<small>${esc(f.mgr)}監督</small>` : ''}${f.rank != null ? rankBadge(f.rank) : ''}<small class="ap-fc-r">${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><button class="ap-fc-go${(friendMenu.inv || []).some((r) => r.host === f.uid) ? ' inv' : ''}" data-fu="${k}"><img src="icons/home_stadium.png" alt="">${(friendMenu.inv || []).some((r) => r.host === f.uid) ? 'ルームに入る' : 'ルームを作る'}</button><button class="ap-fc-x xbtn" data-fx="${k}" title="フレンドをやめる"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></button></div>`;
+    box.innerHTML = `${apBg()}<div class="ap2">${apTop('フレンド', 'フレンド申請して、いつでも対戦！')}
       <div class="ap-fgrid2">
-        <div class="ap-pnl ap-reg"><h3>フレンド申請</h3>
-          <div class="ap-myid"><small>あなたのフレンドID</small><b id="apMyId">${net ? (on.fid ? fmtFid(on.fid) : '取得中…') : '――――'}</b>${net ? '<button class="ap-copy" data-a="copyid">コピー</button>' : ''}</div>
-          ${net ? `<p class="ap-note">友達のフレンドIDを入れて「申請」。相手が承認するとフレンドになります。<b>フレンド対戦は、フレンドどうしだけ</b>できます。${(on.fsent || []).length ? `<br><b class="ap-wait">返事待ち ${on.fsent.length}件</b>` : ''}</p>
-          <div class="ap-idrow"><input id="apFid" inputmode="numeric" maxlength="9" placeholder="8けたのID"><button class="ap-big ap-gold ap-reg-go" data-a="add"><b>申請</b></button></div>`
+        <div class="ap-pnl ap-reg"><h3><span class="ap-hi">${AP_SVG.mail}</span>フレンド申請</h3><div class="ap-pb">
+          <div class="ap-myid"><div><small>あなたのフレンドID</small><b id="apMyId">${net ? (on.fid ? fmtFid(on.fid) : '取得中…') : '――――'}</b></div>${net ? `<button class="ap-copy" data-a="copyid">${AP_SVG.copy}コピー</button>` : ''}</div>
+          ${net ? `<p class="ap-note">友達のIDで申請し、承認されるとフレンドになります。<br>フレンド対戦は、フレンドどうしだけで遊べます。${(on.fsent || []).length ? `<br><b class="ap-wait">返事待ち ${on.fsent.length}件</b>` : ''}</p>
+          <div class="ap-idrow"><input id="apFid" inputmode="numeric" maxlength="9" placeholder="8けたのID"><button class="ap-reg-go" data-a="add">${AP_SVG.ball}<b>申請</b></button></div>`
           : '<p class="ap-note">フレンドの機能は、インターネットにつながっている時だけ使えます。</p>'}
-        </div>
-        <div class="ap-pnl ap-flist"><h3>フレンド一覧 <small>${on.flist.length}人</small></h3>
+        </div></div>
+        <div class="ap-pnl ap-flist"><h3><span class="ap-hi">${AP_SVG.people}</span>フレンド一覧 <em>${on.flist.length}人</em></h3><div class="ap-pb">
           <div class="ap-fcs">${on.flist.length ? on.flist.map(card).join('') : `<p class="ap-note">まだフレンドがいません。${net ? '左でフレンドIDを入れて申請しましょう。' : ''}</p>`}</div>
-          </div>
-      </div>`;
+          </div></div>
+      </div></div>`;
     el.hidden = false; el._fit && el._fit();
     const close = () => { el.hidden = true; };
     const q = (s) => box.querySelector(s);
@@ -4235,18 +4274,24 @@
     const el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box');
     const nx = last ? null : RANK_REWARD[i + 1], gotNx = !last && rankIdx(on.best || 0) >= i + 1;
     const ladder = RANKS.map((R, k) => `<div class="ap-lad${k === i ? ' on' : ''}${k < i ? ' done' : ''}" style="--rc:${R.c}"><i>${R.k}</i><small>${R.n}</small></div>`).join('<span class="ap-lad-ln"></span>');
-    box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>空港　対戦ロビー</b><small>勝ってライセンスを上げよう！ S級を目指せ</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
+    const net = !!(window.DotNet && DotNet.on), f0 = (on.flist || [])[0];
+    const statRow = (ic, l, v) => `<div><span class="ap-si">${AP_SVG[ic]}</span><small>${l}</small><b>${v}</b></div>`;
+    const wdl = (w, d, l) => `${w || 0}<i>勝</i> ${d || 0}<i>分</i> ${l || 0}<i>敗</i>`;
+    box.innerHTML = `${apBg()}<div class="ap2">${apTop('空港　対戦ロビー', '勝ってライセンスを上げよう！ S級を目指せ')}
+      <div class="ap-frame">
       <div class="ap-main">
-        <div class="ap-pnl ap-club"><h3>マイクラブ</h3><img class="ap-emb" src="${emblemURL(save.team.name, 128)}" alt=""><b class="ap-tn">${esc(save.team.name)}</b><small>${save.manager ? esc(save.manager) + '監督' : ''}</small>
-          <div class="ap-fidl">${window.DotNet && DotNet.on ? `フレンドID <b id="apFidL">${on.fid ? fmtFid(on.fid) : '…'}</b>` : 'オフライン'}</div><div class="ap-stats"><div><small>総合力</small><b>${Math.round(C.teamLevel(save))}</b></div><div><small>ランクマッチ</small><b>${on.w}<i>勝</i>${on.d}<i>分</i>${on.l}<i>敗</i></b></div><div><small>守備</small><b>${on.dw || 0}<i>勝</i>${on.dd || 0}<i>分</i>${on.dl || 0}<i>敗</i></b></div><div><small>フレンド</small><b>${on.fw}<i>勝</i>${on.fd}<i>分</i>${on.fl}<i>敗</i></b></div></div></div>
-        <div class="ap-pnl ap-rankp">${window.DotNet && DotNet.on ? '<button class="ap-rkbtn" data-a="ranking">🏆 全国ランキング</button>' : ''}<div class="ap-rk-row">${apMedal(i, 150)}<div class="ap-rk-info"><small>監督ライセンス</small><b class="ap-rk-n" style="color:${RANKS[i].c}">${RANKS[i].n}ライセンス</b><div class="ap-rk-rp"><b>${on.rp}</b> RP</div>
-            ${last ? '<div class="ap-sm2">最高の S級ライセンス！</div>' : `<div class="ap-bar2"><i style="width:${pct}%"></i><span>${into} / ${span}</span></div><div class="ap-sm2">「${RANKS[i + 1].n}」まで あと <b>${hi - on.rp}</b> RP${i > 0 ? `　／　${lo} RP を割ると降格` : ''}</div>`}</div></div>
+        <div class="ap-pnl ap-club"><h3>マイクラブ</h3><div class="ap-pb"><img class="ap-emb" src="${emblemURL(save.team.name, 128)}" alt=""><b class="ap-tn">${esc(save.team.name)}</b>
+          <div class="ap-fidl"><span>フレンドID</span><b id="apFidL">${net ? (on.fid ? fmtFid(on.fid) : '…') : 'オフライン'}</b></div>
+          <div class="ap-stats">${statRow('muscle', '総合力', Math.round(C.teamLevel(save)))}${statRow('trophy2', 'ランクマッチ', wdl(on.w, on.d, on.l))}${statRow('shield', '守備', wdl(on.dw, on.dd, on.dl))}${statRow('hand2', 'フレンド', wdl(on.fw, on.fd, on.fl))}</div></div></div>
+        <div class="ap-pnl ap-rankp"><h3>監督ライセンス${net ? `<button class="ap-rkbtn" data-a="ranking">${AP_SVG.trophy2}全国ランキング</button>` : ''}</h3><div class="ap-pb"><div class="ap-rk-row">${apMedal(i, 150)}<div class="ap-rk-info"><b class="ap-rk-n">${RANKS[i].n}ライセンス</b><div class="ap-rk-rp"><b>${on.rp}</b> RP</div>
+            ${last ? '<div class="ap-sm2">最高の S級ライセンス！</div>' : `<div class="ap-bar2"><i style="width:${pct}%"></i><span>${into} / ${span}</span></div><div class="ap-sm2">${RANKS[i + 1].n}まであと <b>${hi - on.rp}</b> RP${i > 0 ? `<small>（${lo} RP を割ると降格）</small>` : ''}</div>`}</div></div>
           ${last ? '' : `<div class="ap-rw2"><span class="ap-rw2-h">${gotNx ? '受け取りずみ' : `${RANKS[i + 1].n}ライセンス取得のごほうび`}</span><span class="ap-rw2-i"><img class="coin-ico" src="icons/coin.png" alt="">${nx.coins}</span><span class="ap-rw2-i">${AP_SVG.card}×${nx.cards}</span>${nx.kak ? `<span class="ap-rw2-i">${AP_SVG.gem}×${nx.kak}</span>` : ''}</div>`}
-          <div class="ap-ladder">${ladder}</div></div>
+          <div class="ap-ladder">${ladder}</div></div></div>
       </div>
-      <div class="ap-modes"><button class="ap-mode ap-gold" data-a="rank">${AP_SVG.trophy}<div><b>ランクマッチ</b><small>勝ち +${RP_WIN} ／ 引き分け ${RP_DRAW} ／ 負け −${RP_LOSE} RP</small></div></button>
-        <button class="ap-mode ap-blue" data-a="friend">${AP_SVG.hands}<div><b>フレンド</b><small>フレンドになった監督のクラブと対戦</small></div></button></div>
-      <p class="ap-foot">${window.DotNet && DotNet.on ? 'ランクマッチは、同じくらいのランクの監督のクラブと当たります' : '※ いまのランクマッチの相手はCPUのクラブです'}　・　対戦では疲れ・ケガ・週は進みません</p>`;
+      <div class="ap-modes"><button class="ap-mode ap-gold" data-a="rank">${AP_SVG.gtrophy}<div><b>ランクマッチ</b><small>勝ち +${RP_WIN} ／ 引き分け ${RP_DRAW} ／ 負け −${RP_LOSE} RP</small></div><i class="ap-chev"></i></button>
+        <button class="ap-mode ap-blue" data-a="friend"><span class="ap-vsm"><img src="${emblemURL(save.team.name, 96)}" alt=""><em>VS</em>${f0 && f0.emb ? `<img src="${embFromLook(f0.emb, 96)}" alt="">` : AP_SVG.qshield}</span><div><b>フレンド</b><small>フレンドになった監督のクラブと対戦</small></div><i class="ap-chev"></i></button></div>
+      </div>
+      <p class="ap-foot">${net ? 'ランクマッチは、同じくらいのランクの監督と対戦します' : '※ いまのランクマッチの相手はCPUのクラブです'}　・　対戦では疲れ・ケガ・週は進みません</p></div>`;
     el.hidden = false; el._fit && el._fit();
     const close = () => { el.hidden = true; };
     box.querySelector('.std-back').onclick = close;
