@@ -248,7 +248,24 @@
     save.world = w; w.fixed = 1;
   }
   const myLgId = (save) => save.world.me;
+  // 版610：対戦（空港）の相手チーム。友達のチームコードから作る（セーブには入れない）
+  const GUESTS = {};
+  function registerGuest(save, d) {
+    let name = String(d.name || 'ゲストFC').slice(0, 16);
+    const taken = (n) => n === save.team.name || Object.values(save.world.leagues).some((l) => l.some((x) => x.name === n));
+    let k = 2; const base = name; while (taken(name)) name = base + '・' + (k++);
+    const team = JSON.parse(JSON.stringify(d.team)); team.name = name; team.short = String(d.short || name).slice(0, 6); team.color = 'red';
+    const lvl = team.players.slice(0, 11).reduce((a, p) => a + avgParam(p), 0) / 11;
+    GUESTS[name] = { name, short: team.short, guest: true, lg: LG[d.lg] ? d.lg : 'regW2', lvl, seed: [...name].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0, emb: d.emb || null, kit: d.kit || null, kit2: d.kit2 || null, mgr: d.mgr || '', team };
+    return GUESTS[name];
+  }
+  function guestCode(save) {   // 自分のチームを、相手に渡すデータにする（能力・スキル・戦術・ユニフォーム・エンブレム）
+    const t = matchTeam(save).team, cl = ensureClub(save);
+    t.players = t.players.map((p) => { const q = { ...p }; for (const k of ['pts', 'fatigue', 'injury', 'games', 'cond', 'startCur', 'goals', 'assists', 'hist', 'log']) delete q[k]; return q; });
+    return { v: 1, name: save.team.name, short: save.team.short, mgr: save.manager || '', lg: save.league.id, emb: cl.emb, kit: cl.kit, kit2: cl.kit2, team: t };
+  }
   function findTeam(save, name) {
+    if (GUESTS[name]) return { ...GUESTS[name] };
     if (name === save.team.name) return { name, short: save.team.short, me: true, region: save.world.region, lvl: teamLevel(save) };
     for (const id in save.world.leagues) { const t = save.world.leagues[id].find((x) => x.name === name); if (t) return { ...t, lg: id }; }
     return null;
@@ -408,6 +425,7 @@
   }
   function rosterOfTeam(id, season) { return rosterAt(id, season); }
   function opponentTeam(save, op) {
+    if (op && GUESTS[op.name]) return JSON.parse(JSON.stringify(GUESTS[op.name].team));   // 版610：対戦の相手は、もらったチームそのまま
     const tm = op.preset ? op : findTeam(save, op.name);
     if (tm && ROSTERS[tm.id]) return rosterTeam(save, tm, rosterAt(tm.id, save.season));
     const lg = LG[tm.lg] || LG[myLgId(save)] || LEAGUES[0];
@@ -828,6 +846,7 @@
   const EMB_ICONS = ['ball', 'star', 'wave', 'crown', 'bolt', 'wing'];
   function teamLook(save, name) {
     if (!name || name === save.team.name) { const e = ensureClub(save).emb; return { ...e, ch: e.ch || (save.team.short || save.team.name || 'H')[0], me: true }; }
+    if (GUESTS[name] && GUESTS[name].emb) { const e = GUESTS[name].emb; return { ...e, ch: e.ch || (GUESTS[name].short || name)[0] }; }
     const t = findTeam(save, name) || { seed: [...name].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0, short: name };
     let x = (t.seed * 2654435761 + 12345) >>> 0; const r = () => { x = (Math.imul(x, 1664525) + 1013904223) >>> 0; return ((x ^ (x >>> 15)) >>> 0) / 4294967296; };
     const [c1, c2] = EMB_COLS[Math.floor(r() * EMB_COLS.length)];
@@ -898,7 +917,7 @@
   const colDist = (a, b) => { const x = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16)), y = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16)); return Math.hypot(x[0] - y[0], (x[1] - y[1]) * 1.2, x[2] - y[2]); };
   // 相手のホーム・アウェー（アウェーはサブの色を地にした無地）
   function oppKits(save, oppName) {
-    const t = findTeam(save, oppName), ro = t && ROSTERS[t.id];
+    const t = findTeam(save, oppName), ro = t && (t.guest ? (t.kit ? { kit: t.kit } : null) : ROSTERS[t.id]);
     const home = ro ? { ...ro.kit } : { pat: 'solid', shirt: '#e2453a', sub: '#ffffff', shorts: '#ffffff', socks: '#e2453a' };
     const light = colDist(home.sub || '#ffffff', home.shirt) >= 120 ? (home.sub || '#ffffff') : '#f4f4f0';
     const away = { pat: 'solid', shirt: light, sub: home.shirt, shorts: home.shirt === light ? '#1a1a1a' : home.shirt, socks: light };
@@ -906,8 +925,8 @@
   }
   function kitsFor(save, oppName, sel, oppSel) {
     const cl = ensureClub(save); let mine = { ...(sel === 'away' ? cl.kit2 : cl.kit) };
-    if (!sel || sel === 'auto') { const t0 = findTeam(save, oppName), r0 = t0 && ROSTERS[t0.id]; if (r0 && colDist(mine.shirt, r0.kit.shirt) < 120 && colDist(cl.kit2.shirt, r0.kit.shirt) >= 120) mine = { ...cl.kit2 }; }   // おまかせ：相手と色がかぶったらアウェー
-    const t = findTeam(save, oppName), ro = t && ROSTERS[t.id];
+    if (!sel || sel === 'auto') { const t0 = findTeam(save, oppName), r0 = t0 && (t0.guest ? (t0.kit ? { kit: t0.kit } : null) : ROSTERS[t0.id]); if (r0 && colDist(mine.shirt, r0.kit.shirt) < 120 && colDist(cl.kit2.shirt, r0.kit.shirt) >= 120) mine = { ...cl.kit2 }; }   // おまかせ：相手と色がかぶったらアウェー
+    const t = findTeam(save, oppName), ro = t && (t.guest ? (t.kit ? { kit: t.kit } : null) : ROSTERS[t.id]);
     let opp = ro ? { ...ro.kit } : { pat: 'solid', shirt: '#e2453a', sub: '#ffffff', shorts: '#ffffff', socks: '#e2453a' };
     if (oppSel === 'home' || oppSel === 'away') return [mine, { ...oppKits(save, oppName)[oppSel] }];   // 版482：相手のユニフォームも選べる
     if (colDist(mine.shirt, opp.shirt) < 120) {
@@ -1714,5 +1733,5 @@
     const picks = []; for (let i = 0; i < n; i++) picks.push(gachaOne(save, bn, r, n >= 10 && i === n - 1 && !picks.some((x) => x.star >= 3) ? 3 : 0));   // 10連は☆3以上を1人確定
     return { banner: bn, results: picks.map((pk) => gachaApply(save, pk)) };
   }
-  root.DotCareer = { champPeek, CARD_MAX, noSkillLg, gachaBanner, gachaPull, gachaPoolAll, ensureGacha, GACHA_RATE, GACHA_COST, GACHA_PITY, KAKERA_OF, oppKits, BENCH_N, kitsPair, d1Round, pinWatch, faceKeyOf, cpuTeam, ensureStar, starOf, totsuOf, capGrade, capPts, capIdx, GRADES, rosterAt, lvlAt, retiredAt, titleOf, ensureTitles, evalTitles, CUP_LABELS, cupIn, ensureClub, renameClub, kitsFor, KIT_DEFAULT, EMB_DEFAULT, TEAMS, TEAM_BY_ID, ROSTERS, rosterOfTeam, leagueTable, prevOrder, goalRank, recordGoals, CUP_WEEKS_ALL: CUP_WEEKS, leagueWeeksOf: leagueWeeks, POST_WEEKS, CARDS, CAT_NAME, SP, findSpecial, previewCards, trainCards, trainOne, weekTick, GRID_R, GRID_C, zoneOf, cellsFor, formationLabel, FORMATIONS, TACTIC_ITEMS, STYLES, SITU_DEFAULT, SITU_ACTS, SITU_ROWS, SITU_FROM, ensureTactics, slotRoles, applyTactics, skillRate, endWeek, SEASON_WEEKS, INJURIES, TYPE_TUNE, COND_NAME, condOf, trainedThisWeek, trainsDone, trainLimit, trainMult, campState, campAdvance, CAMP, slotInfo, SLOT_MAX, SKILL_RATE, rewardCards, newLeague, newCup, playFixture, peekRound, afterOfficial, playPractice, practiceOpponent, practiceOptions, teamLook, recordStats, teamLevel, findTeam, CUP_WEEKS, CAMPS, LG, rankInfo, PMAX, PRICE, buyCard, buyPack, toEng, toPts, migrate, ensurePts, TEAM_MENUS: TEAM_PTS, MENUS, SPECIAL, LEAGUES, PNAME, newCareer, menusFor, train, learnSkill, slots, skillChance, nextFixture, finishRound, standings, endSeason, opponentTeam, matchTeam, avgParam, decideType };
+  root.DotCareer = { registerGuest, guestCode, GUESTS, champPeek, CARD_MAX, noSkillLg, gachaBanner, gachaPull, gachaPoolAll, ensureGacha, GACHA_RATE, GACHA_COST, GACHA_PITY, KAKERA_OF, oppKits, BENCH_N, kitsPair, d1Round, pinWatch, faceKeyOf, cpuTeam, ensureStar, starOf, totsuOf, capGrade, capPts, capIdx, GRADES, rosterAt, lvlAt, retiredAt, titleOf, ensureTitles, evalTitles, CUP_LABELS, cupIn, ensureClub, renameClub, kitsFor, KIT_DEFAULT, EMB_DEFAULT, TEAMS, TEAM_BY_ID, ROSTERS, rosterOfTeam, leagueTable, prevOrder, goalRank, recordGoals, CUP_WEEKS_ALL: CUP_WEEKS, leagueWeeksOf: leagueWeeks, POST_WEEKS, CARDS, CAT_NAME, SP, findSpecial, previewCards, trainCards, trainOne, weekTick, GRID_R, GRID_C, zoneOf, cellsFor, formationLabel, FORMATIONS, TACTIC_ITEMS, STYLES, SITU_DEFAULT, SITU_ACTS, SITU_ROWS, SITU_FROM, ensureTactics, slotRoles, applyTactics, skillRate, endWeek, SEASON_WEEKS, INJURIES, TYPE_TUNE, COND_NAME, condOf, trainedThisWeek, trainsDone, trainLimit, trainMult, campState, campAdvance, CAMP, slotInfo, SLOT_MAX, SKILL_RATE, rewardCards, newLeague, newCup, playFixture, peekRound, afterOfficial, playPractice, practiceOpponent, practiceOptions, teamLook, recordStats, teamLevel, findTeam, CUP_WEEKS, CAMPS, LG, rankInfo, PMAX, PRICE, buyCard, buyPack, toEng, toPts, migrate, ensurePts, TEAM_MENUS: TEAM_PTS, MENUS, SPECIAL, LEAGUES, PNAME, newCareer, menusFor, train, learnSkill, slots, skillChance, nextFixture, finishRound, standings, endSeason, opponentTeam, matchTeam, avgParam, decideType };
 })(typeof window !== 'undefined' ? window : globalThis);

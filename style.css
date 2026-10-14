@@ -2692,3 +2692,18 @@ html.short .h2-card{top:60px;width:230px;padding:7px 10px 9px}html.short .h2-h{f
 .lv2-ko b{font-family:"M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif;font-weight:900;font-size:calc(var(--u) * 46);letter-spacing:.06em;text-shadow:0 calc(var(--u) * 3) 0 rgba(0,0,0,.25)}
 .lv2-m img.lgi{width:calc(var(--u) * 40);height:calc(var(--u) * 40);filter:none}
 .lv2-btns button b{font-size:calc(var(--u) * 15.5)}
+/* ===== 版610：空港（対戦） ===== */
+.ap-rank{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:999px;background:linear-gradient(var(--rc),color-mix(in srgb,var(--rc) 70%,#000));color:#fff;font-weight:900;text-shadow:0 1px 0 rgba(0,0,0,.4);border:2px solid rgba(255,255,255,.8)}
+.ap-rank.big{font-size:22px;padding:4px 16px}
+.ap-rank i{font-style:normal}
+.ap-card{background:rgba(10,30,70,.08);border-radius:12px;padding:10px 14px;margin:6px 0}
+.ap-rp{display:flex;align-items:center;justify-content:center;gap:12px;font-size:22px}
+.ap-rp em{font-style:normal;font-weight:900}.ap-rp em.up{color:#1a9a3a}.ap-rp em.down{color:#c8322a}
+.ap-bar{height:12px;border-radius:6px;background:rgba(0,0,0,.15);overflow:hidden;margin:8px 0 2px}.ap-bar i{display:block;height:100%;background:linear-gradient(90deg,#3fb84a,#9be35a)}
+.ap-sm{font-size:13px;margin:4px 0;text-align:center}
+.ap-up{font-size:20px;font-weight:900;color:#d4860a;text-align:center}
+.ap-vs{display:flex;align-items:center;justify-content:center;gap:12px;font-size:22px;margin:8px 0}.ap-vs img{width:56px;height:56px}
+.ap-code{width:100%;min-height:64px;box-sizing:border-box;font-size:13px;border-radius:8px;border:2px solid #9ab;padding:6px;resize:none}
+.ap-h3{font-size:14px;margin:8px 0 4px}
+.ap-frs{display:flex;flex-wrap:wrap;gap:6px;max-height:110px;overflow:auto}
+.ap-fr{display:flex;flex-direction:column;align-items:flex-start;padding:4px 10px;border-radius:8px;border:2px solid #9ab;background:#fff;cursor:pointer}.ap-fr small{font-size:11px;opacity:.75}

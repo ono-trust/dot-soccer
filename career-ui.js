@@ -466,7 +466,7 @@
     for (const h of areas) if (x >= h.r.x && x <= h.r.x + h.r.w && y >= h.r.y && y <= h.r.y + h.r.h) return h;
     return null;
   }
-  hc.addEventListener('click', (e) => { const h = hitAt(e); if (!h) return; if (h.go === 'online') { coachAsk('空港（オンライン対戦）は、ただいま準備中です。<br>もうしばらくお待ちください！', [{ label: 'OK', value: true }], 'sec'); return; } if (h.go === 'stadium') stadium(); else if (h.go === 'shop') shop(); else if (h.go === 'lineup') openOffice(); else go(h.go); });
+  hc.addEventListener('click', (e) => { const h = hitAt(e); if (!h) return; if (h.go === 'online') { airport(); return; } if (h.go === 'stadium') stadium(); else if (h.go === 'shop') shop(); else if (h.go === 'lineup') openOffice(); else go(h.go); });
   hc.addEventListener('mousemove', (e) => { hc.style.cursor = hitAt(e) ? 'pointer' : 'default'; });
   const TIPS = ['選手は試合に出るほど「判断」が伸びます。', 'スペシャル（スキル）の特訓は、関係する能力が高いほど成功しやすい。', '同じスキルを持つ先輩がいると、スキルを覚えやすくなります。', '疲れたまま特訓すると伸びが落ち、ケガをすることも。休養も大事。', 'スキル枠は、能力が上がると増えていきます。', '特訓で動きのくせ（裏パラ）が変わり、選手タイプが変わることがあります。'];
   function renderHome() {
@@ -2437,7 +2437,7 @@
         const played = mt.played.slice();
         for (const nm of subsIn) { const i = save.team.players.findIndex((q) => q.name === nm); if (i >= 0 && !played.includes(i)) played.push(i); }
         done(score, (A().match || {}).events || [], played);
-      }, { venue: venueNow, kits: C.kitsFor(save, opTeamInfo.name, (meta || {}).kitSel, (meta || {}).oppSel), tut: window.__tut ? window.__tut.matchOpts(meta || {}) : null, onSub: (info) => subSheet(mt, info, ms), noIntro: true, comp: (meta || {}).comp || title, label: (meta || {}).label || '', absent: save.team.players.filter((q) => q.injury > 0 || q.suspend > 0).map((q) => ({ name: q.name, pos: q.position, number: q.number, weeks: q.injury, why: q.suspend > 0 ? '出場停止' : `ケガ（あと${q.injury}週）` })), homeName: save.team.name, awayName: opTeamInfo.name, champCheck: (meta || {}).fx ? (sc) => champView((meta || {}).fx, sc) : null, halfOthers: (meta || {}).practice ? null : (my, minute) => halfOthers(my, minute), oneHalf: !!((meta || {}).practice && !(meta || {}).tut), embH: emblemURL(save.team.name, 48), embA: emblemURL(opTeamInfo.name, 48), grade: (q, k, tm) => { const sp = tm ? null : save.team.players.find((x) => x.name === q.name); if (sp) { C.ensurePts(sp); return C.rankInfo(sp.pts[k]).g; } return C.rankInfo(C.toPts((q.params || q)[k])).g; } });
+      }, { venue: venueNow, kits: C.kitsFor(save, opTeamInfo.name, (meta || {}).kitSel, (meta || {}).oppSel), tut: window.__tut ? window.__tut.matchOpts(meta || {}) : null, onSub: (info) => subSheet(mt, info, ms), noIntro: true, comp: (meta || {}).comp || title, label: (meta || {}).label || '', absent: save.team.players.filter((q) => q.injury > 0 || q.suspend > 0).map((q) => ({ name: q.name, pos: q.position, number: q.number, weeks: q.injury, why: q.suspend > 0 ? '出場停止' : `ケガ（あと${q.injury}週）` })), homeName: save.team.name, awayName: opTeamInfo.name, champCheck: (meta || {}).fx ? (sc) => champView((meta || {}).fx, sc) : null, halfOthers: ((meta || {}).practice || (meta || {}).online) ? null : (my, minute) => halfOthers(my, minute), oneHalf: !!((meta || {}).practice && !(meta || {}).tut), embH: emblemURL(save.team.name, 48), embA: emblemURL(opTeamInfo.name, 48), grade: (q, k, tm) => { const sp = tm ? null : save.team.players.find((x) => x.name === q.name); if (sp) { C.ensurePts(sp); return C.rankInfo(sp.pts[k]).g; } return C.rankInfo(C.toPts((q.params || q)[k])).g; } });
       return;
     }
     const r = D.simulateMatch(mt.team, opp, seed, { frames: false });
@@ -3760,6 +3760,7 @@
   let clubAsked = false;
   function open() {
     ensure(); A().stop(); A().showScreen('career'); go('home');
+    if (/vs=/.test(location.hash) && save.clubSet) setTimeout(() => checkVsLink(), 600);   // 版610：対戦のリンクから開いた
     if (window.__tut && window.__tut.boot(save)) return;   // はじめて遊ぶ人：チュートリアル（クラブ作りもその中で）
     if (!save.clubSet && !clubAsked && (save.week || 1) <= 1 && save.season === 1) { clubAsked = true; openClub({ first: true, onDone: () => go('home') }); }   // はじめて：クラブを作る
     if (save.migratedWorld) { delete save.migratedWorld; store(); modal('<h2>リーグが新しくなりました</h2><p>地域2部（東・西）→ 地域1部（東・西）→ D3 → D2 → D1 の7リーグになりました。選手はそのままで、<b>地域2部リーグ西</b>の開幕（3月1週）からのスタートです。</p>', [{ label: 'OK', primary: true }]); }
@@ -3805,7 +3806,133 @@
   }
   // 版570：コインの数が出ているところ（スカウト・ホーム）を押しても、コイン購入へ
   document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('.gc3-coin, .hm-next .coin'); if (!t) return; e.stopPropagation(); coinShop(() => { const b = document.querySelector('.gc3-coin b'); if (b) b.textContent = (save.coins || 0).toLocaleString(); try { renderHome(); } catch (_) {} }); }, true);
-  window.__career = { setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
+  // ================= 版610：空港（対戦）：ランクマッチ・フレンド対戦 =================
+  const RANKS = [
+    { n: 'ビギナー', c: '#8fa3b8', lg: ['regW2', 'regE2'] }, { n: 'ブロンズ', c: '#c07a3a', lg: ['regW1', 'regE1'] }, { n: 'シルバー', c: '#b8c2cc', lg: ['d3'] },
+    { n: 'ゴールド', c: '#f2c21c', lg: ['d2'] }, { n: 'プラチナ', c: '#5fd3c8', lg: ['d1'], part: [0.5, 1] }, { n: 'ダイヤ', c: '#6aa8ff', lg: ['d1'], part: [0.2, 0.6] }, { n: 'マスター', c: '#d66aff', lg: ['d1'], part: [0, 0.25] }];
+  const RP_STEP = 100, RP_WIN = 30, RP_DRAW = 10, RP_LOSE = 15;
+  function ensureOnline() { if (!save.online) save.online = { rp: 0, best: 0, w: 0, d: 0, l: 0, fw: 0, fd: 0, fl: 0, friends: [] }; return save.online; }
+  const rankIdx = (rp) => Math.min(RANKS.length - 1, Math.floor(rp / RP_STEP));
+  function rankBadge(i, big) { const R = RANKS[i]; return `<span class="ap-rank${big ? ' big' : ''}" style="--rc:${R.c}"><i>★</i>${R.n}</span>`; }
+  // チームコード：JSON → 圧縮（できる端末だけ）→ URLに入れられる文字
+  const b64u = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const unb64u = (s) => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
+  async function packCode(obj) {
+    const raw = new TextEncoder().encode(JSON.stringify(obj));
+    try { if (window.CompressionStream) { const cs = new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate-raw')); return 'Z' + b64u(new Uint8Array(await new Response(cs).arrayBuffer())); } } catch (_) {}
+    return 'J' + b64u(raw);
+  }
+  async function unpackCode(code) {
+    code = String(code || '').trim(); const m = code.match(/[#&?]vs=([A-Za-z0-9_\-]+)/); if (m) code = m[1];
+    code = code.replace(/[^A-Za-z0-9_\-]/g, '');
+    if (code.length < 20) throw new Error('short');
+    const kind = code[0], u = unb64u(code.slice(1));
+    let txt;
+    if (kind === 'Z') { const ds = new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate-raw')); txt = await new Response(ds).text(); } else txt = new TextDecoder().decode(u);
+    const d = JSON.parse(txt); if (!d || !d.team || !Array.isArray(d.team.players) || d.team.players.length < 11) throw new Error('bad'); return d;
+  }
+  const shareURL = (code) => `${location.origin}${location.pathname.replace(/[^/]*$/, '')}#vs=${code}`;
+  async function shareMyTeam() {
+    const code = await packCode(C.guestCode(save)), url = shareURL(code);
+    const text = `${save.team.name}（${save.manager ? save.manager + '監督' : ''}）と「ドットサッカー」で対戦しよう！リンクを開くと対戦できます。`;
+    try { if (navigator.share) { await navigator.share({ title: 'ドットサッカー 対戦', text, url }); return 'shared'; } } catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
+    try { await navigator.clipboard.writeText(text + '\n' + url); return 'copied'; } catch (_) {}
+    await modal(`<h2>チームコード</h2><p>下の文字をすべてコピーして、友達に送ってください。</p><textarea class="ap-code" readonly onclick="this.select()">${esc(url)}</textarea>`, [{ label: 'とじる', primary: true }]);
+    return 'shown';
+  }
+  function onlineDone(kind, op, score) {
+    const on = ensureOnline(), res = score[0] > score[1] ? 'W' : score[0] === score[1] ? 'D' : 'L';
+    let html = '', rewards = null;
+    const resTxt = res === 'W' ? '勝利！' : res === 'D' ? '引き分け' : '敗北…';
+    if (kind === 'rank') {
+      const before = on.rp, i0 = rankIdx(before), floor = i0 * RP_STEP;
+      on.rp = res === 'W' ? before + RP_WIN : res === 'D' ? before + RP_DRAW : Math.max(floor, before - RP_LOSE);
+      on[res.toLowerCase()]++;
+      const i1 = rankIdx(on.rp);
+      if (i1 > i0 && i1 > rankIdx(on.best || 0)) {   // はじめて上がったランクだけ、ごほうび
+        const pool = Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat !== 'sup' && !C.CARDS[c].sp), nC = 2 + i1;
+        const cards = Array.from({ length: nC }, () => pool[Math.floor(Math.random() * pool.length)]);
+        save.cards = save.cards || {}; for (const c of cards) save.cards[c] = Math.min(C.CARD_MAX, (save.cards[c] || 0) + 1);
+        const kak = [0, 2, 3, 5, 8, 12, 20][i1] || 2, coins = Math.min(20, 10 + i1 * 2);
+        C.ensureGacha(save); save.kakera = (save.kakera || 0) + kak; save.coins = (save.coins || 0) + coins;
+        rewards = { cards, kak, coins, rank: i1 };
+      }
+      on.best = Math.max(on.best || 0, on.rp);
+      const d = on.rp - before;
+      html = `<h2>ランクマッチ　${resTxt}</h2><p class="cr-score">${esc(save.team.short)} ${score[0]} − ${score[1]} ${esc(op.short || op.name)}</p>
+        <div class="ap-rp">${rankBadge(rankIdx(on.rp), true)}<b>${on.rp} RP</b><em class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '+' : ''}${d}</em></div>
+        ${i1 > i0 ? `<p class="ap-up">ランクアップ！ ${RANKS[i0].n} → <b>${RANKS[i1].n}</b></p>` : ''}`;
+    } else {
+      on['f' + res.toLowerCase()]++;
+      const f = on.friends.find((x) => x.name === op.srcName); if (f) { f[res.toLowerCase()] = (f[res.toLowerCase()] || 0) + 1; }
+      html = `<h2>フレンド対戦　${resTxt}</h2><p class="cr-score">${esc(save.team.short)} ${score[0]} − ${score[1]} ${esc(op.short || op.name)}</p>${f ? `<p>${esc(op.srcName)}との対戦成績：${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</p>` : ''}`;
+    }
+    store(); open();
+    (async () => {
+      await modal(html, [{ label: 'OK', primary: true }]);
+      if (rewards) await modal(`<h2>${RANKS[rewards.rank].n} 到達のごほうび！</h2><p class="coin big">${COIN}+${rewards.coins} コイン　／　覚醒のカケラ +${rewards.kak}</p><div class="hrow rw">${rewards.cards.map((c) => artCard(c, { ups: true })).join('')}</div>`, [{ label: 'OK', primary: true }]);
+      store(); try { renderHome(); } catch (_) {}
+    })();
+  }
+  function rankOpponent() {
+    const on = ensureOnline(), R = RANKS[rankIdx(on.rp)];
+    const lgs = R.lg.filter((id) => save.world.leagues[id] && id !== save.league.id || (save.world.leagues[id] && R.lg.length === 1));
+    let list = []; for (const id of (lgs.length ? lgs : R.lg)) for (const t of (save.world.leagues[id] || [])) if (t.name !== save.team.name) list.push(t);
+    if (R.part && list.length) { const s = list.slice().sort((a, b) => (b.lvl || 0) - (a.lvl || 0)); list = s.slice(Math.floor(s.length * R.part[0]), Math.max(1, Math.ceil(s.length * R.part[1]))); }
+    if (!list.length) for (const id in save.world.leagues) for (const t of save.world.leagues[id]) if (t.name !== save.team.name) list.push(t);
+    return list[Math.floor(Math.random() * list.length)];
+  }
+  async function startRank() {
+    const op = rankOpponent(); if (!op) return;
+    const R = RANKS[rankIdx(ensureOnline().rp)];
+    const ok = await modal(`<h2>ランクマッチ</h2><p>${rankBadge(rankIdx(save.online.rp))}　の相手が見つかりました！</p><div class="ap-vs"><img src="${emblemURL(op.name, 64)}" alt=""><b>${esc(op.name)}</b></div><p class="hintp">勝つと +${RP_WIN}RP、引き分け +${RP_DRAW}RP、負けると −${RP_LOSE}RP（ランクは下がりません）。<br>選手の疲れ・ケガ・週は進みません。</p>`, [{ label: '対戦する', primary: true, value: true }, { label: 'やめる', value: false }]);
+    if (!ok) return;
+    runMatch('ランクマッチ', '', op, (score) => onlineDone('rank', op, score), { comp: 'ランクマッチ', label: R.n, home: true, online: 'rank' });
+  }
+  async function startFriend(d) {
+    const g = C.registerGuest(save, d), on = ensureOnline();
+    const srcName = d.name + (d.mgr ? `（${d.mgr}）` : '');
+    let f = on.friends.find((x) => x.name === srcName);
+    if (!f) { f = { name: srcName, w: 0, d: 0, l: 0 }; on.friends.unshift(f); } else { on.friends.splice(on.friends.indexOf(f), 1); on.friends.unshift(f); }
+    f.code = await packCode(d); f.at = Date.now(); on.friends = on.friends.slice(0, 8); store();
+    const ok = await modal(`<h2>フレンド対戦</h2><div class="ap-vs"><img src="${emblemURL(g.name, 64)}" alt=""><b>${esc(g.name)}</b></div><p>${d.mgr ? esc(d.mgr) + '監督の' : ''}チームと対戦します。</p><p class="hintp">選手の疲れ・ケガ・週は進みません。</p>`, [{ label: '対戦する', primary: true, value: true }, { label: 'やめる', value: false }]);
+    if (!ok) return;
+    const op = { name: g.name, short: g.short, srcName };
+    runMatch('フレンド対戦', '', op, (score) => onlineDone('friend', op, score), { comp: 'フレンド対戦', label: '', home: true, online: 'friend' });
+  }
+  async function friendMenu() {
+    const on = ensureOnline();
+    const rows = on.friends.map((f, k) => `<button class="ap-fr" data-fk="${k}"><b>${esc(f.name)}</b><small>${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></button>`).join('');
+    const pick = new Promise((res) => setTimeout(() => document.querySelectorAll('#crModalBody .ap-fr').forEach((b) => b.onclick = () => { $('#crModal').hidden = true; res(+b.dataset.fk); }), 0));
+    const act = modal(`<h2>フレンド対戦</h2><p class="hintp">①「自分のチームを送る」で、LINEなどで友達にリンクを送ります。<br>② 友達から届いたリンクを開くか、下の欄に貼りつけて「対戦する」。</p>
+      <textarea id="apCode" class="ap-code" placeholder="友達のリンク（チームコード）をここに貼りつけ"></textarea>${rows ? `<h3 class="ap-h3">最近の相手（もう一度対戦）</h3><div class="ap-frs">${rows}</div>` : ''}`,
+      [{ label: '自分のチームを送る', value: 'share' }, { label: '対戦する', primary: true, value: 'go' }, { label: 'もどる', value: 'back' }]);
+    const codeNow = () => ($('#apCode') || {}).value || '';
+    let txt = ''; document.getElementById('apCode') && (document.getElementById('apCode').oninput = (e) => { txt = e.target.value; });
+    const r = await Promise.race([act.then((v) => ({ v })), pick.then((k) => ({ k }))]);
+    if (r.k != null) { const f = on.friends[r.k]; try { await startFriend(await unpackCode(f.code)); } catch (_) { await modal('<h2>読みこめませんでした</h2>', [{ label: 'OK' }]); } return; }
+    if (r.v === 'share') { const s = await shareMyTeam(); if (s === 'copied') await modal('<h2>コピーしました</h2><p>LINEなどに貼りつけて、友達に送ってください。</p>', [{ label: 'OK', primary: true }]); return friendMenu(); }
+    if (r.v === 'go') { const code = txt || codeNow(); try { await startFriend(await unpackCode(code)); } catch (_) { await modal('<h2>チームコードを読みこめませんでした</h2><p>友達から届いたリンクを、全部そのまま貼りつけてください。</p>', [{ label: 'OK', primary: true }]); return friendMenu(); } return; }
+    return airport();
+  }
+  async function airport() {
+    const on = ensureOnline(), i = rankIdx(on.rp), into = on.rp - i * RP_STEP, last = i === RANKS.length - 1;
+    const v = await modal(`<h2>✈️ 空港（対戦）</h2>
+      <div class="ap-card"><div class="ap-rp">${rankBadge(i, true)}<b>${on.rp} RP</b></div>
+        ${last ? '<p class="ap-sm">最高ランク！</p>' : `<div class="ap-bar"><i style="width:${into}%"></i></div><p class="ap-sm">次の「${RANKS[i + 1].n}」まで あと ${RP_STEP - into} RP</p>`}
+        <p class="ap-sm">ランクマッチ ${on.w}勝 ${on.d}分 ${on.l}敗　／　フレンド ${on.fw}勝 ${on.fd}分 ${on.fl}敗</p></div>
+      <p class="hintp">ランクが上がるとごほうび（特訓カード・覚醒のカケラ・コイン）。<br>※ いまのランクマッチの相手はCPUのクラブです（ほかの人のチームと当たるのは、サーバーの準備ができてから）。</p>`,
+      [{ label: 'ランクマッチ', primary: true, value: 'rank' }, { label: 'フレンド対戦', value: 'friend' }, { label: 'もどる', value: 'back' }]);
+    if (v === 'rank') return startRank();
+    if (v === 'friend') return friendMenu();
+  }
+  // リンク（#vs=...）から開いたとき：その友達と対戦するか聞く
+  async function checkVsLink() {
+    const m = location.hash.match(/vs=([A-Za-z0-9_\-]+)/); if (!m || !save) return;
+    history.replaceState(null, '', location.pathname + location.search);
+    try { const d = await unpackCode(m[1]); await startFriend(d); } catch (_) { modal('<h2>対戦のリンクを読みこめませんでした</h2>', [{ label: 'OK', primary: true }]); }
+  }
+  window.__career = { airport, setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====
