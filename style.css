@@ -3398,3 +3398,6 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 #cv-home.h2wait>*{visibility:hidden!important}
 #cv-home.h2wait{background:#0d6b32}
 .nm2-when.today{cursor:pointer}.nm2-when.today:active{transform:translateY(2px) scale(.98)}
+/* 版660：SPメニュー一覧の「〇〇で特訓する！」：文字を太く・はっきり、上下の真ん中に */
+.sp2-go{display:flex!important;align-items:center;justify-content:center;height:58px!important;padding:0 0 3px!important;font:900 26px/1 'M PLUS 1p','Hiragino Kaku Gothic ProN',sans-serif!important;letter-spacing:.06em;color:#2a1600!important;border:3px solid #6a4200!important;background:linear-gradient(#ffe36a,#ffc21a 55%,#f0a400)!important;text-shadow:0 1px 0 rgba(255,255,255,.6);box-shadow:0 4px 0 #7a5200!important}
+.sp2-go[disabled]{font-size:19px!important;color:#4a4a4a!important;background:#d8d3c0!important;border-color:#9a9480!important;text-shadow:none}
