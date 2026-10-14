@@ -407,17 +407,18 @@
     { go: 'lineup', ico: '👥', t: 'クラブ事務所', s: 'チーム編成', x: 1046, y: 446, area: [980, 468, 190, 168] },
     { go: 'stadium', ico: '⚽', t: 'スタジアム', s: '試合会場', x: 240, y: 408, area: [140, 280, 620, 300] },
   ];
+  const H2_ICO = {}; ['stadium', 'club', 'online', 'assoc', 'shop', 'lineup'].forEach((k) => { const im = new Image(); im.src = `icons/home_${k}.png`; H2_ICO[k] = im; });
   const h2Ok = (im) => im && im.complete && im.naturalWidth > 0;
   const h2Ready = () => h2Ok(H2.last) || h2Ok(H2.cur());
   function h2Tier() { try { return Math.max(0, Math.min(4, (C.LG[save.league.id] || {}).tier ?? 0)); } catch (_) { return 0; } }
   function h2Label(c, L) {
     c.save(); c.font = '900 21px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; const tw = c.measureText(L.t).width; c.font = '800 13px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; const sw = c.measureText(L.s).width;
-    const w = 52 + Math.max(tw, sw) + 16, h = 50, x = L.x, y = L.y;
+    const w = 60 + Math.max(tw, sw) + 16, h = 50, x = L.x, y = L.y;
     c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.roundRect(x + 2, y + 4, w, h, 10); c.fill();
     c.fillStyle = 'rgba(12,30,72,.94)'; c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 2; c.beginPath(); c.roundRect(x, y, w, h, 10); c.fill(); c.stroke();
-    c.font = '26px sans-serif'; c.textBaseline = 'middle'; c.textAlign = 'center'; c.fillText(L.ico, x + 26, y + h / 2 + 1);
-    c.textAlign = 'left'; c.fillStyle = '#fff'; c.font = '900 21px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; c.fillText(L.t, x + 50, y + 17);
-    c.font = '800 13px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; c.fillStyle = '#d7e6ff'; c.fillText(L.s, x + 50, y + 37);
+    { const im = H2_ICO[L.go]; c.textBaseline = 'middle'; if (im && im.complete && im.naturalWidth) c.drawImage(im, x - 8, y - 6, 62, 62); else { c.font = '26px sans-serif'; c.textAlign = 'center'; c.fillText(L.ico, x + 26, y + h / 2 + 1); } }   // 版609：建物のアイコン（絵）
+    c.textAlign = 'left'; c.fillStyle = '#fff'; c.font = '900 21px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; c.fillText(L.t, x + 58, y + 17);
+    c.font = '800 13px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; c.fillStyle = '#d7e6ff'; c.fillText(L.s, x + 58, y + 37);
     c.restore(); return { x, y, w, h };
   }
   function drawHome2(t) {
