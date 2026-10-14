@@ -1668,7 +1668,7 @@
   const KAKERA_OF = { 1: 1, 2: 2, 3: 5, 4: 15, 5: 50 };
   // 版642：覚醒のカケラで凸（覚醒）する。1回で凸が1つ上がる（最大3凸）。☆が高いほどたくさん必要
   const AWAKE_COST = { 1: 10, 2: 20, 3: 50, 4: 150, 5: 500 };
-  const awakeCost = (p) => AWAKE_COST[ensureStar(p)] || 10;
+  const awakeCost = () => 100;   // 版643：レア度に関係なく、カケラ100個で1凸
   function awaken(save, p) { const tz = p.totsu || 0, c = awakeCost(p); if (tz >= 3 || (save.kakera || 0) < c) return false; save.kakera -= c; p.totsu = tz + 1; return true; }   // 完凸のあとに同じ選手が出た時の覚醒のカケラ
   let gachaPool = null;
   function gachaPoolAll() {

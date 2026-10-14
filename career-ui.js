@@ -529,8 +529,8 @@
       const meSub = fx.kind === 'league' ? `${rank(save.league.teams.find((t) => t.me))}位` : '';
       const opSub = fx.kind === 'league' ? `${rank(fx.opp)}位` : lgName(fx.opp);
       const wl = fx.weeksLeft;
-      const when = wl <= 0 ? '<b>今週</b>試合の日！' : wl === 1 ? `<b>来週</b>${fk.m}月${fk.w}週` : `<b>あと${wl}週</b>${fk.m}月${fk.w}週`;
-      body = `<div class="nm2-hd"><b>次の試合</b><i class="h2-lg${fx.kind !== 'league' ? ' cup' : ''}">${esc(fx.comp)}</i>${fx.label ? `<small>${esc(fx.label)}</small>` : ''}</div>
+      const when = wl <= 0 ? '<b class="nm2-big">今週は試合の日！</b><small>「週を進める」でスタジアムへ</small>' : `<span>試合まで あと</span><b class="nm2-num">${wl}</b><span>週</span><small>${fk.m}月${fk.w}週</small>`;   // 版643：今週か、まだ先かをはっきり
+      body = `<div class="nm2-hd${wl <= 0 ? ' today' : ''}"><b>${wl <= 0 ? '今週の試合' : '次の試合'}</b><i class="h2-lg${fx.kind !== 'league' ? ' cup' : ''}">${esc(fx.comp)}</i>${fx.label ? `<small>${esc(fx.label)}</small>` : ''}</div>
         <div class="nm2-vs"><div class="nm2-t me"><img src="${emblemURL(save.team.name, 96)}" alt=""><b>${esc(save.team.name)}</b>${meSub ? `<small>${meSub}</small>` : ''}<i class="nm2-ha ${fx.home ? 'h' : 'a'}">${fx.home ? 'HOME' : 'AWAY'}</i></div>
           <span class="nm2-x">VS</span>
           <div class="nm2-t"><img src="${emblemURL(fx.opp.name, 96)}" alt=""><b>${esc(fx.opp.name)}</b>${opSub ? `<small>${opSub}</small>` : ''}</div></div>
@@ -939,7 +939,7 @@
     const head = D.PARAMS.map((q) => `<th title="${q.name}" class="th-ico">${ico(q.k)}</th>`).join('');
     const rows = save.team.players.map((p, i) => { C.ensurePts(p); return `<tr data-i="${i}" class="${i >= 11 ? 'sub' : ''}"><td><span class="pos ${POSC[p.position]}">${p.position}</span></td><td class="no">${p.number}</td><td class="s-nm">${esc(p.name)}${starHTML(C.ensureStar(p), p.totsu, 'sm')}</td><td><i class="cdot ${condDot(p)}"></i></td>${D.PARAMS.map((q) => { const ri = C.rankInfo(p.pts[q.k]); return `<td class="gd" title="${q.name} ${Math.floor(p.pts[q.k])}（次のランクまであと${Math.max(0, Math.ceil(ri.next - p.pts[q.k]))}）"><b class="rk rk-${ri.g}">${ri.g}</b></td>`; }).join('')}<td>${typeBadge(p.type)}</td><td>${condGauge(p, 'sm')}</td></tr>`; }).join('');
     $('#clubLayer').innerHTML = `<div class="dpanel dp2"><h2><img class="emb" src="${emblemURL(save.team.name, 48)}" alt="">${esc(save.team.name)}　［${lgBadge(save.league.id)}］</h2><div class="dscroll"><table class="dtbl dtbl2"><thead><tr><th>Pos.</th><th>No.</th><th colspan="2">所属選手</th>${head}<th>タイプ</th><th>調子</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
-    $('#clubLayer').querySelectorAll('tr[data-i]').forEach((tr) => tr.onclick = () => playerDetail(+tr.dataset.i));
+    $('#clubLayer').querySelectorAll('tr[data-i]').forEach((tr) => tr.onclick = () => playerDetail(+tr.dataset.i, { club: true }));
   }
   // ================= 選手カード（カルチョビットAの選手カードに寄せる）：タップでページ切り替え・◀▶で前後の選手 =================
   // 選手データからは大きな窓で、特訓画面では左上にそのまま埋め込んで使う（ups：特訓で伸びる予定の分）
@@ -1013,8 +1013,9 @@
     { const ov = [...document.querySelectorAll('.lk-wrap')].some((w) => !w.hidden && w.id !== 'pcModal'); const host = ov ? document.getElementById('app') : $('#career'); if (el.parentElement !== host) host.appendChild(el); el.style.zIndex = ov ? 60 : ''; }   /* 版477：クラブ事務所（z 45）より前に */
     el.hidden = false;
     bindCard(el, i, (k) => playerDetail(k, o), () => playerDetail(i, o));
-    el.classList.toggle('pc-office', !!o.office);
-    if (o.office) officeSide(el, i, o);   /* 版480：クラブ事務所のチーム編成から開いた時は、右に「背番号・登録ポジション・登録名」 */
+    el.classList.toggle('pc-office', !!o.office); el.classList.toggle('pc-club', !!o.club);
+    if (o.office) officeSide(el, i, o);
+    if (o.club) awakeSide(el, i, o);   // 版643：クラブハウスの選手データから開いた時は、右に「覚醒」   /* 版480：クラブ事務所のチーム編成から開いた時は、右に「背番号・登録ポジション・登録名」 */
     if (o.noNav) el.querySelectorAll('.pc-nav').forEach((b) => b.remove());   /* 版470：ランキングから開いた時は、前後の選手への矢印なし */
     el.querySelector('.pc-close').onclick = () => { el.hidden = true; };
     el.onclick = (e) => { if (e.target === el) el.hidden = true; };
@@ -1042,21 +1043,19 @@
     if (window.DotSound) try { DotSound.play('tap'); } catch (_) {}
     if (after) after();
   }
-  function officeSide(el, i, o) {
+  // 版643：覚醒（クラブハウスの選手データから）。覚醒のカケラ100個で1凸
+  function awakeSide(el, i, o) {
     const p = save.team.players[i];
-    const side = document.createElement('div'); side.className = 'pc-side';
-    side.innerHTML = [['awk', 'pc_awake', '覚醒'], ['num', 'pc_number', '背番号'], ['pos', 'pc_pos', '登録ポジション'], ['name', 'pc_name', '登録名'], ['rel', 'pc_release', '放出']].map(([a, f, l]) => `<button data-ed="${a}" title="${l}"><img src="icons/${f}.png" alt="${l}"></button>`).join('');
+    const side = document.createElement('div'); side.className = 'pc-side pc-awk';
+    side.innerHTML = '<button data-ed="awk" title="覚醒"><img src="icons/pc_awake.png" alt="覚醒"></button>';
     el.appendChild(side);
-    // 版506：カードは画面に収まる大きさに縮めて、右のボタンと重ならない所へ（スマホで見切れないように）
     { const card = el.querySelector('.pc-card'); if (card) { card.style.transform = ''; const W = el.clientWidth, H = el.clientHeight, cw = card.offsetWidth, ch = card.offsetHeight, avail = W - 96 - 12 - 24 - 16; const k = Math.min(1, avail / cw, (H - 16) / ch); card.style.position = 'absolute'; card.style.left = Math.max(12, (avail - cw * k) / 2 + 12) + 'px'; card.style.top = ((H - ch * k) / 2) + 'px'; card.style.transform = `scale(${k.toFixed(3)})`; card.style.transformOrigin = '0 0'; } }
-    const done = () => { store(); playerDetail(i, o); if (o.onChange) o.onChange(); };
+    const done = () => { store(); playerDetail(i, o); };
     const dlg = (title, body, bind) => {
       const d = document.createElement('div'); d.className = 'pc-edit'; d.innerHTML = `<div class="pe-in"><h3>${title}</h3>${body}<div class="pe-btns"><button class="pe-no ib ib-no ib-img">やめる</button></div></div>`;
-      el.appendChild(d); d.onclick = (e) => { e.stopPropagation(); if (e.target === d) d.remove(); }; { const okb = d.querySelector('.pe-ok'), nob = d.querySelector('.pe-no'); if (okb && nob) { okb.parentElement.appendChild(nob); } }   /* 版528：決定とやめるを横に並べる */ d.querySelector('.pe-no').onclick = () => d.remove(); bind(d);
+      el.appendChild(d); d.onclick = (e) => { e.stopPropagation(); if (e.target === d) d.remove(); }; { const okb = d.querySelector('.pe-ok'), nob = d.querySelector('.pe-no'); if (okb && nob) okb.parentElement.appendChild(nob); } d.querySelector('.pe-no').onclick = () => d.remove(); bind(d);
     };
-    side.querySelectorAll('[data-ed]').forEach((b) => b.onclick = async (e) => { e.stopPropagation(); const a = b.dataset.ed;
-      if (a === 'rel') { releasePlayer(i, () => { el.hidden = true; if (o.onChange) o.onChange(); }); return; }   // 版512：放出
-      if (a === 'awk') {   // 版642：覚醒のカケラで凸
+    side.querySelector('button').onclick = (e) => { e.stopPropagation();
         const st = C.ensureStar(p), tz = p.totsu || 0, cost = C.awakeCost(p), have = save.kakera || 0, g0 = C.capGrade(p);
         const g1 = tz < 3 ? (() => { p.totsu = tz + 1; const g = C.capGrade(p); p.totsu = tz; return g; })() : g0;
         const pips = (n) => [0, 1, 2].map((k) => `<i class="aw-pip${k < n ? ' on' : ''}"></i>`).join('');
@@ -1067,8 +1066,23 @@
           <p class="pe-note">${tz >= 3 ? 'この選手はもう完凸（3凸）です。' : eff}${tz < 3 && have < cost ? '<br><b class="aw-ng">カケラが足りません。</b>カケラは、選手の放出やスカウトでかぶった時にもらえます。' : ''}</p></div>
           ${tz < 3 && have >= cost ? '<div class="pe-btns"><button class="pe-ok primary ib ib-ok">覚醒する</button></div>' : ''}`;
         dlg(`${esc(p.name)}を覚醒`, body, (d) => { const ok = d.querySelector('.pe-ok'); if (ok) ok.onclick = () => { if (C.awaken(save, p)) { try { window.DotSound && DotSound.play('skill'); } catch (_) {} done(); coachAsk(`${esc(p.name)}が覚醒しました！<br>凸 ${p.totsu}／3　育てられる上限：<b>${C.capGrade(p)}</b>`, [{ label: 'OK', value: true }]); } }; });
-        return;
-      }
+    };
+  }
+  function officeSide(el, i, o) {
+    const p = save.team.players[i];
+    const side = document.createElement('div'); side.className = 'pc-side';
+    side.innerHTML = [['num', 'pc_number', '背番号'], ['pos', 'pc_pos', '登録ポジション'], ['name', 'pc_name', '登録名'], ['rel', 'pc_release', '放出']].map(([a, f, l]) => `<button data-ed="${a}" title="${l}"><img src="icons/${f}.png" alt="${l}"></button>`).join('');
+    el.appendChild(side);
+    // 版506：カードは画面に収まる大きさに縮めて、右のボタンと重ならない所へ（スマホで見切れないように）
+    { const card = el.querySelector('.pc-card'); if (card) { card.style.transform = ''; const W = el.clientWidth, H = el.clientHeight, cw = card.offsetWidth, ch = card.offsetHeight, avail = W - 96 - 12 - 24 - 16; const k = Math.min(1, avail / cw, (H - 16) / ch); card.style.position = 'absolute'; card.style.left = Math.max(12, (avail - cw * k) / 2 + 12) + 'px'; card.style.top = ((H - ch * k) / 2) + 'px'; card.style.transform = `scale(${k.toFixed(3)})`; card.style.transformOrigin = '0 0'; } }
+    const done = () => { store(); playerDetail(i, o); if (o.onChange) o.onChange(); };
+    const dlg = (title, body, bind) => {
+      const d = document.createElement('div'); d.className = 'pc-edit'; d.innerHTML = `<div class="pe-in"><h3>${title}</h3>${body}<div class="pe-btns"><button class="pe-no ib ib-no ib-img">やめる</button></div></div>`;
+      el.appendChild(d); d.onclick = (e) => { e.stopPropagation(); if (e.target === d) d.remove(); }; { const okb = d.querySelector('.pe-ok'), nob = d.querySelector('.pe-no'); if (okb && nob) { okb.parentElement.appendChild(nob); } }   /* 版528：決定とやめるを横に並べる */ d.querySelector('.pe-no').onclick = () => d.remove(); bind(d);
+    };
+    side.querySelectorAll('[data-ed]').forEach((b) => b.onclick = async (e) => { e.stopPropagation(); const a = b.dataset.ed;
+      if (a === 'rel') { releasePlayer(i, () => { el.hidden = true; if (o.onChange) o.onChange(); }); return; }   // 版512：放出
+
       if (a === 'num') {
         const used = new Map(save.team.players.map((q) => [q.number, q]));
         let h = '<div class="pe-nums">'; for (let n = 1; n <= 99; n++) { const q = used.get(n); h += `<button data-n="${n}" class="${q === p ? 'me' : q ? 'used' : ''}" title="${q ? esc(q.name) : ''}">${n}${q && q !== p ? `<small>${esc(q.name)}</small>` : ''}</button>`; } h += '</div><p class="pe-note">ほかの選手の番号を選ぶと、その選手と番号を入れかえます。</p>';

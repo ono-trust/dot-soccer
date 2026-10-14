@@ -3337,3 +3337,20 @@ html.short .nm2-when{font-size:12px;margin:2px 8px 8px!important;padding:3px 0}h
 /* 版642：右のボタンが5つになったので少し小さく（右上のもどるボタンと重ならないように） */
 #pcModal.pc-office .pc-side{gap:6px;top:calc(50% + 34px)}
 #pcModal.pc-office .pc-side button{width:76px;height:76px}
+/* 版643：「次の試合」：今週か、まだ先かをはっきり */
+.nm2-when{align-items:center;gap:6px;padding:4px 0;flex-wrap:wrap}
+.nm2-when>span{font-size:14px;font-weight:900}
+.nm2-num{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#0e3a66;border:2px solid #9fd2ff;color:#fff;font:900 22px/1 "Arial Black",sans-serif}
+.nm2-when small{font-size:12px;font-weight:800;opacity:.85;margin-left:4px}
+.nm2-when.today{flex-direction:column;gap:0;padding:6px 0;border-radius:14px;background:linear-gradient(#ff5a3a,#d8201a);color:#fff;border:3px solid #fff;box-shadow:0 0 0 2px #8a1000,0 0 16px rgba(255,90,40,.8);animation:nm2t 1s ease-in-out infinite}
+.nm2-big{font-size:21px;font-weight:900;letter-spacing:.04em;text-shadow:0 2px 0 #7a0a00}
+.nm2-when.today small{opacity:1;font-size:12px;margin:0}
+@keyframes nm2t{50%{transform:scale(1.04);box-shadow:0 0 0 2px #8a1000,0 0 26px rgba(255,120,40,1)}}
+.nm2-hd.today{background:linear-gradient(#ff6a3a,#d8301a)}
+.h2-card:has(.nm2-hd.today){border-color:#ffd23a;box-shadow:0 0 0 3px #ff5a2a}
+html.short .nm2-num{width:28px;height:28px;font-size:18px}html.short .nm2-big{font-size:17px}html.short .nm2-when>span{font-size:12px}
+/* 版643：クラブハウスの選手データ：右に「覚醒」 */
+#pcModal .pc-awk{right:12px;top:50%}
+#pcModal .pc-awk button{width:96px;height:96px}
+#pcModal.pc-club .pc-card{margin:0;transform-origin:left center}
+#pcModal.pc-club .pc-awk{right:12px;left:auto;top:50%}
