@@ -3270,3 +3270,31 @@ html.short .h2-post{width:40px;height:40px}
 .ap2 .ap-vsm em{transform:translateX(-5px)}
 /* 版640：青・白のボタン（決定・やめる・購入する・外す など）の文字が少し上にずれていた → 絵の表の面の真ん中にそろえる */
 button.ib{padding:0 0 4px!important;line-height:1!important}
+/* 版641：横長の画面では手札を2段に（カードを大きく） */
+.trb.wide .trb-card{left:calc((100% - 1120px) / 2)}
+.trb.wide .trb-set{left:calc((100% - 1120px) / 2 + 700px)}
+.trb.wide .trb-lw,.trb.wide .trb-hand{width:auto;left:0;right:0}
+.trb.wide .trb-hand .hg.cat-tact,.trb.wide .trb-hand .hg.cat-tech,.trb.wide .trb-hand .hg.cat-phys{flex:4 1 0}
+.trb.wide .trb-hand .hg.cat-sup{flex:6 1 0}
+.trb.wide .trb-hand .hg-l{height:34px;font-size:22px}
+.trb.wide .trb-hand .hg-l .hg-i{width:28px;height:28px}
+.trb.wide .trb-hand .hg-c{grid-template-rows:repeat(2,var(--ch,96px))!important;grid-auto-columns:var(--cw,80px)!important;gap:4px!important;padding:5px}
+.trb.wide .trb-hand .hg-c .acard{width:var(--cw,80px)!important;height:var(--ch,96px)!important;border-width:3px}
+.trb.wide .trb-hand .hg-c .acard .ac-cnt{font-size:15px;padding:1px 4px}
+.trb.wide .trb-hand{gap:6px!important}
+.trb.wide .trb-hand .hg-c{margin:0 2px 2px;padding:4px;gap:4px!important}
+/* 版641：手札のカードを大きく：選手の列を少し低くして、そのぶん手札を高く（3段のまま） */
+.trb-lw{top:262px;height:94px}
+.trb-lw .trb-line{height:88px!important}
+.trb-lw .trb-line .tl2{height:82px;width:70px;padding-top:1px}
+.trb-lw .trb-line .tl2 .tl2f{width:46px;height:42px}
+.trb-lw .trb-line .tl2 b{font-size:14px}
+.trb-lw .trb-line .tl2n{font-size:11px}
+.trb-hand{top:362px!important;height:276px!important}
+.trb-hand .hg-l{height:30px}
+.trb-hand .hg-c{grid-template-rows:repeat(3,76px)!important;grid-auto-columns:64px!important;gap:4px!important;padding:3px;margin:0 3px 3px}
+.trb-hand .hg-c .acard{width:64px!important;height:76px!important;border-width:2px}
+.trb-hand .hg-c .acard .ac-cnt{font-size:13px}
+.trb-hand{top:360px!important;height:278px!important}
+.trb-hand .hg-c{grid-template-rows:repeat(3,75px)!important;grid-auto-columns:63px!important}
+.trb-hand .hg-c .acard{width:63px!important;height:75px!important}

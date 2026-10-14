@@ -1230,8 +1230,11 @@
   const TRB_W = 1120, TRB_H = 640;   // 版632：手札の見出しのぶん少し高く
   function fitBoard() {
     const b = document.querySelector('#clubLayer .trb'); if (!b) return;
-    const L = $('#clubLayer'), w = L.clientWidth, h = L.clientHeight, s = Math.min(w / TRB_W, h / TRB_H);
-    b.style.transform = `scale(${s})`; b.style.left = Math.max(0, (w - TRB_W * s) / 2) + 'px'; b.style.top = Math.max(0, (h - TRB_H * s) / 2) + 'px';
+    const L = $('#clubLayer'), w = L.clientWidth, h = L.clientHeight;
+    // 版641：横長の画面（スマホ）では、ボードを横に広げて余った幅を手札に使う（カードを2段にして大きく）
+    const BW = Math.round(Math.max(TRB_W, Math.min(1400, h > 0 ? TRB_H * w / h : TRB_W))), s = Math.min(w / BW, h / TRB_H);
+    b.style.width = BW + 'px'; b.classList.toggle('wide', false); { const cw = Math.floor(((BW - 18) / 18 * 4 - 16 - 12) / 4); b.style.setProperty('--cw', cw + 'px'); b.style.setProperty('--ch', Math.min(96, Math.round(cw * 1.19)) + 'px'); }
+    b.style.transform = `scale(${s})`; b.style.left = Math.max(0, (w - BW * s) / 2) + 'px'; b.style.top = Math.max(0, (h - TRB_H * s) / 2) + 'px';
   }
   addEventListener('stagefit', fitBoard); addEventListener('resize', fitBoard);
   // 版632：特訓画面の見出しアイコン（線画のSVG）
