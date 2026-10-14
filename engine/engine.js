@@ -624,6 +624,7 @@
     const uniqLog = [];
     const uOn = (p, k) => !!p && p.uniq === k && p.uOn > S.t;
     const uP = (p) => (p.uniqLv >= 2 ? 1.3 : 1);   // 凸で強化：効果が1.3倍
+    const grF = (p) => clamp(((p.kick || 0) * 0.5 + (p.technique || 0) * 0.3 + (p.mental || 0) * 0.2 - 45) / 45, 0.25, 1.15);   // 版665：紅蓮の牙の強さは、本人のシュート力（キック・テクニック・メンタル）に連動。スカウト直後（60台）は4割ほど、国内屈指（90前後）で満額
     // GKの固有スキル（白亜の城壁・捨て身の守護神）の止める力の上乗せは、本人のセービング力に連動（CPUの国内屈指＝満額、手に入れた直後のE〜D＝2〜3割、99まで育てると満額を超える）
     const gkF = (p) => clamp((p.vision * 0.25 + p.technique * 0.3 + p.jump * 0.2 + p.dash * 0.1 + p.mental * 0.15 - 30) / 56, 0.2, 1.2), gP = (p) => (p.uniq === 'ikari' ? 1 : uP(p)) * gkF(p);
     const mtF = (p) => clamp(((p.physical + p.defense + p.jump) / 3 - 30) / 54, 0.2, 1.2);   // 祭り太鼓の壁：上乗せはフィジカル・守備・ジャンプに連動   // 白亜の城壁の凸は、止める力ではなくキャッチにだけ効く（強すぎないように・育て切っても凸の違いが残るように）
@@ -2123,7 +2124,7 @@
         if (opt.calm) speed *= 0.88;   // 1対1は流し込む
         const SPD = { powerMid: 1.22, toeKick: 1.0, volley: 1.12, bicycle: 1.02, nearPost: 1.12, direct: 1.04, divingHeader: 0.85 };
         if (opt.skill && SPD[opt.skill]) speed *= SPD[opt.skill];
-        if (uOn(p, 'guren') && !opt.fk && !opt.pk) speed = p.uniqLv >= 2 ? Math.min(36, speed * 1.36) : Math.min(34, speed * 1.28);   // 紅蓮の牙：威力が上がる（凸でさらに速く強く）
+        if (uOn(p, 'guren') && !opt.fk && !opt.pk) speed = p.uniqLv >= 2 ? Math.min(36, speed * (1 + 0.36 * grF(p))) : Math.min(34, speed * (1 + 0.28 * grF(p)));   // 紅蓮の牙：威力が上がる（凸でさらに速く強く）
         // コントロールショット：どれもコースを正確に狙って隅へ「置きに行く」シュート。強さは3段階
         //  しっかり強い球で置きに行く（3割）／浮き球で置きに行く（5割）／グラウンダーで置きに行く（2割：半分はゆるく転がす、半分は強いグラウンダー）
         if (opt.skill === 'controlShot') { csPlace = true; const r = R.next();
@@ -2148,7 +2149,7 @@
           // グラウンダー・すね〜胸・頭上〜バーぎりぎりまで幅広く。キックが下手・遠い・寄せられていると上下にもブレる（バーの上へふかす）
           const r0 = R.next();
           let h = opt.pk ? R.range(0.2, 2.0) : r0 < 0.22 ? R.range(0.1, 0.4) : r0 < 0.62 ? R.range(0.5, 1.8) : R.range(1.8, 2.75);
-          if (!opt.pk) h += R.gauss() * menF * (0.1 + (1 - p.kick / 100) * 0.6 + pressure * 0.3 + d * 0.008) * (1 - DOM[p.team] * 0.6) * (uOn(p, 'guren') ? (p.uniqLv >= 2 ? 0.3 : 0.45) : 1);   // 紅蓮の牙：ふかさない
+          if (!opt.pk) h += R.gauss() * menF * (0.1 + (1 - p.kick / 100) * 0.6 + pressure * 0.3 + d * 0.008) * (1 - DOM[p.team] * 0.6) * (uOn(p, 'guren') ? Math.max(0.2, 1 - (p.uniqLv >= 2 ? 0.7 : 0.55) * grF(p)) : 1);   // 紅蓮の牙：ふかさない
           h = Math.max(0.05, h);
           if (opt.empty) h = R.range(0.1, 0.7);   // 無人のゴール：低く確実に
           const t = Math.max(0.15, d / speed);
@@ -2160,7 +2161,7 @@
         const NOISE = { driveShot: 0.9, controlShot: 0.6, toeKick: 0.9, volley: 1.15, bicycle: 1.3, powerMid: 1.05, nearPost: 0.85, direct: 0.85, divingHeader: 1.1 };
         if (opt.skill && NOISE[opt.skill]) ang = Math.atan2(dy, dx) + (ang - Math.atan2(dy, dx)) * NOISE[opt.skill] * (csPlace ? 0.6 : 1);   // 置きに行く時はさらに正確
         // 固有スキル：紅蓮の牙（威力と精度が大きく上がる）・紫電の遊戯／影からの一撃（精度が上がる）
-        { const m = uOn(p, 'guren') ? (p.uniqLv >= 2 ? 0.15 : 0.17) : uOn(p, 'kage') ? (p.uniqLv >= 2 ? 0.2 : 0.26) : uOn(p, 'shiden') ? 0.55 : uOn(p, 'tsukikage') && p.uniqLv >= 2 ? 0.72 : 1;   // 月影の抜け出し：シュートの補正は凸してから（若干）
+        { const m = uOn(p, 'guren') ? Math.max(0.12, 1 - (p.uniqLv >= 2 ? 0.85 : 0.83) * grF(p)) : uOn(p, 'kage') ? (p.uniqLv >= 2 ? 0.2 : 0.26) : uOn(p, 'shiden') ? 0.55 : uOn(p, 'tsukikage') && p.uniqLv >= 2 ? 0.72 : 1;   // 月影の抜け出し：シュートの補正は凸してから（若干）
           if (m < 1) { const um = Math.max(0.15, 1 - (1 - m) * uP(p)); ang = Math.atan2(dy, dx) + (ang - Math.atan2(dy, dx)) * um; }
           if (p.uniq === 'tsukikage' && !(p.uniqLv >= 2) && S.t - Math.max(p.tsukiRecv || -99, p.uFireT || -99) < 8) ang = Math.atan2(dy, dx) + (ang - Math.atan2(dy, dx)) * 1.35;   // 月影の抜け出し（無凸）：走り抜けた勢いのまま打つので、シュートは少しぶれる
           if ((p.tactBuff || 0) > S.t) ang = Math.atan2(dy, dx) + (ang - Math.atan2(dy, dx)) * ((p.hariT || 0) > S.t ? 0.8 : p.tactLv >= 2 ? 0.7 : 0.85); }   // 指揮の余韻：シュートも正確（凸でさらに）
@@ -2709,8 +2710,8 @@
       S.ball.brk = !emptyNet && (p.tsukiRecv > 0 || (p.uFireT && S.t - p.uFireT < 7 && p.uniq === 'tsukikage'));   // 抜け出してからの1対1のシュート
       S.ball.tsukiShot = p.uniq === 'tsukikage' && !(p.uniqLv >= 2) && S.t - Math.max(p.tsukiRecv || -99, p.uFireT || -99) < 8;   // 月影の抜け出し（無凸）：抜け出した後の決定力は控えめ（エースのかとうより下）
       if ((p.hariT || 0) > S.t) { S.ball.gkPen += p.hariLv >= 2 ? 0.3 : 0.22; }   // 針の穴通しの1本から：シュートの補正は若干だけ   // 最強のラストパス：受けたら1点   // 針の穴通しの1本を受けて：決めきる
-      S.ball.gkPen += uOn(p, 'guren') ? (p.uniqLv >= 2 ? 1.1 : 0.95) : uOn(p, 'kage') ? (p.uniqLv >= 2 ? 0.8 : 0.65) : uOn(p, 'shiden') ? (S.t - (p.sdBeat || -9) < 1.5 ? 0.35 : 0.06) : uOn(p, 'tsukikage') && p.uniqLv >= 2 ? 0.09 : 0;   // GKが反応しにくい（月影の抜け出し：抜け出した勢いのまま1対1を決める）
-      S.ball.uDelay = uOn(p, 'guren') ? 0.15 * uP(p) : 0; S.ball.pkShot = !!S.pk; S.ball.guren = uOn(p, 'guren') ? p.uniqLv || 1 : 0;   // 紅蓮の牙のシュート（2＝凸：GKはキャッチできない）
+      S.ball.gkPen += uOn(p, 'guren') ? (p.uniqLv >= 2 ? 1.1 : 0.95) * grF(p) : uOn(p, 'kage') ? (p.uniqLv >= 2 ? 0.8 : 0.65) : uOn(p, 'shiden') ? (S.t - (p.sdBeat || -9) < 1.5 ? 0.35 : 0.06) : uOn(p, 'tsukikage') && p.uniqLv >= 2 ? 0.09 : 0;   // GKが反応しにくい（月影の抜け出し：抜け出した勢いのまま1対1を決める）
+      S.ball.uDelay = uOn(p, 'guren') ? 0.15 * uP(p) * grF(p) : 0; S.ball.grF = uOn(p, 'guren') ? grF(p) : 1; S.ball.pkShot = !!S.pk; S.ball.guren = uOn(p, 'guren') ? p.uniqLv || 1 : 0;   // 紅蓮の牙のシュート（2＝凸：GKはキャッチできない）
       S.fkDirect = false;
       S.ball.oneOnOne = oneOnOne;
       // 枠内かどうか（GKを無視した弾道）
@@ -4267,7 +4268,7 @@
             if (ik) prob = Math.max(prob, 0.3 * gP(p)) + 0.08 * gkF(p);   // 至近距離の決定機でも、簡単には割らせない
             if (visA < 0.3 && b.shotSkill !== 'controlShot' && !b.pkShot) prob = Math.max(prob, 0.8 + (0.3 - visA));   // ほぼ真横（角度なし）からのシュートは、GKの正面。まず止める
             if (p.uniq === 'sutemi' && b.kind === 'shot') prob = Math.max(prob, 0.25 * gkF(p)) + 0.4 * gP(p);   // 捨て身の守護神（なかむら）：国内屈指のGK。ふつうのGKよりはっきり止める（れんのには及ばない）
-            if (b.guren && !b.pkShot) prob -= b.guren >= 2 ? 0.14 : 0.1;   // 紅蓮の牙：正面に来ても、勢いでGKの手をはじく
+            if (b.guren && !b.pkShot) prob -= (b.guren >= 2 ? 0.14 : 0.1) * (b.grF ?? 1);   // 紅蓮の牙：正面に来ても、勢いでGKの手をはじく
             if (b.tsukiShot) prob = Math.max(prob, 0) + (b.csPlace ? 0.26 : 0.14);   // 月影の抜け出し（無凸）の後のシュートは、GKも待ち構えて止めやすい（エースのかとうより決定力は下）
             return { prob, skill, shotD, oneGK, rolling };
     }
@@ -4437,7 +4438,7 @@
         const dx = gx - b.x, dy = ty - b.y, d = hyp(dx, dy) || 1, v = (10 + p.physical * 0.07 + R.next() * 3) * (gr ? (lv2 ? 1.5 : 1.35) : 1);   // 叩きつける強いヘディング
         Object.assign(b, base, { kind: 'shot', vx: (dx / d) * v, vy: (dy / d) * v, vz: gr ? R.range(-1.6, 0.2) : R.range(-2.6, 0.8), style: 'head', shotT: S.t, shotFrom: hyp(fx(p.team, L) - p.x, GOAL_Y - p.y), gkPen: 0, uDelay: 0, guren: 0, uSafe: 0, csPlace: false, curveAll: false, drive: 0 });
         if (nf) b.gkPen = 0.08;
-        if (gr) { b.gkPen += lv2 ? 0.6 : 0.2; b.uDelay = 0.07 * uP(p); b.guren = p.uniqLv || 1; }
+        if (gr) { b.grF = grF(p); b.gkPen += (lv2 ? 0.6 : 0.2) * b.grF; b.uDelay = 0.07 * uP(p) * b.grF; b.guren = p.uniqLv || 1; }
         const tHit = (gx - b.x) / b.vx, yHit = b.y + b.vy * tHit;
         b.shotOnTarget = Math.abs(yHit - GOAL_Y) < POST;
         stats[p.team].shots++; if (b.shotOnTarget) stats[p.team].shots_on_target++; else stats[p.team].off_target++;
@@ -4880,7 +4881,7 @@
         const inBox = fx(p.team, b.x) < 16.5 && Math.abs(b.y - GOAL_Y) < 20.2;
         // バックパスは手で取れない
         const gkHands = p.gk && inBox && !(b.lastTeam === p.team && b.kind === 'pass');
-        const reach = gkHands ? (uOn(p, 'ikari') ? 0.35 * gP(p) : 0) + (p.diveT > 0 ? 1.4 + (p.jump * 0.7 + p.technique * 0.3) * 0.012 : b.kind === 'shot' ? 1.15 + p.technique * 0.005 + p.jump * 0.004 : 1.3 + p.jump * 0.004) : b.kind === 'shot' && p.team !== b.lastTeam ? 0.55 - (b.guren ? 0.45 : 0) + p.technique * 0.002 + (skZ(p, 'shotBlock') ? 0.4 : 0) + (uOn(p, 'miyabi') ? 0.9 * uP(p) : 0) + (uOn(p, 'matsuri') ? 0.6 * uP(p) * mtF(p) : 0) + (uOn(p, 'kagenui') && b.kicker === p.kgT ? 0.6 : 0) + ((p.b5 || -9) > S.t - 0.5 && fx(p.team, b.x) < 25 ? 0.15 : 0) + (fx(p.team, b.x) < 7 && Math.abs(b.y - GOAL_Y) < POST + 2 ? 0.9 : 0) : (p.team !== b.lastTeam && b.kind === 'pass' && skZ(p, 'intercept') ? 0.4 : 0) - (p.team !== b.lastTeam && b.kind === 'pass' ? (b.uSafe || 0) * 0.5 : 0) + (uOn(p, 'tetsurou') && p.team !== b.lastTeam ? 0.5 : 0) + ((p.sw5 || -9) > S.t - 0.5 && p.team !== b.lastTeam && b.kind === 'pass' ? 0.7 : 0) + (uOn(p, 'kagenui') && p.team !== b.lastTeam && b.kind === 'pass' ? (b.intended === p.kgT ? 1.3 : 0.35) : 0) + (uOn(p, 'miyabi') && b.kind === 'loose' ? 0.5 : 0) + (uOn(p, 'sutemi') && !gkHands ? 0.6 : 0) + (b.kind === 'loose' || hyp(b.vx, b.vy) < 5 ? 0.8 : b.kind === 'pass' && b.intended === p.idx ? 1.25 : 0.75) + (p.team === b.lastTeam ? p.technique : p.defense) * 0.003 + (p.team !== b.lastTeam ? DOM[p.team] * 0.45 : 0);   // ダイレクトのワンツーは読まれにくい
+        const reach = gkHands ? (uOn(p, 'ikari') ? 0.35 * gP(p) : 0) + (p.diveT > 0 ? 1.4 + (p.jump * 0.7 + p.technique * 0.3) * 0.012 : b.kind === 'shot' ? 1.15 + p.technique * 0.005 + p.jump * 0.004 : 1.3 + p.jump * 0.004) : b.kind === 'shot' && p.team !== b.lastTeam ? 0.55 - (b.guren ? 0.45 * Math.min(1, b.grF ?? 1) : 0) + p.technique * 0.002 + (skZ(p, 'shotBlock') ? 0.4 : 0) + (uOn(p, 'miyabi') ? 0.9 * uP(p) : 0) + (uOn(p, 'matsuri') ? 0.6 * uP(p) * mtF(p) : 0) + (uOn(p, 'kagenui') && b.kicker === p.kgT ? 0.6 : 0) + ((p.b5 || -9) > S.t - 0.5 && fx(p.team, b.x) < 25 ? 0.15 : 0) + (fx(p.team, b.x) < 7 && Math.abs(b.y - GOAL_Y) < POST + 2 ? 0.9 : 0) : (p.team !== b.lastTeam && b.kind === 'pass' && skZ(p, 'intercept') ? 0.4 : 0) - (p.team !== b.lastTeam && b.kind === 'pass' ? (b.uSafe || 0) * 0.5 : 0) + (uOn(p, 'tetsurou') && p.team !== b.lastTeam ? 0.5 : 0) + ((p.sw5 || -9) > S.t - 0.5 && p.team !== b.lastTeam && b.kind === 'pass' ? 0.7 : 0) + (uOn(p, 'kagenui') && p.team !== b.lastTeam && b.kind === 'pass' ? (b.intended === p.kgT ? 1.3 : 0.35) : 0) + (uOn(p, 'miyabi') && b.kind === 'loose' ? 0.5 : 0) + (uOn(p, 'sutemi') && !gkHands ? 0.6 : 0) + (b.kind === 'loose' || hyp(b.vx, b.vy) < 5 ? 0.8 : b.kind === 'pass' && b.intended === p.idx ? 1.25 : 0.75) + (p.team === b.lastTeam ? p.technique : p.defense) * 0.003 + (p.team !== b.lastTeam ? DOM[p.team] * 0.45 : 0);   // ダイレクトのワンツーは読まれにくい
         if (b.z > (gkHands ? gkReachZ(p) : 1.9)) continue;
         if (!passOk(p, b)) continue;
         const rcvX = !gkHands && b.kind === 'pass' && b.intended === p.idx && p.team === b.lastTeam && b.z < 0.8 && p.technique >= 55 ? 0.45 : 0;   // 味方からのパスの受け手：足を伸ばして止める（横を通されて置き去りにしない）   // 味方へのパスは、ほかの味方はまたいで通す。月影の抜け出しのスルーパスは、触れる相手が限られる
@@ -4921,7 +4922,7 @@
               // 無回転シュート：ブレるので、どんなGKでもキャッチできない。触っても必ずファンブルする
               //  そのままゴールへこぼれ込む／前にこぼす／うまいGKなら、コースを変えてゴールの外へ逃がす（CK）のが精一杯
               if (b.knuckle) {
-                const pOut = clamp((skill - 55) * 0.013, 0, 0.5), pIn = clamp(0.26 - skill * 0.002, 0.08, 0.24) + (b.guren >= 2 ? (uOn(p, 'ikari') ? (p.uniqLv >= 2 ? 0.08 : 0.18) : 0.4) : 0), r = R.next();   // 白亜の城壁は、こぼれ込みを許さない   // 紅蓮の牙（凸）の無回転は、さらにこぼれ込みやすい
+                const pOut = clamp((skill - 55) * 0.013, 0, 0.5), pIn = clamp(0.26 - skill * 0.002, 0.08, 0.24) + (b.guren >= 2 ? (uOn(p, 'ikari') ? (p.uniqLv >= 2 ? 0.08 : 0.18) : 0.4) * Math.min(1, b.grF ?? 1) : 0), r = R.next();   // 白亜の城壁は、こぼれ込みを許さない   // 紅蓮の牙（凸）の無回転は、さらにこぼれ込みやすい
                 const side = Math.sign(yAt - p.y) || (R.next() < 0.5 ? -1 : 1);
                 p.touchCd = 1.2;
                 if (r < pIn) {   // 手に当たったまま、勢いが残ってゴールへ
@@ -4942,7 +4943,7 @@
                 return;
               }
               // 紅蓮の牙（凸）：GKはキャッチできない。触っても勢いに負けて、ゴールへこぼれ込むことがある
-              if (b.guren >= 2 && R.next() < (uOn(p, 'ikari') ? (p.uniqLv >= 2 ? 0.12 : 0.3) : 0.65)) {   // 白亜の城壁は、勢いに負けにくい（凸ならほぼ負けない）
+              if (b.guren >= 2 && R.next() < (uOn(p, 'ikari') ? (p.uniqLv >= 2 ? 0.12 : 0.3) : 0.65) * Math.min(1, b.grF ?? 1)) {   // 白亜の城壁は、勢いに負けにくい（凸ならほぼ負けない）
                 ev('gk', { team: p.team, player: p.name, act: 'fumble' }); p.touchCd = 1.2;
                 const gl = fx(p.team, 0), side = Math.sign(yAt - p.y) || 1, ty2 = clamp(yAt + side * R.range(0.3, 1.0), GOAL_Y - POST + 0.6, GOAL_Y + POST - 0.6), dxg = gl - b.x || -sgn(p.team) * 0.5, tt = Math.max(0.12, Math.abs(dxg) / R.range(7, 11));
                 Object.assign(b, { vx: dxg / tt, vy: (ty2 - b.y) / tt, vz: R.range(0.2, 1.0), z: Math.min(b.z, 1.6), spin: 0, knuckle: false, wobW: null });
