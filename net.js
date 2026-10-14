@@ -2,7 +2,9 @@
 // FIREBASE_CONFIG が空のあいだは、オンラインの機能は使えない（フレンドのリンク対戦とCPUのランクマッチだけ）
 (() => {
   'use strict';
-  const FIREBASE_CONFIG = null;   // ← Firebase の設定をここに入れる（{ apiKey: ..., authDomain: ..., projectId: ..., ... }）
+  const FIREBASE_CONFIG = {   // 版614：dot-soccer プロジェクト（公開してよい設定。守りは Firestore のルール）
+    apiKey: 'AIzaSyDP3mmjrdqi9LklMzGVEvVHFKDtFAKlu9M', authDomain: 'dot-soccer.firebaseapp.com', projectId: 'dot-soccer',
+    storageBucket: 'dot-soccer.firebasestorage.app', messagingSenderId: '947181345833', appId: '1:947181345833:web:a50275f6c6a187e17fd038' };
   const SDK = 'https://cdn.jsdelivr.net/npm/firebase@10.12.2/';
   let db = null, uid = null, readyP = null, lastErr = '';
   const load = (src) => new Promise((ok, ng) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => ng(new Error('load ' + src)); document.head.appendChild(s); });
@@ -36,10 +38,10 @@
   async function publish(me) {
     if (!(await ready())) return null;
     return withTimeout((async () => {
-      const fid = await ensureFid(me.fid);
+      let fid; try { fid = await ensureFid(me.fid); } catch (e) { lastErr = 'fid: ' + (e && e.message || e); throw e; }
       await db.collection('players').doc(uid).set({ fid, name: me.name, short: me.short, mgr: me.mgr || '', lg: me.lg || '', emb: me.emb || null, kit: me.kit || null, rank: me.rank, rp: me.rp, lvl: Math.round(me.lvl || 0), code: me.code, at: Date.now() });
       return fid;
-    })());
+    })()).catch((e) => { lastErr = lastErr || String(e && e.message || e); throw e; });
   }
   async function byFid(fid) {
     if (!(await ready())) return null;

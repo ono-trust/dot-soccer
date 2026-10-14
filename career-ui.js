@@ -3952,7 +3952,7 @@
     const close = () => { el.hidden = true; };
     const q = (s) => box.querySelector(s);
     q('.std-back').onclick = () => { close(); airport(); };
-    if (net && !on.fid) publishMe().then((fid) => { const e = q('#apMyId'); if (e) e.textContent = fid ? fmtFid(fid) : 'つながりません'; });
+    if (net && !on.fid) publishMe().then((fid) => { const e = q('#apMyId'); if (e) e.textContent = fid ? fmtFid(fid) : 'つながりません'; if (!fid) { const n = document.createElement('p'); n.className = 'ap-note ap-err'; n.textContent = '通信できませんでした（' + ((window.DotNet && DotNet.err) || '不明') + '）'; const m = q('.ap-myid'); m && m.after(n); } });
     if (q('[data-a="copyid"]')) q('[data-a="copyid"]').onclick = async () => { try { await navigator.clipboard.writeText(on.fid || ''); modal('<h2>フレンドIDをコピーしました</h2>', [{ label: 'OK', primary: true }]); } catch (_) {} };
     if (q('[data-a="add"]')) q('[data-a="add"]').onclick = async () => {
       const id = (q('#apFid').value || '').replace(/\D/g, '');
