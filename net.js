@@ -78,5 +78,19 @@
     if (!(await ready())) return [];
     return withTimeout(db.collection('players').orderBy('rp', 'desc').limit(n || 50).get().then((q) => q.docs.map((d) => ({ uid: d.id, name: d.data().name, mgr: d.data().mgr, emb: d.data().emb, rank: d.data().rank, rp: d.data().rp }))));
   }
-  window.DotNet = { get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top };
+  // 版618：ポスト（フレンド申請・承認・お知らせ）
+  async function sendMail(to, m) {
+    if (!(await ready())) return;
+    return withTimeout(db.collection('mail').add({ ...m, to, from: uid, at: Date.now() }));
+  }
+  async function mailbox() {
+    if (!(await ready())) return [];
+    return withTimeout(db.collection('mail').where('to', '==', uid).limit(50).get().then((q) => q.docs.map((d) => ({ id: d.id, ...d.data() }))));
+  }
+  async function delMail(ids) { if (!(await ready())) return; await Promise.all(ids.map((id) => db.collection('mail').doc(id).delete().catch(() => {}))); }
+  async function news() {
+    if (!(await ready())) return [];
+    return withTimeout(db.collection('news').orderBy('at', 'desc').limit(20).get().then((q) => q.docs.map((d) => ({ id: d.id, ...d.data() })))).catch(() => []);
+  }
+  window.DotNet = { get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news };
 })();

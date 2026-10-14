@@ -5,6 +5,7 @@
   const $ = (s) => document.querySelector(s);
   const KEY = 'dotsoccer.career.v1';
   const COIN = '<img class="coin-ico" src="icons/coin.png" alt="コイン" draggable="false">';
+  const POST_SVG = '<svg viewBox="0 0 48 48"><rect x="14" y="40" width="20" height="6" rx="1" fill="#7a1a1a"/><path d="M9 14a15 10 0 0 1 30 0v26H9z" fill="#e2322e" stroke="#fff" stroke-width="2.5"/><rect x="14" y="18" width="20" height="4" rx="2" fill="#3a0c0c"/><path d="M18 28h12M24 28v8" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M17 32h14" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg>';
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   let save = null, view = 'home', raf = 0, selIdx = 9, cardTab = 'normal';
 
@@ -498,16 +499,18 @@
     let bar = home.querySelector('.h2-bar');
     if (!bar) {
       bar = document.createElement('div'); bar.className = 'h2-bar';
-      bar.innerHTML = '<img class="h2-emb" alt=""><b class="h2-team"></b><i class="h2-sep"></i><span class="h2-date"><b class="m"></b><small>月</small><b class="w"></b><small>週</small></span><span class="h2-next-slot"></span><span class="h2-coin" data-go="coin">' + COIN + '<b></b><img class="h2-plus" src="icons/ui_plus.png" alt="コインを買う"></span>';
+      bar.innerHTML = '<img class="h2-emb" alt=""><b class="h2-team"></b><i class="h2-sep"></i><span class="h2-date"><b class="m"></b><small>月</small><b class="w"></b><small>週</small></span><span class="h2-next-slot"></span><span class="h2-coin" data-go="coin">' + COIN + '<b></b><img class="h2-plus" src="icons/ui_plus.png" alt="コインを買う"></span><button class="h2-post" title="ポスト">' + POST_SVG + '<i hidden></i></button>';
       home.appendChild(bar);
       bar.querySelector('.h2-next-slot').appendChild($('#hmNext'));
       bar.querySelector('.h2-coin').onclick = () => coinShop(() => renderHome());
+      bar.querySelector('.h2-post').onclick = () => openPost(() => renderHome());
     }
     $('#hmNext').innerHTML = '<i class="h2-arr">➜</i><b>週を進める</b>';
     bar.querySelector('.h2-emb').src = emblemURL(save.team.name, 64);
     bar.querySelector('.h2-team').textContent = save.team.name;
     bar.querySelector('.m').textContent = k.m; bar.querySelector('.w').textContent = k.w;
     bar.querySelector('.h2-coin b').textContent = (save.coins || 0).toLocaleString();
+    postBadge(); syncPost();   // 版618：ポストの未読（1分に1回まで）
     const fx = C.nextFixture(save), st = C.standings(save), rank = (t) => st.findIndex((s) => s.name === t.name) + 1, cs = C.campState(save);
     let body;
     if (fx) {
@@ -3423,12 +3426,13 @@
     const draw = () => {
       box.innerHTML = `<div class="off"><div class="of-room"></div>
         <div class="of-l">${PIC('kit', 'off_kit', 'ユニフォーム')}${PIC('emb', 'off_emblem', 'エンブレム')}${PIC('name', 'off_name', 'チーム名変更')}${PIC('bye', 'off_retire', '退任')}${PIC('set', 'off_setting', '設定')}</div>
-        <div class="of-r">${PIC('biz', 'off_biz', '経営状況')}${PIC('team', 'off_team', 'チーム編成')}</div>
+        <div class="of-r">${PIC('biz', 'off_biz', '経営状況')}${PIC('team', 'off_team', 'チーム編成')}${PIC('friend', 'off_friend', 'フレンド')}</div>
         <button class="std-back of-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button>
         ${panel === 'biz' ? bizHTML() : panel === 'team' ? teamHTML() : ''}</div>`;
       box.querySelector('.of-room').appendChild(cvs); drawRoom();
       box.querySelectorAll('.of-b').forEach((b) => b.onclick = async () => { const a = b.dataset.a;
         if (a === 'biz' || a === 'team') { panel = panel === a ? null : a; draw(); return; }
+        if (a === 'friend') { el.hidden = true; friendMenu(() => { el.hidden = false; draw(); }); return; }   // 版618：事務所からもフレンド申請
         if (a === 'set') { if (window.__openMenu) window.__openMenu(); return; }   /* 版470：設定（チュートリアル・全画面など。右上のメニューの代わり） */
         if (a === 'kit' || a === 'emb' || a === 'name') { clubTab = a; el.hidden = true; openClub({ only: a, onDone: () => { el.hidden = false; draw(); } }); return; }
         if (a === 'bye') {
@@ -3856,22 +3860,96 @@
     return { cards, kak: RW.kak, coins: RW.coins, rank: i1 };
   }
   const rewardHTML = (rw) => `<h2>${rankBadge(rw.rank, true)} 取得のごほうび！</h2><p class="coin big">${COIN}+${rw.coins} コイン${rw.kak ? `　／　覚醒のカケラ +${rw.kak}` : ''}</p><p>特訓カード ${rw.cards.length}枚${RANK_REWARD[rw.rank].pack ? `（${RANK_REWARD[rw.rank].pack}）` : ''}</p><div class="hrow rw ap-rw">${[...new Set(rw.cards)].map((c) => { const n = rw.cards.filter((x) => x === c).length; return `<div class="ap-rwc">${artCard(c, { ups: true })}${n > 1 ? `<b>×${n}</b>` : ''}</div>`; }).join('')}</div>`;
-  // 版616：守備の記録（ほかの監督に挑まれた結果）をまとめて受け取る
-  async function takeDefense() {
-    if (!(window.DotNet && DotNet.on)) return;
-    let list = []; try { list = await DotNet.inbox(); } catch (_) { return; }
-    if (!list.length) return;
-    const on = ensureOnline(), before = on.rp, i0 = rankIdx(before);
-    let dw = 0, dd = 0, dl = 0;
-    for (const b of list) { if (b.res === 'L') dw++; else if (b.res === 'D') dd++; else dl++; }   // res は挑んだ側から見た結果
-    on.rp = before + dw * RP_DEF; on.dw = (on.dw || 0) + dw; on.dd = (on.dd || 0) + dd; on.dl = (on.dl || 0) + dl;
-    const i1 = rankIdx(on.rp), rw = rankReward(i0, i1); on.best = Math.max(on.best || 0, on.rp);
-    on.dlog = [...list.map((b) => ({ name: b.name, mgr: b.mgr, s: [b.s[1], b.s[0]], at: b.at })), ...(on.dlog || [])].slice(0, 20);
-    store(); try { await DotNet.clearInbox(list.map((b) => b.id)); } catch (_) {}
-    publishMe();
-    const rows = list.slice(0, 8).map((b) => { const my = b.s[1], op = b.s[0], r = my > op ? 'win' : my === op ? 'draw' : 'lose'; return `<div class="ap-dl ${r}"><b>${r === 'win' ? '守った！' : r === 'draw' ? '引き分け' : 'やられた…'}</b><span>${esc(b.name)}${b.mgr ? `（${esc(b.mgr)}監督）` : ''}</span><em>${my} − ${op}</em></div>`; }).join('');
-    await modal(`<h2>留守のあいだの対戦</h2><p>あなたのクラブが、ほかの監督から${list.length}回 挑まれました。</p><div class="ap-dls">${rows}</div><p class="ap-up">${dw ? `守備で ${dw}勝！　+${dw * RP_DEF} RP` : '守備での勝ちはありませんでした（RPは減りません）'}</p>${i1 > i0 ? `<p class="ap-up">昇格！ ${RANKS[i0].n} → <b>${RANKS[i1].n}ライセンス</b></p>` : ''}`, [{ label: 'OK', primary: true }]);
-    if (rw) await modal(rewardHTML(rw), [{ label: 'OK', primary: true }]);
+  // ================= 版618：ポスト（フレンド申請・守備の結果・お知らせ） =================
+  function ensurePost() { if (!save.mbox) save.mbox = { items: [], newsRead: {} }; return save.mbox; }   // save.post はシーズン後の大会で使っているので別の名前
+  const myCard = () => { const on = ensureOnline(), cl = C.ensureClub(save); return { name: save.team.name, mgr: save.manager || '', emb: cl.emb, fid: on.fid || '', rank: rankIdx(on.rp) }; };
+  let postBusy = null, postAt = 0, postNews = [];
+  function postUnread() { const p = ensurePost(); return p.items.filter((x) => !x.read).length + postNews.filter((x) => !p.newsRead[x.id]).length; }
+  function postBadge() { const b = document.querySelector('.h2-post i'); if (!b) return; const n = postUnread(); b.textContent = n > 9 ? '9+' : String(n); b.hidden = !n; }
+  function addPost(it) { const p = ensurePost(); p.items.unshift({ id: 'p' + Date.now() + Math.random().toString(36).slice(2, 6), at: Date.now(), read: false, ...it }); p.items = p.items.slice(0, 60); }
+  // サーバーから届いたものを受け取って、ポストに入れる（守備のRPもここで入る）
+  function syncPost(force) {
+    if (!(window.DotNet && DotNet.on)) return Promise.resolve(0);
+    if (postBusy) return postBusy;
+    if (!force && Date.now() - postAt < 60000) { postBadge(); return Promise.resolve(postUnread()); }
+    postBusy = (async () => {
+      postAt = Date.now();
+      try { await publishMe(); } catch (_) {}
+      const on = ensureOnline(); on.flist = on.flist || [];
+      // 守備の結果
+      let bl = []; try { bl = await DotNet.inbox(); } catch (_) {}
+      if (bl.length) {
+        const before = on.rp, i0 = rankIdx(before); let dw = 0;
+        for (const b of bl) { const my = b.s[1], op = b.s[0], r = my > op ? 'W' : my === op ? 'D' : 'L'; if (r === 'W') dw++; on['d' + r.toLowerCase()] = (on['d' + r.toLowerCase()] || 0) + 1;
+          addPost({ kind: 'def', r, name: b.name, mgr: b.mgr, s: [my, op], at: b.at || Date.now() }); }
+        on.rp = before + dw * RP_DEF; const i1 = rankIdx(on.rp), rw = rankReward(i0, i1); on.best = Math.max(on.best || 0, on.rp);
+        if (dw) addPost({ kind: 'info', title: `守備で ${dw}勝！ +${dw * RP_DEF} RP`, text: `ほかの監督の挑戦を ${dw}回 はね返しました。` });
+        if (rw) addPost({ kind: 'reward', rank: rw.rank, coins: rw.coins, kak: rw.kak, cards: rw.cards.length });
+        try { await DotNet.clearInbox(bl.map((b) => b.id)); } catch (_) {}
+      }
+      // フレンド申請・承認
+      let ml = []; try { ml = await DotNet.mailbox(); } catch (_) {}
+      for (const m of ml) {
+        if (m.type === 'freq') { if (!on.flist.some((f) => f.uid === m.from) && !ensurePost().items.some((x) => x.kind === 'freq' && x.uid === m.from && !x.done)) addPost({ kind: 'freq', uid: m.from, name: m.name, mgr: m.mgr, emb: m.emb, fid: m.fid, rank: m.rank }); }
+        else if (m.type === 'fok') { if (!on.flist.some((f) => f.uid === m.from)) on.flist.unshift({ uid: m.from, fid: m.fid, name: m.name, mgr: m.mgr, emb: m.emb, rank: m.rank, w: 0, d: 0, l: 0 }); on.fsent = (on.fsent || []).filter((x) => x !== m.from); addPost({ kind: 'fok', uid: m.from, name: m.name, mgr: m.mgr, emb: m.emb }); }
+        else if (m.type === 'fno') { on.fsent = (on.fsent || []).filter((x) => x !== m.from); }
+      }
+      if (ml.length) try { await DotNet.delMail(ml.map((m) => m.id)); } catch (_) {}
+      try { postNews = await DotNet.news(); } catch (_) {}
+      store(); postBadge(); return postUnread();
+    })().finally(() => { postBusy = null; });
+    return postBusy;
+  }
+  const POST_ICO = { freq: '🤝', fok: '🎉', def: '🛡️', info: '📣', reward: '🎁', news: '📰' };
+  const fmtAt = (t) => { const d = new Date(t || Date.now()); return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  async function openPost(back) {
+    back = back || (() => {});
+    const el = fullScreen('postScreen', 'ap-wrap po-wrap'), box = el.querySelector('.lk-box');
+    const draw = () => {
+      const p = ensurePost(), on = ensureOnline();
+      const list = [...postNews.map((n) => ({ kind: 'news', id: 'n:' + n.id, nid: n.id, title: n.title, text: n.text, at: n.at, read: !!p.newsRead[n.id] })), ...p.items].sort((a, b) => (b.at || 0) - (a.at || 0));
+      const row = (it) => {
+        let t = '', body = '', btns = '';
+        if (it.kind === 'freq') { t = 'フレンド申請が届きました'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}から、フレンド申請です。`; btns = it.done ? `<span class="po-done">${it.done === 'ok' ? '承認しました' : 'おことわりしました'}</span>` : `<button class="po-ok" data-ok="${it.id}">承認する</button><button class="po-ng" data-ng="${it.id}">ことわる</button>`; }
+        else if (it.kind === 'fok') { t = 'フレンドになりました！'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}がフレンド申請を承認しました。空港の「フレンド」から対戦できます。`; }
+        else if (it.kind === 'def') { t = it.r === 'W' ? '守った！' : it.r === 'D' ? '引き分け' : 'やられた…'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}がランクマッチで挑んできました。<em>${it.s[0]} − ${it.s[1]}</em>`; }
+        else if (it.kind === 'reward') { t = `${RANKS[it.rank].n}ライセンス取得！`; body = `ごほうび：コイン${it.coins}枚・特訓カード${it.cards}枚${it.kak ? `・覚醒のカケラ${it.kak}` : ''}（受け取りずみ）`; }
+        else if (it.kind === 'news') { t = it.title || 'お知らせ'; body = esc(it.text || '').replace(/\n/g, '<br>'); }
+        else { t = it.title || 'お知らせ'; body = esc(it.text || ''); }
+        const emb = it.emb ? `<img src="${embFromLook(it.emb, 56)}" alt="">` : `<span class="po-ico">${POST_ICO[it.kind] || '✉️'}</span>`;
+        return `<div class="po-it${it.read ? '' : ' new'}${it.kind === 'def' ? ' def-' + it.r : ''}" data-id="${it.id}">${emb}<div class="po-b"><div class="po-t"><b>${esc(t)}</b><small>${fmtAt(it.at)}</small></div><p>${body}</p>${btns ? `<div class="po-btns">${btns}</div>` : ''}</div>${it.read ? '' : '<i class="po-dot"></i>'}</div>`;
+      };
+      box.innerHTML = `${apBg()}<div class="ap-top"><span class="po-top-ico">${POST_SVG}</span><div><b>ポスト</b><small>フレンド申請・対戦の結果・お知らせが届きます</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
+        <div class="po-bar"><span>${list.filter((x) => !x.read).length}件の未読</span><button class="po-all" data-a="allread">すべて既読にする</button><button class="po-all" data-a="clear">読んだものを消す</button></div>
+        <div class="po-list">${list.length ? list.map(row).join('') : '<p class="ap-note po-empty">ポストは空っぽです。</p>'}</div>`;
+      el.hidden = false; el._fit && el._fit();
+      const markRead = (id) => { if (id.startsWith('n:')) p.newsRead[id.slice(2)] = 1; else { const it = p.items.find((x) => x.id === id); if (it) it.read = true; } };
+      box.querySelector('.std-back').onclick = () => { store(); el.hidden = true; postBadge(); back(); };
+      box.querySelectorAll('.po-it').forEach((d) => d.onclick = (e) => { if (e.target.closest('button')) return; markRead(d.dataset.id); store(); d.classList.remove('new'); const dot = d.querySelector('.po-dot'); if (dot) dot.remove(); postBadge(); });
+      box.querySelector('[data-a="allread"]').onclick = () => { list.forEach((x) => markRead(x.id)); store(); draw(); postBadge(); };
+      box.querySelector('[data-a="clear"]').onclick = () => { p.items = p.items.filter((x) => !x.read || (x.kind === 'freq' && !x.done)); store(); draw(); };
+      box.querySelectorAll('[data-ok]').forEach((b) => b.onclick = async () => { const it = p.items.find((x) => x.id === b.dataset.ok); if (!it) return;
+        b.disabled = true; try { await DotNet.sendMail(it.uid, { type: 'fok', ...myCard() }); } catch (_) { b.disabled = false; return modal('<h2>通信できませんでした</h2><p>もう一度押してください。</p>', [{ label: 'OK', primary: true }]); }
+        on.flist = on.flist || []; if (!on.flist.some((f) => f.uid === it.uid)) on.flist.unshift({ uid: it.uid, fid: it.fid, name: it.name, mgr: it.mgr, emb: it.emb, rank: it.rank, w: 0, d: 0, l: 0 });
+        it.done = 'ok'; it.read = true; store(); draw(); postBadge(); });
+      box.querySelectorAll('[data-ng]').forEach((b) => b.onclick = async () => { const it = p.items.find((x) => x.id === b.dataset.ng); if (!it) return; try { await DotNet.sendMail(it.uid, { type: 'fno', ...myCard() }); } catch (_) {} it.done = 'ng'; it.read = true; store(); draw(); postBadge(); });
+    };
+    draw(); syncPost(true).then(() => { if (!el.hidden) draw(); });
+  }
+  // フレンド申請を送る（空港・事務所の「フレンド」から）
+  async function sendFriendReq(idText) {
+    const on = ensureOnline(), id = String(idText || '').replace(/\D/g, '');
+    if (id.length !== 8) return modal('<h2>8けたのフレンドIDを入れてください</h2>', [{ label: 'OK', primary: true }]);
+    if (id === on.fid) return modal('<h2>それはあなたのIDです</h2>', [{ label: 'OK', primary: true }]);
+    let p = null; try { p = await DotNet.byFid(id); } catch (_) {}
+    if (!p) return modal('<h2>見つかりませんでした</h2><p>IDをもう一度たしかめてください。</p>', [{ label: 'OK', primary: true }]);
+    if ((on.flist || []).some((f) => f.uid === p.uid)) return modal('<h2>もうフレンドです</h2>', [{ label: 'OK', primary: true }]);
+    const ok = await modal(`<h2>フレンド申請</h2><div class="ap-vs"><img src="${embFromLook(p.emb, 64)}" alt=""><b>${esc(p.name)}</b></div><p>${p.mgr ? esc(p.mgr) + '監督　' : ''}${rankBadge(Math.max(0, Math.min(4, p.rank || 0)))}</p><p class="hintp">相手のポストに申請が届きます。相手が承認すると、フレンドになります。</p>`, [{ label: '申請する', primary: true, value: true }, { label: 'やめる', value: false }]);
+    if (!ok) return false;
+    try { await DotNet.sendMail(p.uid, { type: 'freq', ...myCard() }); } catch (_) { return modal('<h2>通信できませんでした</h2>', [{ label: 'OK', primary: true }]); }
+    on.fsent = [...new Set([...(on.fsent || []), p.uid])]; store();
+    await modal(`<h2>申請しました！</h2><p>${esc(p.name)}が承認すると、あなたのポストにお知らせが届きます。</p>`, [{ label: 'OK', primary: true }]);
+    return true;
   }
   // 版616：ランキング（全国のRP順）
   async function ranking() {
@@ -3968,40 +4046,31 @@
   // 空港の背景：ホームの絵の空港あたりを大きく写して、ぼかす
   function apBg() { let src = ''; try { const im = H2.cur(); src = im && im.src; } catch (_) {} return src ? `<div class="ap-bg" style="background-image:url('${src}')"></div>` : '<div class="ap-bg"></div>'; }
   function apMedal(i, size) { const R = RANKS[i]; return `<div class="ap-medal" style="--rc:${R.c};--sz:${size}px"><i>${R.k}</i><b>LICENSE</b></div>`; }
-  async function friendMenu() {
+  async function friendMenu(back) {
+    if (typeof back === 'function') friendMenu.back = back; else if (back !== 'keep') friendMenu.back = null;
     const on = ensureOnline(); on.flist = on.flist || [];
     const el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box'), net = !!(window.DotNet && DotNet.on);
     const card = (f, k) => `<div class="ap-fc"><img src="${embFromLook(f.emb, 64)}" alt=""><div class="ap-fc-n"><b>${esc(f.name)}</b><small>${f.mgr ? esc(f.mgr) + '監督　' : ''}${f.rank != null ? rankBadge(f.rank) : ''}</small><small>${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><button class="ap-fc-go" data-fu="${k}">対戦</button><button class="ap-fc-x" data-fx="${k}" title="登録をやめる">×</button></div>`;
     const recent = on.friends.filter((f) => f.code).map((f, k) => `<button class="ap-frc" data-fk="${k}"><div class="ap-frc-n"><b>${esc(f.name)}</b><small>${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><span class="ap-frc-go">再戦</span></button>`).join('');
-    box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>フレンド</b><small>友達を登録して、いつでも対戦！</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
+    box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>フレンド</b><small>フレンド申請して、いつでも対戦！</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
       <div class="ap-fgrid2">
-        <div class="ap-pnl ap-reg"><h3>フレンド登録</h3>
+        <div class="ap-pnl ap-reg"><h3>フレンド申請</h3>
           <div class="ap-myid"><small>あなたのフレンドID</small><b id="apMyId">${net ? (on.fid ? fmtFid(on.fid) : '取得中…') : '――――'}</b>${net ? '<button class="ap-copy" data-a="copyid">コピー</button>' : ''}</div>
-          ${net ? `<p class="ap-note">友達のフレンドIDを入れて「登録」。<br>登録した友達とは、いつでも最新のチームで対戦できます。</p>
-          <div class="ap-idrow"><input id="apFid" inputmode="numeric" maxlength="9" placeholder="8けたのID"><button class="ap-big ap-gold ap-reg-go" data-a="add"><b>登録</b></button></div>`
-          : '<p class="ap-note">フレンド登録は、オンラインの準備ができたら使えます。<br>今は下の「リンクで送る」で対戦できます。</p>'}
+          ${net ? `<p class="ap-note">友達のフレンドIDを入れて「申請」。相手が承認するとフレンドになり、いつでも最新のチームで対戦できます。${(on.fsent || []).length ? `<br><b class="ap-wait">返事待ち ${on.fsent.length}件</b>` : ''}</p>
+          <div class="ap-idrow"><input id="apFid" inputmode="numeric" maxlength="9" placeholder="8けたのID"><button class="ap-big ap-gold ap-reg-go" data-a="add"><b>申請</b></button></div>`
+          : '<p class="ap-note">フレンド申請は、オンラインの準備ができたら使えます。<br>今は下の「リンクで送る」で対戦できます。</p>'}
           <div class="ap-linkrow"><button class="ap-mini ap-blue" data-a="share">${AP_SVG.send}リンクで送る</button><input id="apCode" placeholder="届いたリンクを貼りつけ"><button class="ap-mini ap-gold" data-a="go">対戦</button></div></div>
         <div class="ap-pnl ap-flist"><h3>フレンド一覧 <small>${on.flist.length}人</small></h3>
-          <div class="ap-fcs">${on.flist.length ? on.flist.map(card).join('') : `<p class="ap-note">まだフレンドがいません。${net ? '左でフレンドIDを入れて登録しましょう。' : ''}</p>`}</div>
+          <div class="ap-fcs">${on.flist.length ? on.flist.map(card).join('') : `<p class="ap-note">まだフレンドがいません。${net ? '左でフレンドIDを入れて申請しましょう。' : ''}</p>`}</div>
           ${recent ? `<h3 class="ap-h3b">リンクで対戦した相手</h3><div class="ap-frs3">${recent}</div>` : ''}</div>
       </div>`;
     el.hidden = false; el._fit && el._fit();
     const close = () => { el.hidden = true; };
     const q = (s) => box.querySelector(s);
-    q('.std-back').onclick = () => { close(); airport(); };
+    q('.std-back').onclick = () => { close(); if (friendMenu.back) friendMenu.back(); else airport(); };
     if (net && !on.fid) publishMe().then((fid) => { const e = q('#apMyId'); if (e) e.textContent = fid ? fmtFid(fid) : 'つながりません'; if (!fid) { const n = document.createElement('p'); n.className = 'ap-note ap-err'; n.textContent = '通信できませんでした（' + ((window.DotNet && DotNet.err) || '不明') + '）'; const m = q('.ap-myid'); m && m.after(n); } });
     if (q('[data-a="copyid"]')) q('[data-a="copyid"]').onclick = async () => { try { await navigator.clipboard.writeText(on.fid || ''); modal('<h2>フレンドIDをコピーしました</h2>', [{ label: 'OK', primary: true }]); } catch (_) {} };
-    if (q('[data-a="add"]')) q('[data-a="add"]').onclick = async () => {
-      const id = (q('#apFid').value || '').replace(/\D/g, '');
-      if (id.length !== 8) return modal('<h2>8けたのフレンドIDを入れてください</h2>', [{ label: 'OK', primary: true }]);
-      if (id === on.fid) return modal('<h2>それはあなたのIDです</h2>', [{ label: 'OK', primary: true }]);
-      let p = null; try { p = await DotNet.byFid(id); } catch (_) {}
-      if (!p) return modal('<h2>見つかりませんでした</h2><p>IDをもう一度たしかめてください。</p>', [{ label: 'OK', primary: true }]);
-      if (on.flist.some((f) => f.uid === p.uid)) return modal('<h2>もう登録しています</h2>', [{ label: 'OK', primary: true }]);
-      const ok = await modal(`<h2>フレンド登録</h2><div class="ap-vs"><img src="${embFromLook(p.emb, 64)}" alt=""><b>${esc(p.name)}</b></div><p>${p.mgr ? esc(p.mgr) + '監督　' : ''}${rankBadge(Math.max(0, Math.min(4, p.rank || 0)))}</p>`, [{ label: '登録する', primary: true, value: true }, { label: 'やめる', value: false }]);
-      if (!ok) return;
-      on.flist.unshift({ uid: p.uid, fid: id, name: p.name, mgr: p.mgr, emb: p.emb, rank: p.rank, w: 0, d: 0, l: 0 }); on.flist = on.flist.slice(0, 30); store(); friendMenu();
-    };
+    if (q('[data-a="add"]')) q('[data-a="add"]').onclick = async () => { if (await sendFriendReq(q('#apFid').value)) friendMenu('keep'); };
     box.querySelectorAll('[data-fu]').forEach((b) => b.onclick = async () => {
       const f = on.flist[+b.dataset.fu]; let p = null; try { p = await DotNet.byUid(f.uid); } catch (_) {}
       if (!p || !p.code) return modal('<h2>相手のチームを読みこめませんでした</h2><p>通信の状態をたしかめて、もう一度押してください。</p>', [{ label: 'OK', primary: true }]);
@@ -4029,7 +4098,7 @@
           <div class="ap-ladder">${ladder}</div></div>
       </div>
       <div class="ap-modes"><button class="ap-mode ap-gold" data-a="rank">${AP_SVG.trophy}<div><b>ランクマッチ</b><small>勝ち +${RP_WIN} ／ 引き分け ${RP_DRAW} ／ 負け −${RP_LOSE} RP</small></div></button>
-        <button class="ap-mode ap-blue" data-a="friend">${AP_SVG.hands}<div><b>フレンド</b><small>フレンド登録・友達のクラブと対戦</small></div></button></div>
+        <button class="ap-mode ap-blue" data-a="friend">${AP_SVG.hands}<div><b>フレンド</b><small>フレンド申請・友達のクラブと対戦</small></div></button></div>
       <p class="ap-foot">${window.DotNet && DotNet.on ? 'ランクマッチは、同じくらいのランクの監督のクラブと当たります' : '※ いまのランクマッチの相手はCPUのクラブです'}　・　対戦では疲れ・ケガ・週は進みません</p>`;
     el.hidden = false; el._fit && el._fit();
     const close = () => { el.hidden = true; };
@@ -4038,7 +4107,7 @@
     box.querySelector('[data-a="friend"]').onclick = () => friendMenu();
     publishMe().then((fid) => { const e = box.querySelector('#apFidL'); if (e) e.textContent = fid ? fmtFid(fid) : 'つながりません'; });
     if (box.querySelector('[data-a="ranking"]')) box.querySelector('[data-a="ranking"]').onclick = () => ranking();
-    if (!airport.busy) { airport.busy = true; takeDefense().then(() => { airport.busy = false; if (!el.hidden && on.rp !== (airport.lastRp ?? on.rp)) airport(); }).catch(() => { airport.busy = false; }); }
+    if (!airport.busy) { airport.busy = true; syncPost(true).then(() => { airport.busy = false; if (!el.hidden && on.rp !== (airport.lastRp ?? on.rp)) airport(); }).catch(() => { airport.busy = false; }); }
     airport.lastRp = on.rp;
   }
   // リンク（#vs=...）から開いたとき：その友達と対戦するか聞く
@@ -4047,7 +4116,7 @@
     history.replaceState(null, '', location.pathname + location.search);
     try { const d = await unpackCode(m[1]); await startFriend(d); } catch (_) { modal('<h2>対戦のリンクを読みこめませんでした</h2>', [{ label: 'OK', primary: true }]); }
   }
-  window.__career = { airport, onlineDone, setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
+  window.__career = { airport, openPost, syncPost, onlineDone, setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====

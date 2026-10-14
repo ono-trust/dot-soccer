@@ -15,5 +15,13 @@ service cloud.firestore {
                     && request.resource.data.to is string && request.resource.data.to != request.auth.uid;
       allow read, delete: if request.auth != null && resource.data.to == request.auth.uid;
     }
+    match /mail/{id} {
+      allow create: if request.auth != null && request.resource.data.from == request.auth.uid
+                    && request.resource.data.to is string && request.resource.data.to != request.auth.uid;
+      allow read, delete: if request.auth != null && resource.data.to == request.auth.uid;
+    }
+    match /news/{id} {
+      allow read: if request.auth != null;
+    }
   }
 }
