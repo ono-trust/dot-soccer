@@ -2893,7 +2893,7 @@
         const front = opps(p).filter((o) => !o.gk && hyp(o.x - p.x, o.y - p.y) < 3.8 && ((o.x - p.x) * fdx + (o.y - p.y) * fdy) / fl > 0.5).sort((a, c) => hyp(a.x - p.x, a.y - p.y) - hyp(c.x - p.x, c.y - p.y))[0];
         if (front) {
           const { ctx } = dribbleCtx(p, front);
-          const want = (ctx.goal && skZ(p, 'kickFeint')) || (ctx.side && (skZ(p, 'heelLift') || skZ(p, 'cutIn')));
+          const want = (ctx.goal && skZ(p, 'kickFeint')) || (ctx.side && (skZ(p, 'heelLift') || skZ(p, 'cutIn') || globalThis.__forceSkill === 'heelLift'));   // 確認用：ヒールリフトを選んだ時は、技を持っていない選手も仕掛ける
           if (want && R.next() < 0.45 && skillMove(p, front)) return;
         }
       }
@@ -4383,7 +4383,7 @@
       const T = ((vz + Math.sqrt(vz * vz + 2 * 9.8 * z0)) / 9.8) * 1.08, d = hyp(tx - bx0, ty - by0) || 1, v = d / T;
       Object.assign(b, { owner: -1, kind: 'pass', selfPass: true, x: bx0, y: by0, z: z0, vx: ((tx - bx0) / d) * v, vy: ((ty - by0) / d) * v, vz, spin: 0, bs: 0, knuckle: false, lastTeam: own.team, lastPlayer: own.idx, kicker: own.idx, intended: own.idx, offside: false, style: 'ground', hlift: S.t });
       own.touchCd = 0.6; S.dribbleDir = null; own.settle = false;
-      if (globalThis.__hlDbg) globalThis.__hlDbg.push({ t: S.t, o: own.idx, q: q.idx, fail: h.fail });   // 確認用
+      if (globalThis.__hlDbg) globalThis.__hlDbg.push({ t: S.t, o: own.idx, q: q.idx, fail: h.fail, ah: +(fx(own.team, q.x) - fx(own.team, own.x)).toFixed(1), xf: +fx(own.team, own.x).toFixed(0), wy: +Math.abs(own.y - GOAL_Y).toFixed(0) });   // 確認用
       for (const m of mates(own)) if (m !== own && !m.gk && hyp(m.x - tx, m.y - ty) < 10) m.touchCd = Math.max(m.touchCd || 0, T + 0.5);   // 味方は手を出さない（自分で拾う）
       { const tDn = (vz + Math.sqrt(Math.max(0, vz * vz + 2 * 9.8 * (z0 - 1.0)))) / 9.8; if (!h.fail) own.touchCd = Math.max(own.touchCd, tDn - 0.05);   /* 自分も、頭の高さで触らず（ヘディングで味方へ流さず）、落ちてきた所を足で拾う */ for (const o of opps(own)) if (!o.gk && o !== q && hyp(o.x - bx0, o.y - by0) < 9) o.touchCd = Math.max(o.touchCd || 0, tDn); }   // 頭の上を越えている間は、まわりの相手も胸や足で止められない（落ちてきてから競る）
       // 相手の横（いない側）を回り込んで、落ちる所へ
@@ -4519,6 +4519,8 @@
     function hlSpace(own, q) {
       if (!q || Math.abs(own.y - GOAL_Y) < 15 || fx(own.team, own.x) < 58) return false;
       const ux = q.x - own.x, uy = q.y - own.y, ul = hyp(ux, uy) || 1, lx = q.x + (ux / ul) * 4.2, ly = q.y + (uy / ul) * 4.2;
+      const ahead = fx(own.team, q.x) - fx(own.team, own.x);   // 相手が自分より前（相手ゴール側）に何mいるか
+      if (ahead < 0.6 || ahead / ul < 0.5 || ul < 1.2 || ul > 4.5) return false;   // 目の前（前方±60°くらい・1.2〜4.5m）に立ちはだかる相手を抜く技。横や後ろの相手には使わない
       if (lx < 1.5 || lx > L - 1.5 || ly < 1.5 || ly > W - 1.5) return false;   // 落ちる所がピッチの外
       for (const o of opps(own)) { if (o === q || o.off) continue; if (hyp(o.x - lx, o.y - ly) < 5 || hyp(o.x - own.x, o.y - own.y) < 3.6) return false; }   // 後ろに別の相手がいる・2人に囲まれている
       return true;
@@ -4576,6 +4578,7 @@
       const b = S.ball;
       if (!q || own.gk || (own.skillCd || 0) > S.t || (own.skLock || 0) > S.t || (S.charge && S.charge.p === own.idx)) return false;
       const { ctx, list } = dribbleCtx(own, q);
+      if (globalThis.__forceSkill && !list.length) list.push(globalThis.__forceSkill);   // 確認用：技を持っていない選手も、選んだ技を使う
       if (!list.length) return false;
       // 場面に合う技を優先（狭い所はダブルタッチ等、サイドはヒールリフト等、ゴール前はキックフェイント等）
       const wts = list.map((k) => zw(own, k) * (k === 'cutIn' && ctx.side ? 4 : 1) * (ctx.narrow && DRIB_ZONES.narrow.includes(k) ? 3 : 1) * (ctx.side && DRIB_ZONES.side.includes(k) ? 2 : 1) * (ctx.goal && DRIB_ZONES.goal.includes(k) ? 3 : 1));
