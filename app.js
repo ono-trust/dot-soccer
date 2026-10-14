@@ -541,7 +541,10 @@
       addEventListener('resize', fit); el._fit = fit;
     }
     el.hidden = false; el._fit();
-    try { let went = false; renderStatus(el.querySelector('.lk-sub'), match.duration + 1, '試合終了', 90, () => { if (went) return; went = true; el.hidden = true; next(); }, true); } catch (err) { showErr(err, '試合結果'); el.hidden = true; next(); return; }
+    try { let went = false; renderStatus(el.querySelector('.lk-sub'), match.duration + 1, '試合終了', 90, () => { if (went) return; went = true; el.hidden = true;
+      try { next(); } catch (err) { showErr(err, '試合結果のあと'); }
+      // 版585：次の画面へ進めず、試合の画面のまま止まっていたら、育成モードのホームへ戻す（iPhoneで止まっていた）
+      setTimeout(() => { const stuck = !$('#match').hidden && ![...document.querySelectorAll('.lk-wrap,.modal')].some((w) => !w.hidden && w.id !== 'panel'); if (!stuck) return; showErr('次の画面へ進めませんでした', '試合結果のあと'); stop(); try { if (window.__career && window.__career.open) window.__career.open(); else showScreen('setup'); } catch (e2) { showErr(e2, 'ホームへ'); } }, 1500); }, true); } catch (err) { showErr(err, '試合結果'); el.hidden = true; next(); return; }
     if (mctx && mctx.opts.tut && mctx.opts.tut.onResult) mctx.opts.tut.onResult(el, tutApi());   // チュートリアル：結果画面の説明
   }
   // チュートリアルから試合を操作する（止める・再開・結果まで飛ばす・自分のチームが攻める向き）
@@ -4305,6 +4308,7 @@
   }
   // 版581：（テスト用）優勝の演出を見る：試合の最後まで飛ばして、すぐ優勝の演出へ
   function champDemo(ch) { if (!match) return false; closeLocker(); closePlv(); simT = match.duration; champTried = true; startChamp(ch); play(); return true; }
+  window.addEventListener('unhandledrejection', (e) => showErr(e.reason, 'promise'));   // 版585：見えないエラーも左下に出す
   window.__app = { champDemo, applyKits, artSprite, kitSprite, kitCol, lockerTalk, startWith, showScreen, stop, spriteCanvas, SPR: { W: SPR_W, H: SPR_H }, get match() { return match; } };
   window.__demo = { simT: () => simT, showPh: () => (show ? show.phase + (show.phase === "sub" ? "#" + show.rt.toFixed(2) + "k" + show.k + "n" + show.list.length : "") : null), playingNow: () => playing, poses: (list) => {
     ctx.fillStyle = '#45a31d'; ctx.fillRect(0, 0, CW, CH);
