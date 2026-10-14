@@ -34,7 +34,7 @@
     ['btn_players', 'btn_status', 'btn_change', 'off_kit', 'off_emblem', 'off_name', 'off_retire', 'off_setting', 'off_biz', 'off_team', 'ui_back', 'ui_change', 'ui_next', 'pc_number', 'pc_pos', 'pc_name', 'coin', 'dash', 'defense', 'dribble', 'jump', 'kick', 'mental', 'pass', 'physical', 'speed', 'stamina', 'technique', 'top_mark', 'vision'].forEach((k) => pre(`icons/${k}.png`));
     ['d1', 'd2', 'd3', 'reg1', 'reg2', 'regE1', 'regE2', 'regW1', 'regW2'].forEach((k) => pre(`icons/lg/${k}.png`));
     ['coach', 'secretary'].forEach((k) => pre(`staff/${k}.png`));
-    ['reg2', 'reg1', 'd3', 'd2', 'd1'].forEach((k) => pre(`img/trophy/${k}.png`));
+    ['reg2', 'reg1', 'd3', 'd2', 'd1', 'cup'].forEach((k) => pre(`img/trophy/${k}.png`));
     // 自分のチームの顔は、顔の元絵が読めたら少しずつ作っておく
     const t0 = Date.now();
     const mk = () => {
@@ -3018,7 +3018,7 @@
     return (clubBg = cv.toDataURL());
   }
   // 版588：トロフィーの絵（監督の絵）。リーグごとに違う。カップは今は金（D1）と同じ
-  const trophyImg = (kind, lgId) => { if (kind === 'cup') return 'img/trophy/d1.png'; const id = lgId || save.league.id; return `img/trophy/${/^reg.2/.test(id) ? 'reg2' : /^reg.1/.test(id) ? 'reg1' : id}.png`; };
+  const trophyImg = (kind, lgId) => { if (kind === 'cup') return 'img/trophy/cup.png'; const id = lgId || save.league.id; return `img/trophy/${/^reg.2/.test(id) ? 'reg2' : /^reg.1/.test(id) ? 'reg1' : id}.png`; };
   // ================= 版580：優勝 =================
   // 試合の最後に出す演出のための情報（app.js の優勝演出が使う）
   function champView(fx, sc) {
