@@ -2250,7 +2250,7 @@
   const VEN_DOOR = [[134, 277, 335, 445], [129, 268, 349, 445], [134, 273, 373, 478], [139, 263, 407, 493], [153, 268, 440, 524]];   // 入場口（絵の1600×900の座標：左・右・上・下）
   const VEN_S = 0.9, VEN_PAN = 1600 * VEN_S - 1280;   // 絵を少し大きくして、横にゆっくり流す
   // 版604：観客のドット絵（席の位置は img/venue/crowd.json。リーグが上がるほど埋まる）
-  const CROWD_OCC = [0.55, 0.3, 0.5, 0.72, 0.9];   // 地域2部は立ち見（数はもともと少ない）
+  const CROWD_OCC = [0.6, 0.3, 0.5, 0.72, 0.9];   // 地域2部は立ち見（数はもともと少ない）
   let crowdPos = null, crowdLoading = false, crowdCol = ['#2f5fc8', '#c8322a'];
   const crowdCache = {};
   function loadCrowd() { if (crowdPos || crowdLoading) return; crowdLoading = true; fetch('img/venue/crowd.json').then((r) => r.json()).then((j) => { crowdPos = j; }).catch(() => { crowdLoading = false; }); }
@@ -2269,11 +2269,12 @@
       const cv = document.createElement('canvas'); cv.width = 1600; cv.height = 900; const x = cv.getContext('2d');
       x.drawImage(im, 0, 0, 1600, 900);
       for (const h of people) {
-        const p = h.p, up = f && h.jump ? Math.max(1, Math.round(p * 0.12)) : 0, R = (v) => Math.round(v);
+        const p = h.st ? h.p : h.p * 1.3, up = f && h.jump ? Math.max(1, Math.round(p * 0.12)) : 0, R = (v) => Math.round(v);
         if (h.st) {   // 立ち見：足から上まで
           const hh = R(p * 0.38), bw = R(p * 0.5), by = h.y - R(p * 0.95) - up;
           x.fillStyle = '#2a2f45'; x.fillRect(R(h.x - bw * 0.4), by + hh + R(p * 0.38), R(bw * 0.8), R(p * 0.2) + up);
           x.fillStyle = h.wear; x.fillRect(R(h.x - bw / 2), by + hh, bw, R(p * 0.4));
+          x.fillStyle = h.skin; x.fillRect(R(h.x - bw / 2) - R(p * 0.1), by + hh + R(p * 0.04) - (f && h.arms ? R(p * 0.3) : 0), R(p * 0.1), R(p * 0.3)); x.fillRect(R(h.x + bw / 2), by + hh + R(p * 0.04) - (f && h.arms ? R(p * 0.3) : 0), R(p * 0.1), R(p * 0.3));
           x.fillStyle = h.skin; x.fillRect(R(h.x - hh / 2), by, hh, hh); x.fillStyle = h.hair; x.fillRect(R(h.x - hh / 2), by, hh, R(hh * 0.4));
           continue;
         }
@@ -2355,7 +2356,7 @@
     { const fr = venCrowd('goal'); if (fr) c.drawImage(fr[Math.floor(t * 3.2) % 2], -camX, -camY, 1600 * VEN_S, 900 * VEN_S); else { c.fillStyle = '#3fa83a'; c.fillRect(0, 0, 1280, 720); } }
     const baseY = VEN_STAND[tier] * VEN_S - camY;
     const emb = embImgFor(teamName);
-    const N = [3, 5, 8, 11, 14][tier] ?? 14, FK = [1, 7, 3, 11, 5, 9, 0, 13, 2, 12, 4, 10, 6, 8];   /* 版469：地域リーグは旗も少ない */
+    const N = [0, 0, 8, 11, 14][tier] ?? 14, FK = [1, 7, 3, 11, 5, 9, 0, 13, 2, 12, 4, 10, 6, 8];   /* 版469：地域リーグは旗も少ない */
     for (let k0 = 0; k0 < N; k0++) { const k = FK[k0];
       const bx = 80 + k * 98 - camX + (k % 2) * 30, by = baseY - 6 - (k % 3) * 34;
       const ang = Math.sin(t * 3.4 + k * 1.7) * 0.75 - 0.15, L = 170;
