@@ -3902,6 +3902,7 @@
       for (const m of ml) {
         if (m.type === 'freq') { if (!on.flist.some((f) => f.uid === m.from) && !ensurePost().items.some((x) => x.kind === 'freq' && x.uid === m.from && !x.done)) addPost({ kind: 'freq', uid: m.from, name: m.name, mgr: m.mgr, emb: m.emb, fid: m.fid, rank: m.rank }); }
         else if (m.type === 'fok') { if (!on.flist.some((f) => f.uid === m.from)) on.flist.unshift({ uid: m.from, fid: m.fid, name: m.name, mgr: m.mgr, emb: m.emb, rank: m.rank, w: 0, d: 0, l: 0 }); on.fsent = (on.fsent || []).filter((x) => x !== m.from); addPost({ kind: 'fok', uid: m.from, name: m.name, mgr: m.mgr, emb: m.emb }); }
+        else if (m.type === 'room') { addPost({ kind: 'room', uid: m.from, room: m.room, name: m.name, mgr: m.mgr, emb: m.emb }); }
         else if (m.type === 'fno') { on.fsent = (on.fsent || []).filter((x) => x !== m.from); }
       }
       if (ml.length) try { await DotNet.delMail(ml.map((m) => m.id)); } catch (_) {}
@@ -3910,7 +3911,7 @@
     })().finally(() => { postBusy = null; });
     return postBusy;
   }
-  const POST_ICO = { freq: '🤝', fok: '🎉', def: '🛡️', info: '📣', reward: '🎁', news: '📰' };
+  const POST_ICO = { room: '⚽', freq: '🤝', fok: '🎉', def: '🛡️', info: '📣', reward: '🎁', news: '📰' };
   const fmtAt = (t) => { const d = new Date(t || Date.now()); return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
   async function openPost(back) {
     back = back || (() => {});
@@ -3924,6 +3925,7 @@
         else if (it.kind === 'fok') { t = 'フレンドになりました！'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}がフレンド申請を承認しました。空港の「フレンド」から対戦できます。`; }
         else if (it.kind === 'def') { t = it.r === 'W' ? '守った！' : it.r === 'D' ? '引き分け' : 'やられた…'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}がランクマッチで挑んできました。<em>${it.s[0]} − ${it.s[1]}</em>`; }
         else if (it.kind === 'reward') { t = `${RANKS[it.rank].n}ライセンス取得！`; body = `ごほうび：コイン${it.coins}枚・特訓カード${it.cards}枚${it.kak ? `・覚醒のカケラ${it.kak}` : ''}（受け取りずみ）`; }
+        else if (it.kind === 'room') { t = 'フレンド対戦の招待'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}がルームを作りました。`; btns = Date.now() - (it.at || 0) < 30 * 60 * 1000 ? `<button class="po-ok" data-room="${it.id}">ルームに入る</button>` : '<span class="po-done">時間切れ</span>'; }
         else if (it.kind === 'news') { t = it.title || 'お知らせ'; body = esc(it.text || '').replace(/\n/g, '<br>'); }
         else { t = it.title || 'お知らせ'; body = esc(it.text || ''); }
         const emb = it.emb ? `<img src="${embFromLook(it.emb, 56)}" alt="">` : `<span class="po-ico">${POST_ICO[it.kind] || '✉️'}</span>`;
@@ -3942,9 +3944,75 @@
         b.disabled = true; try { await DotNet.sendMail(it.uid, { type: 'fok', ...myCard() }); } catch (_) { b.disabled = false; return modal('<h2>通信できませんでした</h2><p>もう一度押してください。</p>', [{ label: 'OK', primary: true }]); }
         on.flist = on.flist || []; if (!on.flist.some((f) => f.uid === it.uid)) on.flist.unshift({ uid: it.uid, fid: it.fid, name: it.name, mgr: it.mgr, emb: it.emb, rank: it.rank, w: 0, d: 0, l: 0 });
         it.done = 'ok'; it.read = true; store(); draw(); postBadge(); });
+      box.querySelectorAll('[data-room]').forEach((b) => b.onclick = () => { const it = p.items.find((x) => x.id === b.dataset.room); if (!it) return; it.read = true; store(); el.hidden = true; joinRoom(it.room); });
       box.querySelectorAll('[data-ng]').forEach((b) => b.onclick = async () => { const it = p.items.find((x) => x.id === b.dataset.ng); if (!it) return; try { await DotNet.sendMail(it.uid, { type: 'fno', ...myCard() }); } catch (_) {} it.done = 'ng'; it.read = true; store(); draw(); postBadge(); });
     };
     draw(); syncPost(true).then(() => { if (!el.hidden) draw(); });
+  }
+  // ================= 版622：フレンドのルーム対戦 =================
+  //  ホストがルームを作る → 相手のポストに招待 → 相手が入る → ふたりとも「対戦する」→ 同じ種で、2つの画面で同じ試合
+  //  （試合中の交代・作戦変更はなし。変えると2つの画面で試合が変わってしまうため）
+  async function makeRoom(f) {
+    try {
+      const code = await packCode(C.guestCode(save)), me = myCard();
+      const id = await DotNet.createRoom(f.uid, { hostCode: code, hostName: me.name, hostMgr: me.mgr, hostEmb: me.emb, guestName: f.name, guestMgr: f.mgr || '', guestEmb: f.emb || null });
+      DotNet.sendMail(f.uid, { type: 'room', room: id, ...me }).catch(() => {});
+      return id;
+    } catch (e) { modal('<h2>ルームを作れませんでした</h2><p>通信の状態をたしかめてください。</p>', [{ label: 'OK', primary: true }]); return null; }
+  }
+  async function joinRoom(id) {
+    let r = null; try { r = await DotNet.roomGet(id); } catch (_) {}
+    if (!r || r.state !== 'open') return modal('<h2>このルームはもう閉じています</h2>', [{ label: 'OK', primary: true }]);
+    try { const code = await packCode(C.guestCode(save)), me = myCard(); await DotNet.roomUpdate(id, { guestIn: true, guestCode: code, guestName: me.name, guestMgr: me.mgr, guestEmb: me.emb }); }
+    catch (_) { return modal('<h2>ルームに入れませんでした</h2>', [{ label: 'OK', primary: true }]); }
+    roomScreen(id, 'guest');
+  }
+  function roomScreen(id, role) {
+    const el = fullScreen('roomScreen', 'ap-wrap rm-wrap'), box = el.querySelector('.lk-box');
+    let r = null, unsub = null, started = false, cdT = 0;
+    const me = role, other = role === 'host' ? 'guest' : 'host';
+    const leave = async (msg) => { if (unsub) unsub(); unsub = null; clearInterval(cdT); el.hidden = true; if (!started) { try { await DotNet.roomUpdate(id, { state: 'closed' }); } catch (_) {} } if (msg) await modal(msg, [{ label: 'OK', primary: true }]); friendMenu(); };
+    const side = (who) => { const nm = r[who + 'Name'] || '', mg = r[who + 'Mgr'] || '', inn = r[who + 'In'], rd = r[who + 'Ready'];
+      return `<div class="rm-side${inn ? '' : ' wait'}${rd ? ' ready' : ''}"><small>${who === 'host' ? 'ホーム' : 'アウェー'}</small><img src="${embFromLook(r[who + 'Emb'], 128)}" alt=""><b>${esc(nm)}</b><span>${mg ? esc(mg) + '監督' : ''}</span><em>${!inn ? '入室待ち…' : rd ? '準備OK！' : '準備中'}</em></div>`; };
+    const draw = () => {
+      if (!r) return;
+      const bothIn = r.hostIn && r.guestIn, myReady = r[me + 'Ready'];
+      box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>フレンド対戦ルーム</b><small>ふたりとも「対戦する」を押すと、試合が始まります</small></div><button class="std-back" title="退出"><i class="bk-ico" aria-hidden="true"></i></button></div>
+        <div class="rm-vs">${side('host')}<div class="rm-x">VS</div>${side('guest')}</div>
+        <div class="rm-msg">${r.state === 'go' ? '<b class="rm-cd">まもなくキックオフ！</b>' : !bothIn ? `${me === 'host' ? '相手のポストに招待を送りました。相手がルームに入るのを待っています…' : ''}` : myReady ? `相手の準備を待っています…` : '準備ができたら「対戦する」を押してください'}</div>
+        <div class="rm-btns">${r.state === 'go' ? '' : `<button class="ap-big ${myReady ? 'rm-cancel' : 'ap-gold'}" data-a="ready" ${bothIn ? '' : 'disabled'}><b>${myReady ? '準備を取り消す' : '対戦する'}</b></button>`}</div>
+        <p class="ap-foot">ルーム対戦では、試合中の交代・作戦の変更はできません（2つの画面で同じ試合にするため）</p>`;
+      el.hidden = false; el._fit && el._fit();
+      box.querySelector('.std-back').onclick = () => leave();
+      const rb = box.querySelector('[data-a="ready"]'); if (rb) rb.onclick = async () => { rb.disabled = true; try { await DotNet.roomUpdate(id, { [me + 'Ready']: !myReady }); } catch (_) { rb.disabled = false; } };
+    };
+    unsub = DotNet.roomWatch(id, async (nr) => {
+      if (started) return;
+      if (!nr || nr.state === 'closed') { if (unsub) unsub(); unsub = null; el.hidden = true; await modal('<h2>ルームが閉じられました</h2><p>相手が退出しました。</p>', [{ label: 'OK', primary: true }]); friendMenu(); return; }
+      r = nr; draw();
+      if (r.state === 'open' && r.hostReady && r.guestReady) DotNet.roomStart(id).catch(() => {});
+      if (r.state === 'go' && r.seed && r.hostCode && r.guestCode) {
+        started = true; if (unsub) unsub(); unsub = null;
+        const wait = Math.max(0, Math.min(6000, (r.startAt || 0) - Date.now()));
+        let left = Math.ceil(wait / 1000); const cd = box.querySelector('.rm-cd'); if (cd) cd.textContent = left > 0 ? `キックオフまで ${left}…` : 'キックオフ！';
+        cdT = setInterval(() => { left--; const c2 = box.querySelector('.rm-cd'); if (c2) c2.textContent = left > 0 ? `キックオフまで ${left}…` : 'キックオフ！'; }, 1000);
+        setTimeout(async () => { clearInterval(cdT); el.hidden = true; try { await playRoom(r, me); } catch (e) { modal('<h2>試合を始められませんでした</h2>', [{ label: 'OK', primary: true }]); } }, wait);
+      }
+    });
+  }
+  async function playRoom(r, me) {
+    const hd = await unpackCode(r.hostCode), gd = await unpackCode(r.guestCode);
+    const oppD = me === 'host' ? gd : hd, g = C.registerGuest(save, oppD);
+    const hostTeam = JSON.parse(JSON.stringify(hd.team)), guestTeam = JSON.parse(JSON.stringify(gd.team));
+    const hx = (h) => [1, 3, 5].map((i) => parseInt(String(h || '#888888').slice(i, i + 2), 16) || 0), dist = (a, b) => { const A = hx(a), B = hx(b); return Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]); };
+    const k0 = hd.kit || C.KIT_DEFAULT, k1 = gd.kit && hd.kit && dist(gd.kit.shirt, hd.kit.shirt) < 120 && gd.kit2 ? gd.kit2 : (gd.kit || C.KIT_DEFAULT);
+    venueNow = Math.max(0, Math.min(4, (C.LG[hd.lg] || {}).tier ?? 2));
+    cancelAnimationFrame(raf);
+    const op = { name: g.name, short: oppD.short || g.short, srcName: oppD.name + (oppD.mgr ? `（${oppD.mgr}）` : ''), fuid: me === 'host' ? r.guest : r.host };
+    A().startWith(hostTeam, guestTeam, r.seed, hd.short || hd.name, gd.short || gd.name, (score) => {
+      const my = me === 'host' ? score.slice() : [score[1], score[0]];
+      onlineDone('friend', op, my);
+    }, { venue: venueNow, kits: [k0, k1], noIntro: true, lockEdit: true, comp: 'フレンド対戦', label: 'ルーム', homeName: hd.name, awayName: gd.name, embH: embFromLook(hd.emb, 48), embA: embFromLook(gd.emb, 48), grade: (q, k) => C.rankInfo(C.toPts((q.params || q)[k])).g });
   }
   // フレンド申請を送る（空港・事務所の「フレンド」から）
   async function sendFriendReq(idText) {
@@ -4060,7 +4128,7 @@
     if (typeof back === 'function') friendMenu.back = back; else if (back !== 'keep') friendMenu.back = null;
     const on = ensureOnline(); on.flist = on.flist || [];
     const el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box'), net = !!(window.DotNet && DotNet.on);
-    const card = (f, k) => `<div class="ap-fc"><img src="${embFromLook(f.emb, 64)}" alt=""><div class="ap-fc-n"><b>${esc(f.name)}</b><small>${f.mgr ? esc(f.mgr) + '監督　' : ''}${f.rank != null ? rankBadge(f.rank) : ''}</small><small>${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><button class="ap-fc-go" data-fu="${k}">対戦</button><button class="ap-fc-x" data-fx="${k}" title="登録をやめる">×</button></div>`;
+    const card = (f, k) => `<div class="ap-fc"><img src="${embFromLook(f.emb, 64)}" alt=""><div class="ap-fc-n"><b>${esc(f.name)}</b><small>${f.mgr ? esc(f.mgr) + '監督　' : ''}${f.rank != null ? rankBadge(f.rank) : ''}</small><small>${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><button class="ap-fc-go${(friendMenu.inv || []).some((r) => r.host === f.uid) ? ' inv' : ''}" data-fu="${k}">${(friendMenu.inv || []).some((r) => r.host === f.uid) ? 'ルームに入る' : 'ルームを作る'}</button><button class="ap-fc-x" data-fx="${k}" title="登録をやめる">×</button></div>`;
     box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>フレンド</b><small>フレンド申請して、いつでも対戦！</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
       <div class="ap-fgrid2">
         <div class="ap-pnl ap-reg"><h3>フレンド申請</h3>
@@ -4077,14 +4145,15 @@
     const close = () => { el.hidden = true; };
     const q = (s) => box.querySelector(s);
     q('.std-back').onclick = () => { close(); if (friendMenu.back) friendMenu.back(); else airport(); };
+    if (net && !friendMenu.invLoaded) { friendMenu.invLoaded = true; DotNet.roomInvites().then((v) => { friendMenu.inv = v; if (!el.hidden && v.length) friendMenu('keep'); }).catch(() => {}).finally(() => setTimeout(() => { friendMenu.invLoaded = false; }, 3000)); }
     if (net && !on.fid) publishMe().then((fid) => { const e = q('#apMyId'); if (e) e.textContent = fid ? fmtFid(fid) : 'つながりません'; if (!fid) { const n = document.createElement('p'); n.className = 'ap-note ap-err'; n.textContent = '通信できませんでした（' + ((window.DotNet && DotNet.err) || '不明') + '）'; const m = q('.ap-myid'); m && m.after(n); } });
     if (q('[data-a="copyid"]')) q('[data-a="copyid"]').onclick = async () => { try { await navigator.clipboard.writeText(on.fid || ''); modal('<h2>フレンドIDをコピーしました</h2>', [{ label: 'OK', primary: true }]); } catch (_) {} };
     if (q('[data-a="add"]')) q('[data-a="add"]').onclick = async () => { if (await sendFriendReq(q('#apFid').value)) friendMenu('keep'); };
-    box.querySelectorAll('[data-fu]').forEach((b) => b.onclick = async () => {
-      const f = on.flist[+b.dataset.fu]; let p = null; try { p = await DotNet.byUid(f.uid); } catch (_) {}
-      if (!p || !p.code) return modal('<h2>相手のチームを読みこめませんでした</h2><p>通信の状態をたしかめて、もう一度押してください。</p>', [{ label: 'OK', primary: true }]);
-      Object.assign(f, { name: p.name, mgr: p.mgr, emb: p.emb, rank: p.rank }); store();
-      try { const d = await unpackCode(p.code); close(); await startFriend(d, { uid: f.uid }); } catch (_) { modal('<h2>読みこめませんでした</h2>', [{ label: 'OK' }]); }
+    box.querySelectorAll('[data-fu]').forEach((b) => b.onclick = async () => {   // 版622：ルームを作って、相手が入るのを待つ
+      const f = on.flist[+b.dataset.fu], inv = (friendMenu.inv || []).find((r) => r.host === f.uid);
+      if (inv) { close(); return joinRoom(inv.id); }
+      b.disabled = true; const id = await makeRoom(f); b.disabled = false;
+      if (id) { close(); roomScreen(id, 'host'); }
     });
     box.querySelectorAll('[data-fx]').forEach((b) => b.onclick = async () => { const f = on.flist[+b.dataset.fx]; if (await modal(`<h2>${esc(f.name)} の登録をやめますか？</h2>`, [{ label: 'やめる', value: true }, { label: 'キャンセル', primary: true, value: false }])) { on.flist.splice(+b.dataset.fx, 1); store(); } friendMenu(); });
   }

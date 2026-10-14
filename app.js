@@ -78,7 +78,7 @@
     careerChanges = []; tacChange = null; tacState = null; closeLocker();
     match = D.simulateMatch(mine, theirs, seed, { oneHalf: !!mctx.opts.oneHalf });   // 版560：練習試合は前半だけ
     { const hb = document.getElementById('htTac'); if (hb) hb.hidden = !mctx.opts.onSub; const sb = document.querySelector('#half [data-panel="subs"]'); if (sb) sb.hidden = !!mctx.opts.onSub; }
-    { const ab = document.querySelector('#match aside [data-panel="subs"]'); if (ab) ab.style.display = mctx.opts.watch ? 'none' : ''; }   // 観戦：選手交代はない
+    { const ab = document.querySelector('#match aside [data-panel="subs"]'); if (ab) ab.style.display = (mctx.opts.watch || mctx.opts.lockEdit) ? 'none' : ''; }   // 観戦：選手交代はない（版622：フレンドのルーム対戦も、2つの画面で同じ試合にするため変更なし）
     $('#match').classList.toggle('watching', !!mctx.opts.watch); { const ws = document.getElementById('wStop'); if (ws) { ws.hidden = !mctx.opts.watch; ws.onclick = async () => {
         { const pn = document.getElementById('panel'); if (pn && !pn.hidden) { pn.hidden = true; return; } }   /* 版491：開いている画面を一つずつ閉じる */
         { const pv = document.getElementById('plv'); if (pv && !pv.hidden) { if (plvMode !== 'both') { plvMode = 'both'; plvDraw(); } else closePlv(); return; } }
@@ -4007,6 +4007,7 @@
     el.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => {
       if (!lk || lk.leaving) return;
       const a = b.dataset.a;
+      if (mctx && mctx.opts.lockEdit && (a === 'subs' || a === 'tac')) return;   // 版622：ルーム対戦は変更なし
       if (a === 'go') return lkStartSecond();
       if (a === 'stat') return lkStatus();
       if (a === 'tac') return lkBoard();
@@ -4019,6 +4020,7 @@
   }
   function openLocker() {
     const el = lkEl();
+    el.querySelectorAll('[data-a="subs"],[data-a="tac"]').forEach((b) => { b.style.visibility = (mctx && mctx.opts.lockEdit) ? 'hidden' : ''; });
     lk = { t0: performance.now(), left: LK_SEC, last: performance.now(), leaving: false, raf: 0, sit: lkSeats() };
     SND().crowd('duck'); setTimeout(() => { if (lk) SND().bgm('half'); }, 900);   // 版558：本家のロッカールームは明るい曲が流れ、観客の声は聞こえない
     el.hidden = false; el._fit(); el.querySelector('.lk-sub').hidden = true;   // 版556：見えてから大きさを合わせる（黒い余白が出ていた）

@@ -92,5 +92,23 @@
     if (!(await ready())) return [];
     return withTimeout(db.collection('news').orderBy('at', 'desc').limit(20).get().then((q) => q.docs.map((d) => ({ id: d.id, ...d.data() })))).catch(() => []);
   }
-  window.DotNet = { get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news };
+  // 版622：フレンドのルーム（2人が「対戦する」を押したら、2つの画面で同じ試合が始まる）
+  async function createRoom(guest, r) {
+    if (!(await ready())) return null;
+    return withTimeout(db.collection('rooms').add({ ...r, host: uid, guest, state: 'open', hostIn: true, guestIn: false, hostReady: false, guestReady: false, at: Date.now() }).then((d) => d.id));
+  }
+  async function roomUpdate(id, patch) { if (!(await ready())) return; return withTimeout(db.collection('rooms').doc(id).update(patch)); }
+  async function roomGet(id) { if (!(await ready())) return null; return withTimeout(db.collection('rooms').doc(id).get().then((d) => (d.exists ? { id: d.id, ...d.data() } : null))); }
+  function roomWatch(id, cb) { if (!db) return () => {}; return db.collection('rooms').doc(id).onSnapshot((d) => cb(d.exists ? { id: d.id, ...d.data() } : null), () => cb(null)); }
+  async function roomInvites() {
+    if (!(await ready())) return [];
+    const t = Date.now() - 30 * 60 * 1000;
+    return withTimeout(db.collection('rooms').where('guest', '==', uid).where('state', '==', 'open').limit(10).get().then((q) => q.docs.map((d) => ({ id: d.id, ...d.data() })).filter((r) => (r.at || 0) > t)));
+  }
+  async function roomStart(id) {   // ふたりとも準備ができたら、ホストが種と開始時刻を決める（取り合いにならないように取引で）
+    if (!(await ready())) return;
+    const ref = db.collection('rooms').doc(id);
+    return db.runTransaction(async (tx) => { const d = await tx.get(ref); const r = d.data(); if (!r || r.state !== 'open' || !r.hostReady || !r.guestReady) return; tx.update(ref, { state: 'go', seed: 1 + Math.floor(Math.random() * 999999), startAt: Date.now() + 4000 }); });
+  }
+  window.DotNet = { get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news, createRoom, roomUpdate, roomGet, roomWatch, roomInvites, roomStart };
 })();
