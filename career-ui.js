@@ -3889,7 +3889,7 @@
     const op = rankOpponent(); if (!op) return;
     const R = RANKS[rankIdx(ensureOnline().rp)];
     const ok = await modal(`<h2>ランクマッチ</h2><p>${rankBadge(rankIdx(save.online.rp))}　の相手が見つかりました！</p><div class="ap-vs"><img src="${emblemURL(op.name, 64)}" alt=""><b>${esc(op.name)}</b></div><p class="hintp">勝つと +${RP_WIN}RP、引き分け +${RP_DRAW}RP、負けると −${RP_LOSE}RP（ランクは下がりません）。<br>選手の疲れ・ケガ・週は進みません。</p>`, [{ label: '対戦する', primary: true, value: true }, { label: 'やめる', value: false }]);
-    if (!ok) return;
+    if (!ok) return airport();
     runMatch('ランクマッチ', '', op, (score) => onlineDone('rank', op, score), { comp: 'ランクマッチ', label: R.n, home: true, online: 'rank' });
   }
   async function startFriend(d) {
@@ -3899,36 +3899,62 @@
     if (!f) { f = { name: srcName, w: 0, d: 0, l: 0 }; on.friends.unshift(f); } else { on.friends.splice(on.friends.indexOf(f), 1); on.friends.unshift(f); }
     f.code = await packCode(d); f.at = Date.now(); on.friends = on.friends.slice(0, 8); store();
     const ok = await modal(`<h2>フレンド対戦</h2><div class="ap-vs"><img src="${emblemURL(g.name, 64)}" alt=""><b>${esc(g.name)}</b></div><p>${d.mgr ? esc(d.mgr) + '監督の' : ''}チームと対戦します。</p><p class="hintp">選手の疲れ・ケガ・週は進みません。</p>`, [{ label: '対戦する', primary: true, value: true }, { label: 'やめる', value: false }]);
-    if (!ok) return;
+    if (!ok) return airport();
     const op = { name: g.name, short: g.short, srcName };
     runMatch('フレンド対戦', '', op, (score) => onlineDone('friend', op, score), { comp: 'フレンド対戦', label: '', home: true, online: 'friend' });
   }
+  const AP_SVG = {
+    trophy: '<svg viewBox="0 0 48 48"><path d="M14 6h20v6h8c0 9-5 14-11 15-2 4-4 6-5 7v5h7v5H15v-5h7v-5c-1-1-3-3-5-7C11 26 6 21 6 12h8z" fill="#fff"/><path d="M10 15c1 5 4 8 6 9-1-3-2-6-2-9zM38 15c-1 5-4 8-6 9 1-3 2-6 2-9z" fill="rgba(0,0,0,.25)"/></svg>',
+    hands: '<svg viewBox="0 0 48 48"><path d="M4 20l9-8 7 3 4-2 4 2 7-3 9 8-6 6-3-2-9 9c-2 2-5 2-6 0l-8-8-3 2z" fill="#fff"/><path d="M20 22l6-3 6 5-5 5" fill="none" stroke="rgba(0,0,0,.3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    send: '<svg viewBox="0 0 24 24"><path d="M2 11l19-8-6 18-4-7z" fill="#fff"/><path d="M11 14l10-11" stroke="rgba(0,0,0,.3)" stroke-width="1.6"/></svg>',
+    card: '<svg viewBox="0 0 24 24"><rect x="5" y="3" width="13" height="17" rx="2" fill="#4a8cff" stroke="#fff" stroke-width="1.6"/><rect x="8" y="6" width="7" height="7" rx="1" fill="#fff" opacity=".8"/></svg>',
+    gem: '<svg viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 13L2 9z" fill="#c76aff" stroke="#fff" stroke-width="1.4"/><path d="M2 9h20M8 3l4 19 4-19" stroke="#fff" stroke-width="1" opacity=".6" fill="none"/></svg>' };
+  // 空港の背景：ホームの絵の空港あたりを大きく写して、ぼかす
+  function apBg() { let src = ''; try { const im = H2.cur(); src = im && im.src; } catch (_) {} return src ? `<div class="ap-bg" style="background-image:url('${src}')"></div>` : '<div class="ap-bg"></div>'; }
+  function apMedal(i, size) { const R = RANKS[i]; return `<div class="ap-medal" style="--rc:${R.c};--sz:${size}px"><i>★</i><b>${R.n}</b></div>`; }
   async function friendMenu() {
-    const on = ensureOnline();
-    const rows = on.friends.map((f, k) => `<button class="ap-fr" data-fk="${k}"><b>${esc(f.name)}</b><small>${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></button>`).join('');
-    const pick = new Promise((res) => setTimeout(() => document.querySelectorAll('#crModalBody .ap-fr').forEach((b) => b.onclick = () => { $('#crModal').hidden = true; res(+b.dataset.fk); }), 0));
-    const act = modal(`<h2>フレンド対戦</h2><p class="hintp">①「自分のチームを送る」で、LINEなどで友達にリンクを送ります。<br>② 友達から届いたリンクを開くか、下の欄に貼りつけて「対戦する」。</p>
-      <textarea id="apCode" class="ap-code" placeholder="友達のリンク（チームコード）をここに貼りつけ"></textarea>${rows ? `<h3 class="ap-h3">最近の相手（もう一度対戦）</h3><div class="ap-frs">${rows}</div>` : ''}`,
-      [{ label: '自分のチームを送る', value: 'share' }, { label: '対戦する', primary: true, value: 'go' }, { label: 'もどる', value: 'back' }]);
-    const codeNow = () => ($('#apCode') || {}).value || '';
-    let txt = ''; document.getElementById('apCode') && (document.getElementById('apCode').oninput = (e) => { txt = e.target.value; });
-    const r = await Promise.race([act.then((v) => ({ v })), pick.then((k) => ({ k }))]);
-    if (r.k != null) { const f = on.friends[r.k]; try { await startFriend(await unpackCode(f.code)); } catch (_) { await modal('<h2>読みこめませんでした</h2>', [{ label: 'OK' }]); } return; }
-    if (r.v === 'share') { const s = await shareMyTeam(); if (s === 'copied') await modal('<h2>コピーしました</h2><p>LINEなどに貼りつけて、友達に送ってください。</p>', [{ label: 'OK', primary: true }]); return friendMenu(); }
-    if (r.v === 'go') { const code = txt || codeNow(); try { await startFriend(await unpackCode(code)); } catch (_) { await modal('<h2>チームコードを読みこめませんでした</h2><p>友達から届いたリンクを、全部そのまま貼りつけてください。</p>', [{ label: 'OK', primary: true }]); return friendMenu(); } return; }
-    return airport();
+    const on = ensureOnline(), el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box');
+    const rows = on.friends.map((f, k) => { let emb = ''; try { emb = f.emb || ''; } catch (_) {} return `<button class="ap-frc" data-fk="${k}"><div class="ap-frc-n"><b>${esc(f.name)}</b><small>${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><span class="ap-frc-go">再戦</span></button>`; }).join('');
+    box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>フレンド対戦</b><small>友達のチームと、いつもの試合で勝負！</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
+      <div class="ap-fgrid">
+        <div class="ap-pnl"><h3><span class="ap-num">1</span>自分のチームを送る</h3><div class="ap-myteam"><img src="${emblemURL(save.team.name, 96)}" alt=""><div><b>${esc(save.team.name)}</b><small>${save.manager ? esc(save.manager) + '監督　' : ''}総合力 ${Math.round(C.teamLevel(save))}</small></div></div>
+          <p class="ap-note">いまの選手・スキル・戦術・ユニフォームが入ったリンクを作ります。LINEなどで友達に送ってください。</p>
+          <button class="ap-big ap-blue" data-a="share">${AP_SVG.send}<b>チームを送る</b></button></div>
+        <div class="ap-pnl"><h3><span class="ap-num">2</span>友達のチームと対戦</h3>
+          <p class="ap-note">友達から届いたリンクを開くと、すぐ対戦できます。<br>または、リンクをここに貼りつけてください。</p>
+          <textarea id="apCode" class="ap-code" placeholder="ここに友達のリンクを貼りつけ"></textarea>
+          <button class="ap-big ap-gold" data-a="go">${AP_SVG.hands}<b>対戦する</b></button></div>
+      </div>
+      <div class="ap-recent"><h3>最近の相手</h3>${rows ? `<div class="ap-frs2">${rows}</div>` : '<p class="ap-note">まだ対戦した友達はいません。</p>'}</div>`;
+    el.hidden = false; el._fit && el._fit(); try { window.DotSound && DotSound.sfx && DotSound.sfx('ok'); } catch (_) {}
+    const close = () => { el.hidden = true; };
+    box.querySelector('.std-back').onclick = () => { close(); airport(); };
+    box.querySelector('[data-a="share"]').onclick = async () => { const s = await shareMyTeam(); if (s === 'copied') modal('<h2>コピーしました</h2><p>LINEなどに貼りつけて、友達に送ってください。</p>', [{ label: 'OK', primary: true }]); };
+    box.querySelector('[data-a="go"]').onclick = async () => { const code = box.querySelector('#apCode').value; try { const d = await unpackCode(code); close(); await startFriend(d); } catch (_) { modal('<h2>チームコードを読みこめませんでした</h2><p>友達から届いたリンクを、全部そのまま貼りつけてください。</p>', [{ label: 'OK', primary: true }]); } };
+    box.querySelectorAll('.ap-frc').forEach((b) => b.onclick = async () => { const f = on.friends[+b.dataset.fk]; try { const d = await unpackCode(f.code); close(); await startFriend(d); } catch (_) { modal('<h2>読みこめませんでした</h2>', [{ label: 'OK' }]); } });
   }
   async function airport() {
     const on = ensureOnline(), i = rankIdx(on.rp), into = on.rp - i * RP_STEP, last = i === RANKS.length - 1;
-    const v = await modal(`<h2>✈️ 空港（対戦）</h2>
-      <div class="ap-card"><div class="ap-rp">${rankBadge(i, true)}<b>${on.rp} RP</b></div>
-        ${last ? '<p class="ap-sm">最高ランク！</p>' : `<div class="ap-bar"><i style="width:${into}%"></i></div><p class="ap-sm">次の「${RANKS[i + 1].n}」まで あと ${RP_STEP - into} RP</p>`}
-        ${last ? '' : (() => { const R = RANK_REWARD[i + 1], got = rankIdx(on.best || 0) >= i + 1; return `<p class="ap-sm ap-next">${got ? '（ごほうびは受け取りずみ）' : `「${RANKS[i + 1].n}」到達のごほうび：コイン${R.coins}枚・特訓カード${R.cards}枚${R.kak ? `・カケラ${R.kak}` : ''}`}</p>`; })()}
-        <p class="ap-sm">ランクマッチ ${on.w}勝 ${on.d}分 ${on.l}敗　／　フレンド ${on.fw}勝 ${on.fd}分 ${on.fl}敗</p></div>
-      <p class="hintp">ランクが上がるとごほうび（特訓カード・覚醒のカケラ・コイン）。<br>※ いまのランクマッチの相手はCPUのクラブです（ほかの人のチームと当たるのは、サーバーの準備ができてから）。</p>`,
-      [{ label: 'ランクマッチ', primary: true, value: 'rank' }, { label: 'フレンド対戦', value: 'friend' }, { label: 'もどる', value: 'back' }]);
-    if (v === 'rank') return startRank();
-    if (v === 'friend') return friendMenu();
+    const el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box');
+    const nx = last ? null : RANK_REWARD[i + 1], gotNx = !last && rankIdx(on.best || 0) >= i + 1;
+    const ladder = RANKS.map((R, k) => `<div class="ap-lad${k === i ? ' on' : ''}${k < i ? ' done' : ''}" style="--rc:${R.c}"><i>★</i><small>${R.n}</small></div>`).join('<span class="ap-lad-ln"></span>');
+    box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>空港　対戦ロビー</b><small>ランクを上げて、ごほうびをゲット！</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
+      <div class="ap-main">
+        <div class="ap-pnl ap-club"><h3>マイクラブ</h3><img class="ap-emb" src="${emblemURL(save.team.name, 128)}" alt=""><b class="ap-tn">${esc(save.team.name)}</b><small>${save.manager ? esc(save.manager) + '監督' : ''}</small>
+          <div class="ap-stats"><div><small>総合力</small><b>${Math.round(C.teamLevel(save))}</b></div><div><small>ランクマッチ</small><b>${on.w}<i>勝</i>${on.d}<i>分</i>${on.l}<i>敗</i></b></div><div><small>フレンド</small><b>${on.fw}<i>勝</i>${on.fd}<i>分</i>${on.fl}<i>敗</i></b></div></div></div>
+        <div class="ap-pnl ap-rankp"><div class="ap-rk-row">${apMedal(i, 150)}<div class="ap-rk-info"><small>現在のランク</small><b class="ap-rk-n" style="color:${RANKS[i].c}">${RANKS[i].n}</b><div class="ap-rk-rp"><b>${on.rp}</b> RP</div>
+            ${last ? '<div class="ap-sm2">最高ランク到達！</div>' : `<div class="ap-bar2"><i style="width:${into}%"></i><span>${into} / ${RP_STEP}</span></div><div class="ap-sm2">次の「${RANKS[i + 1].n}」まで あと <b>${RP_STEP - into}</b> RP</div>`}</div></div>
+          ${last ? '' : `<div class="ap-rw2"><span class="ap-rw2-h">${gotNx ? '受け取りずみ' : `${RANKS[i + 1].n} 到達のごほうび`}</span><span class="ap-rw2-i"><img class="coin-ico" src="icons/coin.png" alt="">${nx.coins}</span><span class="ap-rw2-i">${AP_SVG.card}×${nx.cards}</span>${nx.kak ? `<span class="ap-rw2-i">${AP_SVG.gem}×${nx.kak}</span>` : ''}</div>`}
+          <div class="ap-ladder">${ladder}</div></div>
+      </div>
+      <div class="ap-modes"><button class="ap-mode ap-gold" data-a="rank">${AP_SVG.trophy}<div><b>ランクマッチ</b><small>勝って +${RP_WIN}RP ／ 負けても −${RP_LOSE}RP（ランクは落ちない）</small></div></button>
+        <button class="ap-mode ap-blue" data-a="friend">${AP_SVG.hands}<div><b>フレンド対戦</b><small>友達とリンクでチームを送り合って勝負</small></div></button></div>
+      <p class="ap-foot">※ いまのランクマッチの相手はCPUのクラブです　・　対戦では疲れ・ケガ・週は進みません</p>`;
+    el.hidden = false; el._fit && el._fit();
+    const close = () => { el.hidden = true; };
+    box.querySelector('.std-back').onclick = close;
+    box.querySelector('[data-a="rank"]').onclick = () => { close(); startRank(); };
+    box.querySelector('[data-a="friend"]').onclick = () => friendMenu();
   }
   // リンク（#vs=...）から開いたとき：その友達と対戦するか聞く
   async function checkVsLink() {
