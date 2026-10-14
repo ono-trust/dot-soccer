@@ -1132,7 +1132,7 @@
         if (p.off || p.gk || p === own || !targets[p.idx] || urgent[p.idx]) continue;
         if ((p.run || 0) > 0 || p.uniq || (S.ball.intended === p.idx)) continue;
         const tx = fx(t, targets[p.idx][0]); let nx = tx;
-        if (p.position === 'MF' && p.type !== 'アンカー' && bxf > 34 && !globalThis.__noMfPush) nx = Math.max(tx, Math.min(bxf - 11, offL - 3));
+        if (p.position === 'MF' && p.type !== 'アンカー' && p.type !== 'レジスタ' && bxf > 34 && !globalThis.__noMfPush) nx = Math.max(tx, Math.min(bxf - 11, offL - 3));
         if (p.position === 'FW' && p.type !== 'ストライカー' && p.type !== '偽9番' && bxf < 38 && !globalThis.__noFwDrop) nx = Math.min(tx, bxf + 26);
         if (nx !== tx) { targets[p.idx] = [fx(t, nx), targets[p.idx][1]]; }
       }
@@ -1654,6 +1654,21 @@
                   const v = Math.min(m, 6) * 1.0 + Math.min(lc, 3) * 0.6 + ax * 0.12 - Math.abs(dy) * 0.08 - hyp(fx(p.team, p.x) - ax, p.y - ay) * 0.03; if (v > bs) { bs = v; bp = [ax, ay]; } }
                 p.stF = bp; }
                 if (p.stF) { tx = Math.max(Math.min(p.stF[0], offL - 0.6), tx - 3); ty = p.stF[1]; u = u || hyp(fx(tm.ti, p.x) - tx, p.y - ty) > 2.5; } } if (globalThis.__tgHook) { p._dbgS = S.t; p._dbgSx = tx; p._dbgOff = offL; } }
+            // 版664：タイプごとの動きのくせ（攻撃）。見ているだけで違いが分かるように、持ち場の取り方をはっきり変える
+            if (!globalThis.__noTypeMove && (!own || own.idx !== p.idx) && !(p.run > 0) && !S.restart && !bWide) {
+              const tt = p.type, side0 = Math.sign(p.slot.y - GOAL_Y) || (p.number % 2 ? 1 : -1);
+              if (tt === '偽9番') { tx = Math.min(tx, Math.max(bxf - 2, offL - 14), offL - 7); ty += (b.y - ty) * 0.45; }   // 中盤まで下りて受ける
+              else if (tt === 'デコイラン') { tx = Math.max(tx, offL - 0.6); ty = GOAL_Y + Math.sin(S.t * 0.75 + p.idx * 1.3) * 15; u = true; }   // 最終ラインの上を横へ走り続けて、DFを引っぱる
+              else if (tt === 'アタッカー') { ty += (GOAL_Y + side0 * 13 - ty) * 0.6; tx = Math.max(tx, offL - 1.5); }   // サイドの裏（ハーフスペース）をねらう
+              else if (tt === 'レジスタ') { tx = Math.min(tx, Math.max(Lx + 8, bxf - 10)); ty = GOAL_Y + (ty - GOAL_Y) * 0.35 + (b.y - GOAL_Y) * 0.2; }   // DFのすぐ前、真ん中で受けて配る
+              else if (tt === 'アンカー') { tx = Math.min(tx, Lx + 11); ty = GOAL_Y + (ty - GOAL_Y) * 0.25; }   // 上がらずに中盤の底を守る
+              else if (tt === 'ゲームメイカー') { tx = clamp(bxf + 5, Lx + 14, offL - 7); ty = GOAL_Y + (ty - GOAL_Y) * 0.4 + (b.y - GOAL_Y) * 0.3; }   // 相手のMFとDFの間、真ん中で受ける
+              else if (tt === 'ダイナモ') { tx = Math.max(tx, Math.min(bxf + 7, offL - 2)); ty += (b.y - ty) * 0.2; u = true; }   // ボールを追い越して前へ走る
+              else if (tt === 'ファンタジスタ') { tx = Math.min(Math.max(tx, bxf + 3), offL - 4); ty += (b.y + Math.sin(S.t * 0.5 + p.idx) * 8 - ty) * 0.55; }   // ボールの近くを自由に動き回る
+              else if (tt === 'シャドー') { if (bxf > L / 2 - 6) { tx = Math.max(tx, Math.min(offL - 1.5, bxf + 11)); ty = GOAL_Y + (ty - GOAL_Y) * 0.45; u = true; } }   // FWの後ろから、ゴール前へ飛び込む
+              else if (tt === 'スイーパー' && s.line === 0) { tx = Math.min(tx, Lx + 1); }   // 上がらずに後ろを守る
+              else if (tt === 'ビルドアップ型' && s.line === 0 && bxf < L / 2 + 6) { tx = Math.max(tx, Math.min(bxf - 4, L / 2 - 4)); ty += (b.y - ty) * 0.3; }   // 中盤へ持ち上がって、組み立てに加わる
+            }
             // 味方と重なりすぎない
             for (const m of tm.players) {
               if (m === p || m.gk) continue;
@@ -1705,10 +1720,23 @@
               // マークの基本：ゴール（中央）と相手を結んだ線の上、相手のゴール側に立つ。ボールから遠い相手ほど、少し下がって（絞って）ボールの状況を見る
               const gwx = fx(tm.ti, 0), gl = hyp(gwx - q.x, GOAL_Y - q.y) || 1, dBall = hyp(b.x - q.x, b.y - q.y);
               const dm = (skZ(p, 'manMark') || p.markHard ? 0.9 : 1.6) + (p.markHard ? 0 : Math.min(5, Math.max(0, dBall - 12) * 0.18)) + ((farS || cbOut) && dBall > 14 ? Math.min(9, gl * 0.3) : 0);   // 逆サイド／CBが釣り出された：相手とゴールの間、さらに内側（ゴール寄り）で待つ
-              if ((farS || cbOut) && dBall > 14) w *= farS && dBall > 22 ? 0.35 : 0.7;   // ボールから遠い相手は、ついて行かずに中で待つ
+              if ((farS || cbOut) && dBall > 14 && p.type !== 'マンマーカー') w *= farS && dBall > 22 ? 0.35 : 0.7;   // ボールから遠い相手は、ついて行かずに中で待つ（マンマーカーはどこまでもついて行く）
+              if (p.type === 'マンマーカー' && !sweep5) w = Math.max(w, 0.97);
+              if (!globalThis.__noTypeMove && !globalThis.__noSwW && p.type === 'スイーパー' && !sweep5 && !p.markHard) w *= 0.55;   // スイーパー：人につかず、ラインの後ろのスペースを見る
               const wx = q.x + (gwx - q.x) / gl * dm, wy = q.y + (GOAL_Y - q.y) / gl * dm, mx = fx(tm.ti, wx), my = wy;
               tx += (mx - tx) * w; ty += (my - ty) * w;
               u = w > 0.6;
+            }
+            // 版664：タイプごとの動きのくせ（守備）
+            if (!globalThis.__noTypeMove && !S.restart) {
+              const tt = p.type;
+              if (tt === 'スイーパー' && s.line === 0 && !sweep5) { const lm = tm.players.filter((m) => m !== p && !m.off && !m.gk && m.slot && m.slot.line === 0).map((m) => fx(tm.ti, m.x)); tx = Math.min(tx, Lx - 4.5, lm.length ? Math.min(...lm) - 4 : tx); if (fx(tm.ti, p.x) > tx + 2) u = true; ty = GOAL_Y + (ty - GOAL_Y) * 0.55 + (b.y - GOAL_Y) * 0.2; }   // DFラインの後ろで、抜かれた時に備える
+              else if (tt === 'ストッパー' && s.line === 0 && bxf < 58 && Math.abs(b.y - ty) < 16) { tx = Math.max(tx, Math.min(bxf - 2, Lx + 9)); ty += (b.y - ty) * 0.35; u = true; }   // 前に出て、ボールの近くの相手に当たりに行く
+              else if (tt === 'ラインコントローラー' && s.line === 0) { tx += 2.5; }   // ラインを高く保つ
+              else if (tt === 'アンカー') { tx = Math.min(tx, Lx + 7); ty += (b.y - ty) * 0.3; }   // DFラインのすぐ前で、真ん中のコースを消す
+              else if (tt === 'ダイナモ') { tx += (bxf - tx) * 0.35; ty += (b.y - ty) * 0.35; u = true; }   // ボールへ走って奪いに行く
+              else if (tt === 'ストライカー' && p.position === 'FW') { tx = Math.max(tx, Math.min(L / 2 + 6, bxf + 18)); }   // 守備に戻らず、前で待つ
+              else if (tt === 'デコイラン' && p.position === 'FW') { tx = Math.max(tx, L / 2 - 2); ty = GOAL_Y + Math.sin(S.t * 0.6 + p.idx) * 12; }
             }
             if (skZ(p, 'recovery') && fx(tm.ti, p.x) > bxf + 4) u = true;   // 帰陣ダッシュ：ボールより前に残っていたら全力で戻る
             if (pressers.has(p.idx)) {
@@ -5087,8 +5115,8 @@
       for (const p of P) {
         if (p.gk || p.off) continue;
         const key = p.team + ':' + p.type;
-        const g = typeLog[key] || (typeLog[key] = { team: p.team, type: p.type, atkX: 0, atkN: 0, defX: 0, defN: 0, distOwner: 0, nOwner: 0, box: 0, beyondLine: 0, pressSum: 0 });
-        const xf = fx(p.team, p.x);
+        const g = typeLog[key] || (typeLog[key] = { team: p.team, type: p.type, atkX: 0, atkN: 0, defX: 0, defN: 0, distOwner: 0, nOwner: 0, box: 0, beyondLine: 0, pressSum: 0, ySum: 0, xx: 0, yAtk: 0 });
+        const xf = fx(p.team, p.x); g.ySum += Math.abs(p.y - GOAL_Y); g.xx += xf * xf; if (S.poss === p.team) g.yAtk += Math.abs(p.y - GOAL_Y);
         if (S.poss === p.team) {
           g.atkX += xf; g.atkN++;
           if (xf > L - 16.5 && Math.abs(p.y - GOAL_Y) < 20) g.box++;
