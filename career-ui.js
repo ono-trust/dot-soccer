@@ -407,8 +407,9 @@
     { go: 'shop', ico: '🛒', t: 'ショップ', s: 'カード・コイン', x: 718, y: 450, area: [700, 486, 218, 146] },
     { go: 'lineup', ico: '👥', t: 'クラブ事務所', s: 'チーム編成', x: 1046, y: 446, area: [980, 468, 190, 168] },
     { go: 'stadium', ico: '⚽', t: 'スタジアム', s: '試合会場', x: 240, y: 408, area: [140, 280, 620, 300] },
+    { go: 'post', ico: '📮', t: 'ポスト', s: 'お知らせ・フレンド', x: 730, y: 262, area: [668, 250, 70, 80] },   // 版620
   ];
-  const H2_ICO = {}; ['stadium', 'club', 'online', 'assoc', 'shop', 'lineup'].forEach((k) => { const im = new Image(); im.src = `icons/home_${k}.png`; H2_ICO[k] = im; });
+  const H2_ICO = {}; ['stadium', 'club', 'online', 'assoc', 'shop', 'lineup', 'post'].forEach((k) => { const im = new Image(); im.src = `icons/home_${k}.png`; H2_ICO[k] = im; });
   const H2_POST = new Image(); H2_POST.src = 'icons/post.png';
   const h2Ok = (im) => im && im.complete && im.naturalWidth > 0;
   const h2Ready = () => h2Ok(H2.last) || h2Ok(H2.cur());
