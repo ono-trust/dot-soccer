@@ -4240,7 +4240,7 @@
     if (typeof back === 'function') friendMenu.back = back; else if (back !== 'keep') friendMenu.back = null;
     const on = ensureOnline(); on.flist = on.flist || [];
     const el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box'), net = !!(window.DotNet && DotNet.on);
-    const card = (f, k) => `<div class="ap-fc"><img src="${embFromLook(f.emb, 96)}" alt=""><div class="ap-fc-n"><b>${esc(f.name)}</b>${f.mgr ? `<small>${esc(f.mgr)}監督</small>` : ''}${f.rank != null ? rankBadge(f.rank) : ''}<small class="ap-fc-r">${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><button class="ap-fc-go${(friendMenu.inv || []).some((r) => r.host === f.uid) ? ' inv' : ''}" data-fu="${k}"><img src="icons/home_stadium.png" alt="">${(friendMenu.inv || []).some((r) => r.host === f.uid) ? 'ルームに入る' : 'ルームを作る'}</button><button class="ap-fc-x xbtn" data-fx="${k}" title="フレンドをやめる"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></button></div>`;
+    const card = (f, k) => `<div class="ap-fc"><img src="${embFromLook(f.emb, 96)}" alt=""><div class="ap-fc-n"><b>${esc(f.name)}</b>${f.mgr ? `<small>${esc(f.mgr)}監督</small>` : ''}${f.rank != null ? rankBadge(f.rank) : ''}<small class="ap-fc-r">${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><button class="ap-fc-go${(friendMenu.inv || []).some((r) => r.host === f.uid) ? ' inv' : ''}" data-fu="${k}"><img src="icons/home_stadium.png" alt="">${(friendMenu.inv || []).some((r) => r.host === f.uid) ? 'ルームに入る' : 'ルームを作る'}</button><button class="ap-fc-x xbtn" data-fx="${k}" title="フレンドから外す"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></button></div>`;
     box.innerHTML = `${apBg()}<div class="ap2">${apTop('フレンド', 'フレンド申請して、いつでも対戦！')}
       <div class="ap-fgrid2">
         <div class="ap-pnl ap-reg"><h3><span class="ap-hi">${AP_SVG.mail}</span>フレンド申請</h3><div class="ap-pb">
@@ -4267,7 +4267,7 @@
       b.disabled = true; const id = await makeRoom(f); b.disabled = false;
       if (id) { close(); roomScreen(id, 'host'); }
     });
-    box.querySelectorAll('[data-fx]').forEach((b) => b.onclick = async () => { const f = on.flist[+b.dataset.fx]; if (await modal(`<h2>${esc(f.name)} の登録をやめますか？</h2>`, [{ label: 'やめる', value: true }, { label: 'キャンセル', primary: true, value: false }])) { on.flist.splice(+b.dataset.fx, 1); store(); } friendMenu(); });
+    box.querySelectorAll('[data-fx]').forEach((b) => b.onclick = async () => { const f = on.flist[+b.dataset.fx]; if (await modal(`<h2>${esc(f.name)} をフレンドから外しますか？</h2><p>外すと、このクラブとはフレンド対戦ができなくなります。<br>もう一度フレンドになるには、申請しなおしが必要です。</p>`, [{ label: '外さない', primary: true, value: false }, { label: '外す', value: true }])) { on.flist.splice(+b.dataset.fx, 1); store(); } friendMenu(); });
   }
   async function airport() {
     const on = ensureOnline(), i = rankIdx(on.rp), last = i === RANKS.length - 1, lo = RANK_AT[i], hi = last ? lo : RANK_AT[i + 1], into = on.rp - lo, span = hi - lo, pct = last ? 100 : Math.round(into / span * 100);
