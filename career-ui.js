@@ -3939,7 +3939,7 @@
         return `<div class="po-it${it.read ? '' : ' new'}${it.kind === 'def' ? ' def-' + it.r : ''}" data-id="${it.id}">${emb}<div class="po-b"><div class="po-t"><b>${esc(t)}</b><small>${fmtAt(it.at)}</small></div><p>${body}</p>${btns ? `<div class="po-btns">${btns}</div>` : ''}</div>${it.read ? '' : '<i class="po-dot"></i>'}</div>`;
       };
       box.innerHTML = `${apBg()}<div class="ap-top"><img class="po-top-img" src="icons/post.png" alt=""><div><b>ポスト</b><small>フレンド申請・対戦の結果・お知らせが届きます</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
-        <div class="po-bar"><span>${list.filter((x) => !x.read).length}件の未読</span><button class="po-all" data-a="allread">すべて既読にする</button><button class="po-all" data-a="clear">読んだものを消す</button></div>
+        <div class="po-bar"><span>${list.filter((x) => !x.read).length}件の未読<small class="po-st">受信：${esc((window.DotNet && DotNet.watchState) || '-')}　最終確認 ${postAt ? fmtAt(postAt).split(' ')[1] : '-'}</small></span><button class="po-all" data-a="allread">すべて既読にする</button><button class="po-all" data-a="clear">読んだものを消す</button></div>
         <div class="po-list">${list.length ? list.map(row).join('') : '<p class="ap-note po-empty">ポストは空っぽです。</p>'}</div>`;
       el.hidden = false; el._fit && el._fit();
       const markRead = (id) => { if (id.startsWith('n:')) p.newsRead[id.slice(2)] = 1; else { const it = p.items.find((x) => x.id === id); if (it) it.read = true; } };
@@ -3954,6 +3954,7 @@
       box.querySelectorAll('[data-room]').forEach((b) => b.onclick = () => { const it = p.items.find((x) => x.id === b.dataset.room); if (!it) return; it.read = true; store(); el.hidden = true; joinRoom(it.room); });
       box.querySelectorAll('[data-ng]').forEach((b) => b.onclick = async () => { const it = p.items.find((x) => x.id === b.dataset.ng); if (!it) return; try { await DotNet.sendMail(it.uid, { type: 'fno', ...myCard() }); } catch (_) {} it.done = 'ng'; it.read = true; store(); draw(); postBadge(); });
     };
+    openPost.redraw = () => { if (!el.hidden) draw(); };
     draw(); syncPost(true).then(() => { if (!el.hidden) draw(); });
   }
   // ================= 版622：フレンドのルーム対戦 =================
@@ -4026,7 +4027,10 @@
   function watchPost() {
     if (mailWatching || !(window.DotNet && DotNet.on && DotNet.watchMail)) return; mailWatching = true;
     DotNet.ready().then((ok) => { if (!ok) { mailWatching = false; return; }
-      DotNet.watchMail((n) => { if (!n) return; syncPost(true).then(() => { postBadge(); const sc = document.getElementById('postScreen'); if (sc && !sc.hidden) return; postToast(); }); });
+      const got = () => { const before = postUnread(); syncPost(true).then(() => { postBadge(); const sc = document.getElementById('postScreen'); if (sc && !sc.hidden) { if (postUnread() !== before && openPost.redraw) openPost.redraw(); return; } if (postUnread() > before) postToast(); }); };
+      DotNet.watchMail((n) => { if (n) got(); });
+      // 見張りがつながらない端末のために、15秒ごとにも確認（画面が見えている時だけ）
+      setInterval(() => { if (document.hidden || $('#career').hidden) return; DotNet.mailbox && Promise.all([DotNet.mailbox().catch(() => []), DotNet.inbox().catch(() => [])]).then(([m, b]) => { if (m.length || b.length) got(); }); }, 15000);
     });
   }
   function postToast() {

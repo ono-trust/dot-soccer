@@ -19,6 +19,7 @@
         const auth = app.auth();
         if (!auth.currentUser) await auth.signInAnonymously();
         uid = auth.currentUser.uid; db = app.firestore();
+        try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (_) {}   // 版625：iPhone（ホーム画面のアプリ）でも見張りがつながるように
         return true;
       } catch (e) { lastErr = String(e && e.message || e); readyP = null; return false; }
     })();
@@ -111,11 +112,13 @@
     return db.runTransaction(async (tx) => { const d = await tx.get(ref); const r = d.data(); if (!r || r.state !== 'open' || !r.hostReady || !r.guestReady) return; tx.update(ref, { state: 'go', seed: 1 + Math.floor(Math.random() * 999999), startAt: Date.now() + 4000 }); });
   }
   // 版624：自分あての mail・battles が増えたら、すぐ知らせる（onSnapshot）
+  let watchState = '未接続';
   function watchMail(cb) {
     if (!db) return () => {};
-    const u1 = db.collection('mail').where('to', '==', uid).onSnapshot((q) => cb(q.size), () => {});
-    const u2 = db.collection('battles').where('to', '==', uid).onSnapshot((q) => cb(q.size), () => {});
+    const err = (e) => { watchState = 'エラー: ' + (e && (e.code || e.message) || e); };
+    const u1 = db.collection('mail').where('to', '==', uid).onSnapshot((q) => { watchState = 'ON'; cb(q.size); }, err);
+    const u2 = db.collection('battles').where('to', '==', uid).onSnapshot((q) => cb(q.size), err);
     return () => { u1(); u2(); };
   }
-  window.DotNet = { get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news, createRoom, roomUpdate, roomGet, roomWatch, roomInvites, roomStart, watchMail };
+  window.DotNet = { get watchState() { return watchState; }, get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news, createRoom, roomUpdate, roomGet, roomWatch, roomInvites, roomStart, watchMail };
 })();
