@@ -3381,3 +3381,9 @@ html.short .h2-kk{height:36px;padding:0 10px 0 4px}html.short .h2-kk .kk-ico{wid
 .gc3-kk .kk-ico{width:28px;height:28px;margin:0;vertical-align:0}
 /* 選手データ：右に「特訓」と「覚醒」 */
 #pcModal.pc-club .pc-awk{gap:10px}
+/* 版648：選手データの「特訓」ボタンは、クラブハウスの特訓ボタンと同じ見た目 */
+#pcModal .pc-awk .pc-trn{position:relative;width:86px;height:86px;margin:5px;border-radius:50%;border:4px solid #fff;background:radial-gradient(circle at 50% 40%,#3fbf3a,#2a9a2a 75%);box-shadow:0 3px 0 rgba(0,0,0,.35);padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:visible}
+#pcModal .pc-awk .pc-trn canvas{width:60px;height:auto;image-rendering:pixelated;margin-top:-6px}
+#pcModal .pc-awk .pc-trn b{position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);white-space:nowrap;font:900 14px "Hiragino Kaku Gothic ProN",sans-serif;color:#fff;-webkit-text-stroke:3px #1a3a1a;paint-order:stroke fill}
+#pcModal .pc-awk button.pc-trn{width:86px!important;height:86px!important;margin:5px}
+#pcModal .pc-awk .pc-trn canvas{display:block;position:static!important;width:60px!important;height:50px!important;margin:-8px 0 0!important;transform:none!important}

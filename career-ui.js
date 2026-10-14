@@ -1048,8 +1048,11 @@
   function awakeSide(el, i, o) {
     const p = save.team.players[i];
     const side = document.createElement('div'); side.className = 'pc-side pc-awk';
-    side.innerHTML = '<button data-ed="trn" title="特訓"><img src="icons/pc_train.png" alt="特訓"></button><button data-ed="awk" title="覚醒"><img src="icons/pc_awake.png" alt="覚醒"></button>';
+    side.innerHTML = '<button data-ed="trn" class="pc-trn" title="特訓"><canvas width="60" height="50"></canvas><b>特訓</b></button><button data-ed="awk" title="覚醒"><img src="icons/pc_awake.png" alt="覚醒"></button>';
     el.appendChild(side);
+    { const cv = side.querySelector('.pc-trn canvas'), S = A().SPR; clearInterval(awakeSide.t);   // 版648：クラブハウスの「特訓」ボタンと同じ、走る選手の絵
+      const draw = () => { if (!cv.isConnected || el.hidden) { clearInterval(awakeSide.t); return; } const x = cv.getContext('2d'); x.clearRect(0, 0, 60, 50); x.imageSmoothingEnabled = false; x.drawImage(A().spriteCanvas(p, 0, 'side', Math.floor(performance.now() / 120) % 4, true, false), 10, 0, S.W * 2, S.H * 2); };
+      draw(); awakeSide.t = setInterval(draw, 120); }
     side.querySelector('[data-ed="trn"]').onclick = (e) => { e.stopPropagation(); el.hidden = true; selIdx = i; go('train'); };   // 版647：この選手の特訓へ
     { const card = el.querySelector('.pc-card'); if (card) { card.style.transform = ''; const W = el.clientWidth, H = el.clientHeight, cw = card.offsetWidth, ch = card.offsetHeight, avail = W - 96 - 12 - 24 - 16; const k = Math.min(1, avail / cw, (H - 16) / ch); card.style.position = 'absolute'; card.style.left = Math.max(12, (avail - cw * k) / 2 + 12) + 'px'; card.style.top = ((H - ch * k) / 2) + 'px'; card.style.transform = `scale(${k.toFixed(3)})`; card.style.transformOrigin = '0 0'; } }
     const done = () => { store(); playerDetail(i, o); if (o.onChange) o.onChange(); };
