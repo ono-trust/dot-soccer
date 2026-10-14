@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // クラブの公開データ：だれでも読める。書けるのは本人だけ
+    match /players/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid
+                   && request.resource.data.code is string && request.resource.data.code.size() < 20000;
+    }
+    // フレンドID → 本人。はじめて作る時だけ書ける（あとから他人が奪えない）
+    match /fids/{fid} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    }
+  }
+}

@@ -2774,3 +2774,26 @@ html.short .h2-card{top:60px;width:230px;padding:7px 10px 9px}html.short .h2-h{f
 .ap-frc{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;border:2px solid rgba(170,200,255,.5);background:rgba(255,255,255,.12);color:#fff;cursor:pointer;text-align:left}
 .ap-frc-n{flex:1;min-width:0}.ap-frc-n b{display:block;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ap-frc-n small{font-size:14px;color:#bcd3ff}
 .ap-frc-go{background:#f29a12;border:2px solid #fff;border-radius:10px;padding:3px 10px;font-weight:900;font-size:15px}
+/* ===== 版613：フレンド登録 ===== */
+.ap-fidl{margin:4px 0 8px;font-size:15px;color:#bcd3ff;font-weight:800}.ap-fidl b{color:#ffe066;font-size:20px;letter-spacing:.06em;margin-left:6px}
+.ap-fgrid2{position:absolute;left:36px;right:36px;top:112px;bottom:24px;display:grid;grid-template-columns:470px 1fr;gap:22px;z-index:1}
+.ap-fgrid2 .ap-pnl{padding:18px 22px;display:flex;flex-direction:column;min-height:0}
+.ap-myid{display:flex;align-items:center;gap:12px;background:rgba(0,0,0,.3);border-radius:14px;padding:10px 16px}
+.ap-myid small{font-size:15px;color:#bcd3ff;font-weight:800}.ap-myid b{flex:1;font-size:34px;font-weight:900;letter-spacing:.08em;color:#ffe066}
+.ap-copy{border:2px solid #fff;border-radius:10px;background:#2563e0;color:#fff;font-weight:900;font-size:16px;padding:6px 12px;cursor:pointer}
+.ap-idrow{display:flex;gap:10px;align-items:stretch}
+.ap-idrow input{flex:1;min-width:0;font-size:28px;font-weight:900;letter-spacing:.1em;border-radius:14px;border:3px solid rgba(170,200,255,.7);padding:6px 14px;color:#123}
+.ap-reg-go{margin-top:0;height:64px;width:120px}
+.ap-linkrow{margin-top:auto;display:flex;gap:8px;align-items:center;padding-top:12px;border-top:2px dashed rgba(170,200,255,.35)}
+.ap-linkrow input{flex:1;min-width:0;font-size:15px;border-radius:10px;border:2px solid rgba(170,200,255,.6);padding:8px 10px;color:#123}
+.ap-mini{display:flex;align-items:center;gap:6px;height:44px;padding:0 12px;border-radius:12px;border:3px solid #fff;color:#fff;font-weight:900;font-size:16px;white-space:nowrap;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.35)}.ap-mini svg{width:22px;height:22px}
+.ap-flist h3 small{font-size:15px;color:#bcd3ff;margin-left:6px}
+.ap-fcs{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
+.ap-fc{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.12);border:2px solid rgba(170,200,255,.45);position:relative}
+.ap-fc img{width:52px;height:52px;flex:none}
+.ap-fc-n{flex:1;min-width:0}.ap-fc-n b{display:block;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ap-fc-n small{display:block;font-size:13px;color:#bcd3ff}.ap-fc-n .ap-rank{font-size:11px;padding:0 6px}
+.ap-fc-go{background:linear-gradient(#ffcf3a,#e58a0a);border:3px solid #fff;border-radius:12px;color:#fff;font-weight:900;font-size:18px;padding:6px 14px;cursor:pointer;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.ap-fc-x{position:absolute;top:-8px;right:-8px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:#c8322a;color:#fff;font-weight:900;font-size:15px;line-height:1;padding:0;cursor:pointer}
+.ap-h3b{margin:12px 0 6px!important;font-size:16px!important}
+.ap-frs3{display:flex;gap:8px;overflow-x:auto}.ap-frs3 .ap-frc{flex:none;width:240px}
+.ap-myid b{white-space:nowrap;font-size:30px}

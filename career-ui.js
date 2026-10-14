@@ -3868,9 +3868,10 @@
     } else {
       on['f' + res.toLowerCase()]++;
       const f = on.friends.find((x) => x.name === op.srcName); if (f) { f[res.toLowerCase()] = (f[res.toLowerCase()] || 0) + 1; }
+      if (op.fuid) { const g2 = (on.flist || []).find((x) => x.uid === op.fuid); if (g2) g2[res.toLowerCase()] = (g2[res.toLowerCase()] || 0) + 1; }
       html = `<h2>フレンド対戦　${resTxt}</h2><p class="cr-score">${esc(save.team.short)} ${score[0]} − ${score[1]} ${esc(op.short || op.name)}</p>${f ? `<p>${esc(op.srcName)}との対戦成績：${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</p>` : ''}`;
     }
-    store(); open();
+    store(); open(); publishMe();
     (async () => {
       await modal(html, [{ label: 'OK', primary: true }]);
       if (rewards) await modal(`<h2>${rankBadge(rewards.rank, true)} 到達のごほうび！</h2><p class="coin big">${COIN}+${rewards.coins} コイン${rewards.kak ? `　／　覚醒のカケラ +${rewards.kak}` : ''}</p><p>特訓カード ${rewards.cards.length}枚${RANK_REWARD[rewards.rank].pack ? `（${RANK_REWARD[rewards.rank].pack}）` : ''}</p><div class="hrow rw ap-rw">${[...new Set(rewards.cards)].map((c) => { const n = rewards.cards.filter((x) => x === c).length; return `<div class="ap-rwc">${artCard(c, { ups: true })}${n > 1 ? `<b>×${n}</b>` : ''}</div>`; }).join('')}</div>`, [{ label: 'OK', primary: true }]);
@@ -3885,14 +3886,32 @@
     if (!list.length) for (const id in save.world.leagues) for (const t of save.world.leagues[id]) if (t.name !== save.team.name) list.push(t);
     return list[Math.floor(Math.random() * list.length)];
   }
+  // 版613：自分のクラブをオンラインに公開（ロビーを開いた時・対戦のあと）
+  let pubBusy = false;
+  async function publishMe() {
+    if (!(window.DotNet && DotNet.on) || pubBusy) return null; pubBusy = true;
+    try { const on = ensureOnline(), d = C.guestCode(save), code = await packCode(d);
+      const fid = await DotNet.publish({ fid: on.fid, name: d.name, short: d.short, mgr: d.mgr, lg: d.lg, emb: d.emb, kit: d.kit, rank: rankIdx(on.rp), rp: on.rp, lvl: C.teamLevel(save), code });
+      if (fid && fid !== on.fid) { on.fid = fid; store(); } return fid;
+    } catch (_) { return null; } finally { pubBusy = false; }
+  }
+  const embLookCache = new Map();
+  function embFromLook(lk, size) { if (!lk) return 'icons/home_lineup.png'; const k = JSON.stringify(lk) + size; if (!embLookCache.has(k)) { const cv = document.createElement('canvas'); cv.width = size; cv.height = size; try { drawEmblem(cv.getContext('2d'), size / 2, size / 2, size * 0.92, lk); } catch (_) {} embLookCache.set(k, cv.toDataURL()); } return embLookCache.get(k); }
+  const fmtFid = (s) => (s ? String(s).replace(/(\d{4})(\d{4})/, '$1 $2') : '');
   async function startRank() {
-    const op = rankOpponent(); if (!op) return;
-    const R = RANKS[rankIdx(ensureOnline().rp)];
-    const ok = await modal(`<h2>ランクマッチ</h2><p>${rankBadge(rankIdx(save.online.rp))}　の相手が見つかりました！</p><div class="ap-vs"><img src="${emblemURL(op.name, 64)}" alt=""><b>${esc(op.name)}</b></div><p class="hintp">勝つと +${RP_WIN}RP、引き分け +${RP_DRAW}RP、負けると −${RP_LOSE}RP（ランクは下がりません）。<br>選手の疲れ・ケガ・週は進みません。</p>`, [{ label: '対戦する', primary: true, value: true }, { label: 'やめる', value: false }]);
+    const on = ensureOnline(), ri = rankIdx(on.rp), R = RANKS[ri];
+    let op = null, who = '', live = null;
+    if (window.DotNet && DotNet.on) {   // 版613：オンライン：同じくらいのランクの、ほかの監督のクラブ
+      try { const rv = await DotNet.rankRival(ri); if (rv && rv.code) { const d = await unpackCode(rv.code); const g = C.registerGuest(save, d); op = { name: g.name, short: g.short }; who = `${rv.mgr ? esc(rv.mgr) + '監督の' : ''}クラブ　${rankBadge(Math.max(0, Math.min(6, rv.rank || 0)))}`; live = rv; } } catch (_) {}
+    }
+    if (!op) { op = rankOpponent(); who = 'CPUのクラブ'; }
+    if (!op) return;
+    const ok = await modal(`<h2>ランクマッチ</h2><p>${rankBadge(ri)}　の相手が見つかりました！</p><div class="ap-vs"><img src="${emblemURL(op.name, 64)}" alt=""><b>${esc(op.name)}</b></div><p class="ap-sm">${who}</p><p class="hintp">勝つと +${RP_WIN}RP、引き分け +${RP_DRAW}RP、負けると −${RP_LOSE}RP（ランクは下がりません）。<br>選手の疲れ・ケガ・週は進みません。</p>`, [{ label: '対戦する', primary: true, value: true }, { label: 'やめる', value: false }]);
     if (!ok) return airport();
     runMatch('ランクマッチ', '', op, (score) => onlineDone('rank', op, score), { comp: 'ランクマッチ', label: R.n, home: true, online: 'rank' });
   }
-  async function startFriend(d) {
+  async function startFriend(d, o) {
+    o = o || {};
     const g = C.registerGuest(save, d), on = ensureOnline();
     const srcName = d.name + (d.mgr ? `（${d.mgr}）` : '');
     let f = on.friends.find((x) => x.name === srcName);
@@ -3900,7 +3919,7 @@
     f.code = await packCode(d); f.at = Date.now(); on.friends = on.friends.slice(0, 8); store();
     const ok = await modal(`<h2>フレンド対戦</h2><div class="ap-vs"><img src="${emblemURL(g.name, 64)}" alt=""><b>${esc(g.name)}</b></div><p>${d.mgr ? esc(d.mgr) + '監督の' : ''}チームと対戦します。</p><p class="hintp">選手の疲れ・ケガ・週は進みません。</p>`, [{ label: '対戦する', primary: true, value: true }, { label: 'やめる', value: false }]);
     if (!ok) return airport();
-    const op = { name: g.name, short: g.short, srcName };
+    const op = { name: g.name, short: g.short, srcName, fuid: o.uid };
     runMatch('フレンド対戦', '', op, (score) => onlineDone('friend', op, score), { comp: 'フレンド対戦', label: '', home: true, online: 'friend' });
   }
   const AP_SVG = {
@@ -3913,25 +3932,50 @@
   function apBg() { let src = ''; try { const im = H2.cur(); src = im && im.src; } catch (_) {} return src ? `<div class="ap-bg" style="background-image:url('${src}')"></div>` : '<div class="ap-bg"></div>'; }
   function apMedal(i, size) { const R = RANKS[i]; return `<div class="ap-medal" style="--rc:${R.c};--sz:${size}px"><i>★</i><b>${R.n}</b></div>`; }
   async function friendMenu() {
-    const on = ensureOnline(), el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box');
-    const rows = on.friends.map((f, k) => { let emb = ''; try { emb = f.emb || ''; } catch (_) {} return `<button class="ap-frc" data-fk="${k}"><div class="ap-frc-n"><b>${esc(f.name)}</b><small>${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><span class="ap-frc-go">再戦</span></button>`; }).join('');
-    box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>フレンド対戦</b><small>友達のチームと、いつもの試合で勝負！</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
-      <div class="ap-fgrid">
-        <div class="ap-pnl"><h3><span class="ap-num">1</span>自分のチームを送る</h3><div class="ap-myteam"><img src="${emblemURL(save.team.name, 96)}" alt=""><div><b>${esc(save.team.name)}</b><small>${save.manager ? esc(save.manager) + '監督　' : ''}総合力 ${Math.round(C.teamLevel(save))}</small></div></div>
-          <p class="ap-note">いまの選手・スキル・戦術・ユニフォームが入ったリンクを作ります。LINEなどで友達に送ってください。</p>
-          <button class="ap-big ap-blue" data-a="share">${AP_SVG.send}<b>チームを送る</b></button></div>
-        <div class="ap-pnl"><h3><span class="ap-num">2</span>友達のチームと対戦</h3>
-          <p class="ap-note">友達から届いたリンクを開くと、すぐ対戦できます。<br>または、リンクをここに貼りつけてください。</p>
-          <textarea id="apCode" class="ap-code" placeholder="ここに友達のリンクを貼りつけ"></textarea>
-          <button class="ap-big ap-gold" data-a="go">${AP_SVG.hands}<b>対戦する</b></button></div>
-      </div>
-      <div class="ap-recent"><h3>最近の相手</h3>${rows ? `<div class="ap-frs2">${rows}</div>` : '<p class="ap-note">まだ対戦した友達はいません。</p>'}</div>`;
-    el.hidden = false; el._fit && el._fit(); try { window.DotSound && DotSound.sfx && DotSound.sfx('ok'); } catch (_) {}
+    const on = ensureOnline(); on.flist = on.flist || [];
+    const el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box'), net = !!(window.DotNet && DotNet.on);
+    const card = (f, k) => `<div class="ap-fc"><img src="${embFromLook(f.emb, 64)}" alt=""><div class="ap-fc-n"><b>${esc(f.name)}</b><small>${f.mgr ? esc(f.mgr) + '監督　' : ''}${f.rank != null ? rankBadge(f.rank) : ''}</small><small>${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><button class="ap-fc-go" data-fu="${k}">対戦</button><button class="ap-fc-x" data-fx="${k}" title="登録をやめる">×</button></div>`;
+    const recent = on.friends.filter((f) => f.code).map((f, k) => `<button class="ap-frc" data-fk="${k}"><div class="ap-frc-n"><b>${esc(f.name)}</b><small>${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><span class="ap-frc-go">再戦</span></button>`).join('');
+    box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>フレンド</b><small>友達を登録して、いつでも対戦！</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
+      <div class="ap-fgrid2">
+        <div class="ap-pnl ap-reg"><h3>フレンド登録</h3>
+          <div class="ap-myid"><small>あなたのフレンドID</small><b id="apMyId">${net ? (on.fid ? fmtFid(on.fid) : '取得中…') : '――――'}</b>${net ? '<button class="ap-copy" data-a="copyid">コピー</button>' : ''}</div>
+          ${net ? `<p class="ap-note">友達のフレンドIDを入れて「登録」。<br>登録した友達とは、いつでも最新のチームで対戦できます。</p>
+          <div class="ap-idrow"><input id="apFid" inputmode="numeric" maxlength="9" placeholder="8けたのID"><button class="ap-big ap-gold ap-reg-go" data-a="add"><b>登録</b></button></div>`
+          : '<p class="ap-note">フレンド登録は、オンラインの準備ができたら使えます。<br>今は下の「リンクで送る」で対戦できます。</p>'}
+          <div class="ap-linkrow"><button class="ap-mini ap-blue" data-a="share">${AP_SVG.send}リンクで送る</button><input id="apCode" placeholder="届いたリンクを貼りつけ"><button class="ap-mini ap-gold" data-a="go">対戦</button></div></div>
+        <div class="ap-pnl ap-flist"><h3>フレンド一覧 <small>${on.flist.length}人</small></h3>
+          <div class="ap-fcs">${on.flist.length ? on.flist.map(card).join('') : `<p class="ap-note">まだフレンドがいません。${net ? '左でフレンドIDを入れて登録しましょう。' : ''}</p>`}</div>
+          ${recent ? `<h3 class="ap-h3b">リンクで対戦した相手</h3><div class="ap-frs3">${recent}</div>` : ''}</div>
+      </div>`;
+    el.hidden = false; el._fit && el._fit();
     const close = () => { el.hidden = true; };
-    box.querySelector('.std-back').onclick = () => { close(); airport(); };
-    box.querySelector('[data-a="share"]').onclick = async () => { const s = await shareMyTeam(); if (s === 'copied') modal('<h2>コピーしました</h2><p>LINEなどに貼りつけて、友達に送ってください。</p>', [{ label: 'OK', primary: true }]); };
-    box.querySelector('[data-a="go"]').onclick = async () => { const code = box.querySelector('#apCode').value; try { const d = await unpackCode(code); close(); await startFriend(d); } catch (_) { modal('<h2>チームコードを読みこめませんでした</h2><p>友達から届いたリンクを、全部そのまま貼りつけてください。</p>', [{ label: 'OK', primary: true }]); } };
-    box.querySelectorAll('.ap-frc').forEach((b) => b.onclick = async () => { const f = on.friends[+b.dataset.fk]; try { const d = await unpackCode(f.code); close(); await startFriend(d); } catch (_) { modal('<h2>読みこめませんでした</h2>', [{ label: 'OK' }]); } });
+    const q = (s) => box.querySelector(s);
+    q('.std-back').onclick = () => { close(); airport(); };
+    if (net && !on.fid) publishMe().then((fid) => { const e = q('#apMyId'); if (e) e.textContent = fid ? fmtFid(fid) : 'つながりません'; });
+    if (q('[data-a="copyid"]')) q('[data-a="copyid"]').onclick = async () => { try { await navigator.clipboard.writeText(on.fid || ''); modal('<h2>フレンドIDをコピーしました</h2>', [{ label: 'OK', primary: true }]); } catch (_) {} };
+    if (q('[data-a="add"]')) q('[data-a="add"]').onclick = async () => {
+      const id = (q('#apFid').value || '').replace(/\D/g, '');
+      if (id.length !== 8) return modal('<h2>8けたのフレンドIDを入れてください</h2>', [{ label: 'OK', primary: true }]);
+      if (id === on.fid) return modal('<h2>それはあなたのIDです</h2>', [{ label: 'OK', primary: true }]);
+      let p = null; try { p = await DotNet.byFid(id); } catch (_) {}
+      if (!p) return modal('<h2>見つかりませんでした</h2><p>IDをもう一度たしかめてください。</p>', [{ label: 'OK', primary: true }]);
+      if (on.flist.some((f) => f.uid === p.uid)) return modal('<h2>もう登録しています</h2>', [{ label: 'OK', primary: true }]);
+      const ok = await modal(`<h2>フレンド登録</h2><div class="ap-vs"><img src="${embFromLook(p.emb, 64)}" alt=""><b>${esc(p.name)}</b></div><p>${p.mgr ? esc(p.mgr) + '監督　' : ''}${rankBadge(Math.max(0, Math.min(6, p.rank || 0)))}</p>`, [{ label: '登録する', primary: true, value: true }, { label: 'やめる', value: false }]);
+      if (!ok) return;
+      on.flist.unshift({ uid: p.uid, fid: id, name: p.name, mgr: p.mgr, emb: p.emb, rank: p.rank, w: 0, d: 0, l: 0 }); on.flist = on.flist.slice(0, 30); store(); friendMenu();
+    };
+    box.querySelectorAll('[data-fu]').forEach((b) => b.onclick = async () => {
+      const f = on.flist[+b.dataset.fu]; let p = null; try { p = await DotNet.byUid(f.uid); } catch (_) {}
+      if (!p || !p.code) return modal('<h2>相手のチームを読みこめませんでした</h2><p>通信の状態をたしかめて、もう一度押してください。</p>', [{ label: 'OK', primary: true }]);
+      Object.assign(f, { name: p.name, mgr: p.mgr, emb: p.emb, rank: p.rank }); store();
+      try { const d = await unpackCode(p.code); close(); await startFriend(d, { uid: f.uid }); } catch (_) { modal('<h2>読みこめませんでした</h2>', [{ label: 'OK' }]); }
+    });
+    box.querySelectorAll('[data-fx]').forEach((b) => b.onclick = async () => { const f = on.flist[+b.dataset.fx]; if (await modal(`<h2>${esc(f.name)} の登録をやめますか？</h2>`, [{ label: 'やめる', value: true }, { label: 'キャンセル', primary: true, value: false }])) { on.flist.splice(+b.dataset.fx, 1); store(); } friendMenu(); });
+    q('[data-a="share"]').onclick = async () => { const s = await shareMyTeam(); if (s === 'copied') modal('<h2>コピーしました</h2><p>LINEなどに貼りつけて、友達に送ってください。</p>', [{ label: 'OK', primary: true }]); };
+    q('[data-a="go"]').onclick = async () => { try { const d = await unpackCode(q('#apCode').value); close(); await startFriend(d); } catch (_) { modal('<h2>リンクを読みこめませんでした</h2><p>友達から届いたリンクを、全部そのまま貼りつけてください。</p>', [{ label: 'OK', primary: true }]); } };
+    const rf = on.friends.filter((f) => f.code);
+    box.querySelectorAll('.ap-frc').forEach((b) => b.onclick = async () => { const f = rf[+b.dataset.fk]; try { const d = await unpackCode(f.code); close(); await startFriend(d); } catch (_) { modal('<h2>読みこめませんでした</h2>', [{ label: 'OK' }]); } });
   }
   async function airport() {
     const on = ensureOnline(), i = rankIdx(on.rp), into = on.rp - i * RP_STEP, last = i === RANKS.length - 1;
@@ -3941,20 +3985,21 @@
     box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>空港　対戦ロビー</b><small>ランクを上げて、ごほうびをゲット！</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
       <div class="ap-main">
         <div class="ap-pnl ap-club"><h3>マイクラブ</h3><img class="ap-emb" src="${emblemURL(save.team.name, 128)}" alt=""><b class="ap-tn">${esc(save.team.name)}</b><small>${save.manager ? esc(save.manager) + '監督' : ''}</small>
-          <div class="ap-stats"><div><small>総合力</small><b>${Math.round(C.teamLevel(save))}</b></div><div><small>ランクマッチ</small><b>${on.w}<i>勝</i>${on.d}<i>分</i>${on.l}<i>敗</i></b></div><div><small>フレンド</small><b>${on.fw}<i>勝</i>${on.fd}<i>分</i>${on.fl}<i>敗</i></b></div></div></div>
+          <div class="ap-fidl">${window.DotNet && DotNet.on ? `フレンドID <b id="apFidL">${on.fid ? fmtFid(on.fid) : '…'}</b>` : 'オフライン'}</div><div class="ap-stats"><div><small>総合力</small><b>${Math.round(C.teamLevel(save))}</b></div><div><small>ランクマッチ</small><b>${on.w}<i>勝</i>${on.d}<i>分</i>${on.l}<i>敗</i></b></div><div><small>フレンド</small><b>${on.fw}<i>勝</i>${on.fd}<i>分</i>${on.fl}<i>敗</i></b></div></div></div>
         <div class="ap-pnl ap-rankp"><div class="ap-rk-row">${apMedal(i, 150)}<div class="ap-rk-info"><small>現在のランク</small><b class="ap-rk-n" style="color:${RANKS[i].c}">${RANKS[i].n}</b><div class="ap-rk-rp"><b>${on.rp}</b> RP</div>
             ${last ? '<div class="ap-sm2">最高ランク到達！</div>' : `<div class="ap-bar2"><i style="width:${into}%"></i><span>${into} / ${RP_STEP}</span></div><div class="ap-sm2">次の「${RANKS[i + 1].n}」まで あと <b>${RP_STEP - into}</b> RP</div>`}</div></div>
           ${last ? '' : `<div class="ap-rw2"><span class="ap-rw2-h">${gotNx ? '受け取りずみ' : `${RANKS[i + 1].n} 到達のごほうび`}</span><span class="ap-rw2-i"><img class="coin-ico" src="icons/coin.png" alt="">${nx.coins}</span><span class="ap-rw2-i">${AP_SVG.card}×${nx.cards}</span>${nx.kak ? `<span class="ap-rw2-i">${AP_SVG.gem}×${nx.kak}</span>` : ''}</div>`}
           <div class="ap-ladder">${ladder}</div></div>
       </div>
       <div class="ap-modes"><button class="ap-mode ap-gold" data-a="rank">${AP_SVG.trophy}<div><b>ランクマッチ</b><small>勝って +${RP_WIN}RP ／ 負けても −${RP_LOSE}RP（ランクは落ちない）</small></div></button>
-        <button class="ap-mode ap-blue" data-a="friend">${AP_SVG.hands}<div><b>フレンド対戦</b><small>友達とリンクでチームを送り合って勝負</small></div></button></div>
-      <p class="ap-foot">※ いまのランクマッチの相手はCPUのクラブです　・　対戦では疲れ・ケガ・週は進みません</p>`;
+        <button class="ap-mode ap-blue" data-a="friend">${AP_SVG.hands}<div><b>フレンド</b><small>フレンド登録・友達のクラブと対戦</small></div></button></div>
+      <p class="ap-foot">${window.DotNet && DotNet.on ? 'ランクマッチは、同じくらいのランクの監督のクラブと当たります' : '※ いまのランクマッチの相手はCPUのクラブです'}　・　対戦では疲れ・ケガ・週は進みません</p>`;
     el.hidden = false; el._fit && el._fit();
     const close = () => { el.hidden = true; };
     box.querySelector('.std-back').onclick = close;
     box.querySelector('[data-a="rank"]').onclick = () => { close(); startRank(); };
     box.querySelector('[data-a="friend"]').onclick = () => friendMenu();
+    publishMe().then((fid) => { const e = box.querySelector('#apFidL'); if (e) e.textContent = fid ? fmtFid(fid) : 'つながりません'; });
   }
   // リンク（#vs=...）から開いたとき：その友達と対戦するか聞く
   async function checkVsLink() {
