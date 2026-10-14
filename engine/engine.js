@@ -4363,7 +4363,7 @@
     // ダブルタッチの足の運び：d＝技の長さ（秒）。最初の12%で踏み込み、45%までに2タッチで横へ約1.8m（1人分）、そのあと斜め前へ加速
     // 版666：ヒールリフト
     //  ①0.42秒：止まって、前の足の裏でボールを後ろへ転がし、後ろの足のかかとの上へ乗せる（この間は奪われない）
-    //  ②かかとで背中越しに跳ね上げる：ボールは自分と相手の頭の上を高く（高さ約3.8m）越えて、相手の約5m後ろへ落ちる（版670：派手に）
+    //  ②かかとで背中越しに跳ね上げる：ボールは自分と相手の頭の上を高く（高さ約3.8m）越えて、前へ大きく（自分から約9m先・相手の向こう側）落ちる（版670・671）
     //  ③自分は相手の横を回り込んで、落ちてくるボールを拾う。相手は振り返ってボールを見上げる（すぐには追えない）
     //  失敗：相手が読んで跳び、頭で止める（こぼれ球）
     function heelLiftStart(own, q, fail, fdx, fdy, lx, ly) {
@@ -4378,7 +4378,7 @@
       const b = S.ball, q = P[h.q];
       if (S.restart || S.celebrate > 0 || b.owner !== own.idx || !q || q.off) return;   // 溜めの間にボールがなくなった
       const ux = q.x - own.x, uy = q.y - own.y, ul = hyp(ux, uy) || 1, fdx = h.fdx, fdy = h.fdy;
-      const tx = clamp(q.x + (ux / ul) * 4.8 + fdx * 0.8, 0.5, L - 0.5), ty = clamp(q.y + (uy / ul) * 4.8 + fdy * 0.8, 0.5, W - 0.5);
+      const [tx, ty] = hlLand(own, q);
       const bx0 = own.x - fdx * 0.3, by0 = own.y - fdy * 0.3, z0 = 0.35, vz = h.fail ? 4.8 : 8.2;
       const T = ((vz + Math.sqrt(vz * vz + 2 * 9.8 * z0)) / 9.8) * 1.08, d = hyp(tx - bx0, ty - by0) || 1, v = d / T;
       Object.assign(b, { owner: -1, kind: 'pass', selfPass: true, x: bx0, y: by0, z: z0, vx: ((tx - bx0) / d) * v, vy: ((ty - by0) / d) * v, vz, spin: 0, bs: 0, knuckle: false, lastTeam: own.team, lastPlayer: own.idx, kicker: own.idx, intended: own.idx, offside: false, style: 'ground', hlift: S.t });
@@ -4516,13 +4516,21 @@
     // ---------- ドリブル技 ----------
     // いま出せる技（場面と覚えている技から）
     // 版668：ヒールリフトは、サイドの前の方（相手陣の深い所）で、目の前の相手が1人だけ・その後ろにスペースがある時にしか使わない
+    // 版671：ヒールリフトの落ちる所：前（相手ゴールの方）へ大きく。相手の向こう側、自分から約9m先
+    function hlLand(own, q) {
+      const gx = fx(own.team, L), gdx = gx - own.x, gdy = (GOAL_Y - own.y) * 0.35, gl = hyp(gdx, gdy) || 1;
+      const ux = q.x - own.x, uy = q.y - own.y, ul = hyp(ux, uy) || 1;
+      let dx = (gdx / gl) * 0.75 + (ux / ul) * 0.25, dy = (gdy / gl) * 0.75 + (uy / ul) * 0.25; const dl = hyp(dx, dy) || 1; dx /= dl; dy /= dl;
+      const along = Math.max(0, ux * dx + uy * dy);   // 相手までの、前向きの距離
+      return [clamp(own.x + dx * (along + 7.5), 0.5, L - 0.5), clamp(own.y + dy * (along + 7.5), 0.5, W - 0.5), own.x + dx * (along + 7.5), own.y + dy * (along + 7.5)];
+    }
     function hlSpace(own, q) {
       if (!q || Math.abs(own.y - GOAL_Y) < 15 || fx(own.team, own.x) < 58) return false;
-      const ux = q.x - own.x, uy = q.y - own.y, ul = hyp(ux, uy) || 1, lx = q.x + (ux / ul) * 4.8, ly = q.y + (uy / ul) * 4.8;
+      const ux = q.x - own.x, uy = q.y - own.y, ul = hyp(ux, uy) || 1, [, , lx, ly] = hlLand(own, q);
       const ahead = fx(own.team, q.x) - fx(own.team, own.x);   // 相手が自分より前（相手ゴール側）に何mいるか
       if (ahead < 0.6 || ahead / ul < 0.5 || ul < 1.2 || ul > 4.5) return false;   // 目の前（前方±60°くらい・1.2〜4.5m）に立ちはだかる相手を抜く技。横や後ろの相手には使わない
       if (lx < 1.5 || lx > L - 1.5 || ly < 1.5 || ly > W - 1.5) return false;   // 落ちる所がピッチの外
-      for (const o of opps(own)) { if (o === q || o.off) continue; if (hyp(o.x - lx, o.y - ly) < 5 || hyp(o.x - own.x, o.y - own.y) < 3.6) return false; }   // 後ろに別の相手がいる・2人に囲まれている
+      for (const o of opps(own)) { if (o === q || o.off) continue; if (hyp(o.x - lx, o.y - ly) < 6 || hyp(o.x - own.x, o.y - own.y) < 3.6) return false; }   // 後ろに別の相手がいる・2人に囲まれている
       return true;
     }
     function dribbleCtx(own, q) {
