@@ -3241,3 +3241,17 @@ html.short .h2-post{width:40px;height:40px}
 .ap2 .ap-sm2{font-size:17px}.ap2 .ap-sm2 b{font-size:21px}
 .ap2 .ap-rw2-h{font-size:19px}.ap2 .ap-rw2-i{font-size:23px}
 .ap2 .ap-ladder{padding-bottom:2px}
+/* 版636：余白が多すぎた → 中身を少し大きくして、残りの余白は均等に配る（文字の太さが変わっても崩れない） */
+.ap2 .ap-pb{justify-content:space-evenly}
+.ap2 .ap-ladder{margin-top:0}
+.ap2 .ap-emb{width:76px;height:76px}
+.ap2 .ap-tn{font-size:32px}
+.ap2 .ap-fidl b{font-size:25px}
+.ap2 .ap-stats{gap:6px}.ap2 .ap-stats>div{min-height:38px}
+.ap2 .ap-stats small{font-size:17px}.ap2 .ap-stats b{font-size:20px}
+.ap2 .ap-rankp .ap-medal{--sz:136px!important}
+.ap2 .ap-rk-n{font-size:52px}
+.ap2 .ap-rk-rp b{font-size:40px}
+.ap2 .ap-rw2{margin-top:0;padding:5px 16px}
+.ap2 .ap-lad i{width:44px;height:44px;font-size:23px}.ap2 .ap-lad.on i{width:52px;height:52px;font-size:28px}
+.ap2 .ap-lad small{font-size:14px}.ap2 .ap-lad.on small{font-size:16px}
