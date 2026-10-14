@@ -2906,3 +2906,7 @@ html.short .h2-post{width:40px;height:40px}
 .sq2.ph .s2bh{top:3px}
 /* 版630：ハーフタイムの右のボタンを少し下に */
 .lk-btns{top:118px}
+/* 版631：ドラッグ中の選手を点滅させて「持ってるよ」と分かるように */
+@keyframes s2blink{0%,100%{opacity:1;filter:drop-shadow(0 0 6px #fff) drop-shadow(0 0 10px #ffe23a)}50%{opacity:.4;filter:drop-shadow(0 0 2px #fff)}}
+.s2p.ghost,.s2drag{animation:s2blink .5s ease-in-out infinite}
+.s2p.ghost .fc{box-shadow:none}
