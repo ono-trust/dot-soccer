@@ -1911,20 +1911,30 @@
     const title = `${esc(meta.comp)}${meta.label ? '　' + esc(meta.label) : ''}`;
     return new Promise((resolve) => {
       const showLive = () => { try { window.DotSound && DotSound.bgm('prematch'); } catch (_) {}
+        const ICO = {
+          lineup: '<svg viewBox="0 0 48 40"><rect x="3" y="3" width="42" height="34" rx="3" fill="none" stroke="#fff" stroke-width="3"/><line x1="3" y1="20" x2="45" y2="20" stroke="#fff" stroke-width="2.5"/><circle cx="24" cy="20" r="5" fill="none" stroke="#fff" stroke-width="2.5"/><circle cx="14" cy="11" r="2.6" fill="#fff"/><circle cx="34" cy="11" r="2.6" fill="#fff"/><circle cx="14" cy="29" r="2.6" fill="#fff"/><circle cx="34" cy="29" r="2.6" fill="#fff"/></svg>',
+          tac: '<svg viewBox="0 0 48 40"><rect x="3" y="3" width="42" height="34" rx="3" fill="none" stroke="#fff" stroke-width="3"/><path d="M10 10l6 6M16 10l-6 6M32 25l6 6M38 25l-6 6" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><circle cx="13" cy="29" r="3.4" fill="none" stroke="#fff" stroke-width="2.4"/><circle cx="35" cy="12" r="3.4" fill="none" stroke="#fff" stroke-width="2.4"/><path d="M17 26c5-8 9-10 14-12" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><path d="M27 12l4 2-2 4" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+          kit: '<svg viewBox="0 0 48 40"><path d="M16 3l-12 7 5 9 5-3v21h20V16l5 3 5-9-12-7c-1 4-4 6-8 6s-7-2-8-6z" fill="#fff"/></svg>',
+          stad: '<svg viewBox="0 0 40 24"><ellipse cx="20" cy="12" rx="17" ry="9" fill="none" stroke="currentColor" stroke-width="3.4"/><ellipse cx="20" cy="12" rx="8" ry="3.6" fill="currentColor"/><path d="M3 12v4c0 5 8 8 17 8s17-3 17-8v-4" fill="none" stroke="currentColor" stroke-width="3"/></svg>',
+          play: '<svg viewBox="0 0 24 24"><path d="M6 3l15 9-15 9z" fill="#fff"/></svg>' };
+        el.className = 'lv2';
         el.innerHTML = `<canvas width="1280" height="720"></canvas>
-          <div class="lv-head"><div class="lv-t"><b>LIVE</b><span>${title}</span></div>
-            <div class="lv-m"><img src="${emblemURL(home.name, 40)}" alt="">${esc((C.findTeam(save, home.name) || {}).short || home.name.replace(/FC$/, ''))}${lgBadge(lgH)}<em>×</em><img src="${emblemURL(away.name, 40)}" alt="">${esc((C.findTeam(save, away.name) || {}).short || away.name.replace(/FC$/, ''))}${lgBadge(lgA)}</div>
-            <div class="lv-s">${esc(stad)}</div></div>
-          <div class="rbtns lv-btns"><button data-a="lineup"><span>${rbLineupSVG()}</span><b>スタメン</b></button><button data-a="tac"><span>${RB_TAC_SVG}</span><b>戦術</b></button><button data-a="kit" class="lv-kit lv-kitimg" title="ユニフォーム"><img src="icons/off_kit.png" alt="ユニフォーム"></button><button data-a="ko" class="lv-ko lv-koimg" title="試合開始"><img src="icons/btn_kickoff.png" alt="試合開始"></button></div>`;
+          <div class="lv2-head"><div class="lv2-t"><b>LIVE</b><span>${esc(meta.comp)}</span>${meta.label ? `<i></i><span>${esc(meta.label)}</span>` : ''}</div>
+            <div class="lv2-m"><img src="${emblemURL(home.name, 64)}" alt=""><span>${esc((C.findTeam(save, home.name) || {}).short || home.name.replace(/FC$/, ''))}</span>${lgBadge(lgH)}<em>×</em><img src="${emblemURL(away.name, 64)}" alt=""><span>${esc((C.findTeam(save, away.name) || {}).short || away.name.replace(/FC$/, ''))}</span>${lgBadge(lgA)}</div>
+            <div class="lv2-s">${ICO.stad}<span>${esc(stad)}</span></div></div>
+          <div class="lv2-btns"><button data-a="lineup">${ICO.lineup}<b>スタメン</b></button><button data-a="tac">${ICO.tac}<b>戦術</b></button><button data-a="kit">${ICO.kit}<b>ユニフォーム</b></button></div>
+          <button class="lv2-ko" data-a="ko">${ICO.play}<b>試合開始</b></button>`;
         el.hidden = false;
         try { A().applyKits(C.kitsFor(save, op.name, meta.kitSel, meta.oppSel)); } catch (_) {}   // 版482：並んでいる選手も、この試合のユニフォームで
         const cv = el.querySelector('canvas'), ctx2 = cv.getContext('2d');
         const myL = save.team.players.slice(0, 11), opT = C.opponentTeam(save, op).players.slice(0, 11);
         const rows = meta.home ? [{ ps: myL, team: 0 }, { ps: opT, team: 1 }] : [{ ps: opT, team: 1 }, { ps: myL, team: 0 }];
         cancelAnimationFrame(liveRaf);
-        const loop = (t) => { drawTunnel(ctx2, rows, t); liveRaf = requestAnimationFrame(loop); };
+        let tInfo = { home: home.name, away: away.name, homeCol: '#2f5fc8', awayCol: '#c8322a' };
+        try { const kk = C.kitsFor(save, op.name, meta.kitSel, meta.oppSel), mine = kk[0].shirt, opc = kk[1].shirt; tInfo = { ...tInfo, homeCol: meta.home ? mine : opc, awayCol: meta.home ? opc : mine }; } catch (_) {}
+        const loop = (t) => { drawTunnel2(ctx2, rows, t, tInfo); liveRaf = requestAnimationFrame(loop); };   // 版601：新しい入場通路
         liveRaf = requestAnimationFrame(loop);
-        el.querySelectorAll('.lv-btns button').forEach((b) => b.onclick = () => {
+        el.querySelectorAll('button[data-a]').forEach((b) => b.onclick = () => {
           const a = b.dataset.a;
           if (a === 'lineup' || a === 'tac') { cancelAnimationFrame(liveRaf); { const sc = el.querySelector('canvas'); liveSnap = document.createElement('canvas'); liveSnap.width = 1280; liveSnap.height = 720; try { liveSnap.getContext('2d').drawImage(sc, 0, 0, 1280, 720); } catch (_) { liveSnap = null; } } el.hidden = true; sqTab = a === 'tac' ? 'tac' : 'pos'; liveBack = () => { showLive(); }; go('lineup'); return; }
           if (a === 'kit') { kitPick(el, op, meta, () => showLive()); return; }
@@ -1934,6 +1944,7 @@
       };
       // 本家の流れ：暗転 → 動くスタンドに両チームの帯とTOTO → 帯がはけて入場 → サポーターの旗とコール → （試合画面で）入場とズーム → キックオフ
       const showVs = () => {
+        el.className = '';
         const tt = totoOf(op, meta);
         const sub = (nm, side, lg) => { const rk = rankOf(nm); return `<div class="vs-sub">${side}${lgBadge(lg)}${rk ? `<b>${rk}位</b>` : ''}</div>`; };
         el.innerHTML = `<canvas width="1280" height="720"></canvas><div class="vs2">
@@ -2118,6 +2129,55 @@
       c.fillStyle = '#2a2a2a'; c.fillRect(cx2 - 7, cy2 - 5, 16, 11); c.fillStyle = '#4a4a4a'; c.fillRect(cx2 + dir * 8 - 3, cy2 - 3, 7, 7); c.fillStyle = '#888'; c.fillRect(cx2 - 4, cy2 - 8, 6, 3);
       if ((Math.floor(t / 210) + k * 5) % 26 === 0) { c.fillStyle = 'rgba(255,255,255,0.95)'; c.beginPath(); c.arc(cx2 + dir * 14, cy2, 15, 0, 7); c.fill(); }
     }));
+    objs.sort((a, b) => a.y - b.y).forEach((o) => o.f());
+  }
+  // ---------- 版601：試合前の入場通路（絵の背景＋旗＋並んだ両チーム） ----------
+  const TUN = { bg: null, emb: new Map() };
+  const REF_BLACK = ['#1e1f24', '#34363d', '#0d0e11', '#1a1a1e', ''];
+  function tunImg(src) { let im = TUN.emb.get(src); if (!im) { im = new Image(); im.src = src; TUN.emb.set(src, im); } return im; }
+  const tunOk = (im) => im && im.complete && im.naturalWidth > 0;
+  // 壁の旗：チームの色の布にエンブレム（平行四辺形にゆがめて壁に貼る）
+  const tunFlagCache = new Map();
+  function tunFlag(name, color) {
+    const key = name + '|' + color, emb = tunImg(emblemURL(name, 128)), ready = tunOk(emb);
+    let f = tunFlagCache.get(key); if (f && f.ok) return f.cv; if (f && !ready) return f.cv;
+    const cv = document.createElement('canvas'); cv.width = 160; cv.height = 240; const x = cv.getContext('2d');
+    x.fillStyle = color; x.fillRect(0, 0, 160, 240);
+    const g = x.createLinearGradient(0, 0, 160, 0); g.addColorStop(0, 'rgba(255,255,255,.14)'); g.addColorStop(0.5, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(0,0,0,.22)'); x.fillStyle = g; x.fillRect(0, 0, 160, 240);
+    x.strokeStyle = 'rgba(255,255,255,.85)'; x.lineWidth = 5; x.strokeRect(9, 9, 142, 222);
+    x.fillStyle = 'rgba(255,255,255,.9)'; x.beginPath(); x.moveTo(20, 236); x.lineTo(150, 150); x.lineTo(150, 168); x.lineTo(46, 236); x.closePath(); x.fill();
+    if (ready) { x.fillStyle = 'rgba(255,255,255,.95)'; x.beginPath(); x.arc(80, 92, 58, 0, 7); x.fill(); x.drawImage(emb, 30, 42, 100, 100); }
+    tunFlagCache.set(key, { cv, ok: ready }); return cv;
+  }
+  function tunPutFlag(c, cv, TL, TR, BL) {
+    c.save(); c.setTransform((TR[0] - TL[0]) / cv.width, (TR[1] - TL[1]) / cv.width, (BL[0] - TL[0]) / cv.height, (BL[1] - TL[1]) / cv.height, TL[0], TL[1]);
+    c.drawImage(cv, 0, 0); c.restore();
+    c.save(); c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.moveTo(TR[0], TR[1]); c.lineTo(TR[0] + 5, TR[1] + 3); c.lineTo(TR[0] + 5 + BL[0] - TL[0], TR[1] + 3 + BL[1] - TL[1]); c.lineTo(TR[0] + BL[0] - TL[0], TR[1] + BL[1] - TL[1]); c.closePath(); c.fill(); c.restore();
+  }
+  function drawTunnel2(c, rows, t, info) {
+    if (!TUN.bg) TUN.bg = tunImg('img/tunnel.jpg');
+    if (tunOk(TUN.bg)) c.drawImage(TUN.bg, 0, 0, 1280, 720); else { c.fillStyle = '#2a3346'; c.fillRect(0, 0, 1280, 720); }
+    // 壁の旗：左の壁にホーム、奥の壁にアウェー
+    try { tunPutFlag(c, tunFlag(info.home, info.homeCol), [74, 388], [196, 356], [74, 612]); tunPutFlag(c, tunFlag(info.away, info.awayCol), [612, 150], [688, 112], [612, 268]); } catch (_) {}
+    const objs = [];
+    const scaleAt = (y) => 3.0 + Math.max(0, Math.min(1, (y - 250) / 470)) * 2.1;
+    const put = (img, X, Y, flip, after) => { objs.push({ y: Y, f: () => { const s = scaleAt(Y), w = img.width * s, h = img.height * s;
+      c.fillStyle = 'rgba(0,0,0,0.28)'; c.beginPath(); c.ellipse(X, Y - s, 8 * s * 0.7, 2.6 * s * 0.7, 0, 0, 7); c.fill();
+      c.save(); c.imageSmoothingEnabled = false; c.translate(X, 0); if (flip) c.scale(-1, 1); c.drawImage(img, -w / 2, Y - h, w, h); c.restore(); if (after) after(X, Y, s); } }); };
+    const bob = (k) => (Math.floor(t / 460 + k * 0.63) % 2 ? 1 : 0);
+    // 2列（左＝壁側がホーム）。先頭はGK、出口（右上）へ向かって並ぶ。奥ほど間がつまる
+    const line = (x0, y0) => { const out = []; let x = x0, y = y0, d = 64; for (let k = 0; k < 11; k++) { out.push([x, y]); x -= d * 0.78; y += d * 0.63; d *= 1.045; } return out; };
+    const ROWS = [line(892, 306), line(1030, 356)];
+    ROWS.forEach((pos, ri) => { const row = rows[ri]; const gkI = Math.max(0, row.ps.findIndex((p) => p.position === 'GK')); const order = [gkI, ...row.ps.map((_, i) => i).filter((i) => i !== gkI)];
+      order.slice(0, 11).forEach((pi, k) => { const p = row.ps[pi], [X, Y] = pos[k];
+        put(A().spriteCanvas(p, row.team, 'b34', 0, false, k === 0), X, Y + bob(k + ri) * 0, false, (X2, Y2, s) => {
+          const n = p.number; if (n == null) return; const fs = Math.round(s * 5);
+          c.save(); c.font = `900 ${fs}px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+          const ny = Y2 - s * 15.2, nx = X2 + s * 0.3; c.lineWidth = Math.max(2, s * 0.7); c.strokeStyle = 'rgba(0,0,0,.55)'; c.strokeText(String(n), nx, ny); c.fillStyle = '#fff'; c.fillText(String(n), nx, ny); c.restore(); }); }); });
+    // 審判3人（列の先頭・出口の前）
+    [[942, 254], [990, 250], [1046, 262]].forEach(([x, y], k) => put(dressed('refB' + k, { hair: k % 3, hairColor: 0, skin: k % 2 }, 'b34', 0, REF_BLACK), x, y, false));
+    // 運営スタッフ（壁ぎわに立つ）
+    [[748, 274, SUIT_NAVY, 1], [388, 500, SUIT_NAVY, 2]].forEach(([x, y, cols, h], k) => put(dressed('tst' + k, { hair: h, hairColor: 0, skin: 0 }, 'f34', 0, cols), x, y, true));
     objs.sort((a, b) => a.y - b.y).forEach((o) => o.f());
   }
   // ---------- 対戦カード〜入場の背景：屋根つきの大きなスタンド（カメラがゆっくり横へ・下へ動く） ----------
