@@ -40,7 +40,7 @@
     if (!(await ready())) return null;
     return withTimeout((async () => {
       let fid; try { fid = await ensureFid(me.fid); } catch (e) { lastErr = 'fid: ' + (e && e.message || e); throw e; }
-      await db.collection('players').doc(uid).set({ fid, name: me.name, short: me.short, mgr: me.mgr || '', lg: me.lg || '', emb: me.emb || null, kit: me.kit || null, rank: me.rank, rp: me.rp, lvl: Math.round(me.lvl || 0), code: me.code, at: Date.now() });
+      await db.collection('players').doc(uid).set({ fid, name: me.name, short: me.short, mgr: me.mgr || '', lg: me.lg || '', emb: me.emb || null, kit: me.kit || null, rank: me.rank, rp: me.rp, lvl: Math.round(me.lvl || 0), code: me.code, sv: me.sv || null, at: Date.now() });
       return fid;
     })()).catch((e) => { lastErr = lastErr || String(e && e.message || e); throw e; });
   }
@@ -120,5 +120,54 @@
     const u2 = db.collection('battles').where('to', '==', uid).onSnapshot((q) => cb(q.size), err);
     return () => { u1(); u2(); };
   }
-  window.DotNet = { get watchState() { return watchState; }, get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news, createRoom, roomUpdate, roomGet, roomWatch, roomInvites, roomStart, watchMail };
+  // 版672：データ引き継ぎ（クラウドに保存・クラウドから復元）。引き継ぎコード（12文字）で、ほかの端末からも読める
+  //  saves/{コード} = { d: セーブ（gzip＋base64、使えない端末はそのままのJSON）, z: 圧縮したか, info: 表示用, at: 保存日時, cur: 最後に使った端末, fid: フレンドID }
+  const CC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const newCode = () => { let c = ''; const a = new Uint32Array(12); (crypto || window.crypto).getRandomValues(a); for (const v of a) c += CC[v % CC.length]; return c; };
+  const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/O/g, '0').replace(/I/g, '1');
+  async function packSave(obj) {
+    const json = JSON.stringify(obj);
+    try { if (typeof CompressionStream === 'function') { const buf = new Uint8Array(await new Response(new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer()); let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000)); return { d: btoa(bin), z: true }; } } catch (_) {}
+    return { d: json, z: false };
+  }
+  async function unpackSave(d, z) {
+    if (!z) return JSON.parse(d);
+    const bin = atob(d), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    return JSON.parse(await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+  }
+  async function cloudInfo(code) {
+    if (!(await ready())) throw new Error('offline');
+    const c = normCode(code); if (c.length !== 12) return null;
+    return withTimeout(db.collection('saves').doc(c).get().then((d) => (d.exists ? { code: c, info: d.data().info || null, at: d.data().at || 0 } : null)));
+  }
+  async function cloudPut(code, saveObj, info, fid) {
+    if (!(await ready())) throw new Error('offline');
+    return withTimeout((async () => {
+      let c = normCode(code);
+      if (c.length !== 12) { for (let k = 0; k < 6; k++) { const t = newCode(); const d = await db.collection('saves').doc(t).get(); if (!d.exists) { c = t; break; } } }
+      const pk = await packSave(saveObj);
+      if (pk.d.length > 880000) throw new Error('too big');
+      await db.collection('saves').doc(c).set({ d: pk.d, z: pk.z, info: info || null, at: Date.now(), cur: uid, fid: fid || null, v: 1 });
+      if (fid) { try { await db.collection('fids').doc(String(fid)).set({ uid, sv: c }); } catch (_) {} }   // フレンドIDに引き継ぎコードを結ぶ（新しい端末でも同じIDを使えるように）
+      return c;
+    })(), 20000);
+  }
+  async function cloudGet(code) {
+    if (!(await ready())) throw new Error('offline');
+    const c = normCode(code); if (c.length !== 12) return null;
+    return withTimeout((async () => { const d = await db.collection('saves').doc(c).get(); if (!d.exists) return null; const v = d.data(); return { code: c, info: v.info || null, at: v.at || 0, fid: v.fid || null, save: await unpackSave(v.d, v.z) }; })(), 20000);
+  }
+  // 復元したあと：この端末を「いま使っている端末」にして、フレンドIDをこの端末へ移し、前の端末のランキングの記録を消す
+  async function cloudClaim(code, fid) {
+    if (!(await ready())) return;
+    const c = normCode(code);
+    await withTimeout(db.collection('saves').doc(c).update({ cur: uid, at2: Date.now() }));
+    if (!fid) return;
+    try {
+      const f = await db.collection('fids').doc(String(fid)).get(), old = f.exists ? f.data().uid : null;
+      await db.collection('fids').doc(String(fid)).set({ uid, sv: c });
+      if (old && old !== uid) await db.collection('players').doc(old).delete().catch(() => {});
+    } catch (_) {}
+  }
+  window.DotNet = { cloudInfo, cloudPut, cloudGet, cloudClaim, normCode, get watchState() { return watchState; }, get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news, createRoom, roomUpdate, roomGet, roomWatch, roomInvites, roomStart, watchMail };
 })();

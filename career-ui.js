@@ -11,7 +11,7 @@
 
   // ---------- セーブ ----------
   function load() { try { const s = localStorage.getItem(KEY); if (s) { const o = JSON.parse(s); if (o && o.version === 1) return o; } } catch (e) { /* 保存できない環境 */ } return null; }
-  function store() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* 無視 */ } }
+  function store() { try { if (save) save.savedAt = Date.now(); localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* 無視 */ } }
   function ensure() {
     if (!save) save = load();
     if (!save) { save = C.newCareer(); store(); }
@@ -4213,7 +4213,7 @@
   async function publishMe() {
     if (!(window.DotNet && DotNet.on) || pubBusy) return null; pubBusy = true;
     try { const on = ensureOnline(), d = C.guestCode(save), code = await packCode(d);
-      const fid = await DotNet.publish({ fid: on.fid, name: d.name, short: d.short, mgr: d.mgr, lg: d.lg, emb: d.emb, kit: d.kit, rank: rankIdx(on.rp), rp: on.rp, lvl: C.teamLevel(save), code });
+      const fid = await DotNet.publish({ fid: on.fid, name: d.name, short: d.short, mgr: d.mgr, lg: d.lg, emb: d.emb, kit: d.kit, rank: rankIdx(on.rp), rp: on.rp, lvl: C.teamLevel(save), code, sv: save.cloudCode || null });
       if (fid && fid !== on.fid) { on.fid = fid; store(); } return fid;
     } catch (_) { return null; } finally { pubBusy = false; }
   }
@@ -4294,6 +4294,7 @@
   async function friendMenu(back) {
     if (typeof back === 'function') friendMenu.back = back; else if (back !== 'keep') friendMenu.back = null;
     const on = ensureOnline(); on.flist = on.flist || [];
+    if (window.DotNet && DotNet.on && Date.now() - (friendMenu.fixT || 0) > 60000) { friendMenu.fixT = Date.now(); (async () => { let ch = false; for (const f of on.flist) { if (!f.fid) continue; try { const p = await DotNet.byFid(f.fid); if (p && p.uid && p.uid !== f.uid) { f.uid = p.uid; ch = true; } } catch (_) {} } if (ch) store(); })(); }   // 版672：フレンドが機種変更（データ引き継ぎ）していたら、新しい端末へつなぎ直す
     const el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box'), net = !!(window.DotNet && DotNet.on);
     const card = (f, k) => `<div class="ap-fc"><img src="${embFromLook(f.emb, 96)}" alt=""><div class="ap-fc-n"><b>${esc(f.name)}</b>${f.mgr ? `<small>${esc(f.mgr)}監督</small>` : ''}${f.rank != null ? rankBadge(f.rank) : ''}<small class="ap-fc-r">${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><button class="ap-fc-go${(friendMenu.inv || []).some((r) => r.host === f.uid) ? ' inv' : ''}" data-fu="${k}"><img src="icons/home_stadium.png" alt="">${(friendMenu.inv || []).some((r) => r.host === f.uid) ? 'ルームに入る' : 'ルームを作る'}</button><button class="ap-fc-x xbtn" data-fx="${k}" title="フレンドから外す"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></button></div>`;
     box.innerHTML = `${apBg()}<div class="ap2">${apTop('フレンド', 'フレンド申請して、いつでも対戦！')}
@@ -4363,7 +4364,93 @@
     history.replaceState(null, '', location.pathname + location.search);
     modal('<h2>フレンド対戦は、フレンドどうしだけです</h2><p>空港かクラブ事務所の「フレンド」で、相手のフレンドIDに申請してください。相手が承認するとフレンドになり、対戦できます。</p>', [{ label: 'OK', primary: true }]);   // 版621：リンクだけでは対戦しない
   }
+  // ---------- 版672：データ引き継ぎ（クラウドに保存・クラウドから復元） ----------
+  const cloudInfoOf = (sv) => { const k = cal(sv.week || 1); return { season: sv.season || 1, m: k.m, w: k.w, mgr: sv.manager || '', team: (sv.team && sv.team.name) || '', lg: (sv.league && sv.league.name) || '' }; };
+  const fmtCode = (c) => (c || '').replace(/(.{4})(?=.)/g, '$1-');
+  const clAt = (t) => { if (!t) return ''; const d = new Date(t), z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}/${z(d.getMonth() + 1)}/${z(d.getDate())} ${d.getHours()}:${z(d.getMinutes())}`; };
+  const infoHtml = (i, at) => i ? `<b>${i.season}年目${i.m}月${i.w}週　${esc(i.mgr)}監督</b><span>${esc(i.team)}（${esc(i.lg)}）</span><small>セーブ日時：${clAt(at)}</small>` : '<span class="cld-none">データがありません</span>';
+  async function openCloud() {
+    if (!save) { try { window.__career.open(); } catch (_) {} }
+    let scr = $('#cloudScr');
+    if (!scr) {
+      const st = document.createElement('style');
+      st.textContent = `#cloudScr{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;background:rgba(0,40,10,.55);font-family:inherit}
+      #cloudScr .cld-box{position:relative;width:min(760px,94vw);height:min(380px,92vh);border:6px solid #fff;border-radius:22px;overflow:hidden;background:linear-gradient(#2ea8ff 0,#8fd3ff 50%,#4fc83a 50%,#9be04a 100%);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+      #cloudScr .cld-x{position:absolute;right:10px;top:8px;width:46px;height:46px;border-radius:50%;background:#2fa53a;border:3px solid #fff;color:#fff;font-size:24px;font-weight:900;line-height:1}
+      #cloudScr .cld-inf{position:absolute;left:50%;transform:translateX(-50%);width:58%;padding:8px 14px;border-radius:8px;color:#fff;display:flex;flex-direction:column;gap:2px;font-size:15px;line-height:1.35}
+      #cloudScr .cld-inf b,#cloudScr .cld-inf span,#cloudScr .cld-inf small{all:unset;display:block;color:#fff;font-size:15px;line-height:1.35;font-weight:400}#cloudScr .cld-inf b{font-weight:800}#cloudScr .cld-inf small{font-size:13px;opacity:.9}#cloudScr .cld-none{opacity:.8}
+      #cloudScr .cld-top{top:20px;background:rgba(30,60,110,.78)}#cloudScr .cld-bot{bottom:58px;background:rgba(10,70,10,.78)}
+      #cloudScr .cld-tag{position:absolute;font-weight:900;font-size:22px;color:#fff;-webkit-text-stroke:1.5px #123;paint-order:stroke}
+      #cloudScr .cld-tag.t1{left:22px;top:16px}#cloudScr .cld-tag.t2{right:24px;bottom:62px}
+      #cloudScr .cld-btn{position:absolute;top:50%;transform:translateY(-50%);width:31%;height:62px;border-radius:14px;border:4px solid #111;color:#fff;font-size:21px;font-weight:900;-webkit-text-stroke:1px #111;paint-order:stroke;display:flex;align-items:center;justify-content:center;line-height:1}
+      #cloudScr .cld-save{left:3%;background:#f04848}#cloudScr .cld-load{right:3%;background:#1f86ff}
+      #cloudScr .cld-code{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30%;text-align:center;color:#123;background:rgba(255,255,255,.92);border-radius:10px;padding:5px 4px;font-size:12px;line-height:1.3}
+      #cloudScr .cld-code b{display:block;font-size:19px;letter-spacing:1px;font-family:ui-monospace,Menlo,monospace}
+      #cloudScr .cld-code button{margin-top:3px;padding:3px 10px;border-radius:7px;border:2px solid #123;background:#ffe45a;font-weight:800;font-size:12px}
+      #cloudScr .cld-help{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);color:#fff;font-size:13.5px;font-weight:700;text-align:center;width:92%;text-shadow:0 1px 2px #000,0 0 3px #000}
+      #cloudScr input{width:100%;box-sizing:border-box;font-size:20px;padding:8px;text-align:center;letter-spacing:2px;font-family:ui-monospace,Menlo,monospace;text-transform:uppercase}`;
+      document.head.appendChild(st);
+      scr = document.createElement('div'); scr.id = 'cloudScr'; document.body.appendChild(scr);
+    }
+    let cloud = null, msgTxt = '';
+    const code = () => save && save.cloudCode;
+    const draw = () => {
+      scr.innerHTML = `<div class="cld-box"><span class="cld-tag t1">クラウド</span><div class="cld-inf cld-top">${cloud ? infoHtml(cloud.info, cloud.at) : code() ? '<span class="cld-none">読み込み中…</span>' : '<span class="cld-none">まだクラウドに保存していません</span>'}</div>
+        <button class="cld-btn cld-save">クラウドに保存</button>
+        <div class="cld-code">${code() ? `引き継ぎコード<b>${fmtCode(code())}</b><button class="cld-copy">コピー</button>` : '保存すると<br>引き継ぎコードが出ます'}</div>
+        <button class="cld-btn cld-load">クラウドから復元</button>
+        <div class="cld-inf cld-bot">${save ? infoHtml(cloudInfoOf(save), save.savedAt || Date.now()) : '<span class="cld-none">データがありません</span>'}</div><span class="cld-tag t2">この端末</span>
+        <div class="cld-help">${msgTxt || '新しい端末では「クラウドから復元」を押して、引き継ぎコードを入れてください。通信できる所で使ってください。'}</div>
+        <button class="cld-x" aria-label="閉じる">×</button></div>`;
+      scr.querySelector('.cld-x').onclick = () => { scr.remove(); };
+      const cp = scr.querySelector('.cld-copy'); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(fmtCode(code())); msgTxt = 'コピーしました。メモ帳やLINEの自分あてなどに貼って、なくさないようにしてください。'; } catch (_) { msgTxt = 'コピーできませんでした。コードを書き写してください。'; } draw(); };
+      scr.querySelector('.cld-save').onclick = doSave; scr.querySelector('.cld-load').onclick = doLoad;
+    };
+    const ask = async (html, yes, no) => { scr.style.visibility = 'hidden'; const r = await modal(html, [{ label: no || 'やめる', value: false }, { label: yes, value: true, primary: true }]); scr.style.visibility = ''; return r; };
+    const tell = async (html) => { scr.style.visibility = 'hidden'; await modal(html, [{ label: 'OK', primary: true }]); scr.style.visibility = ''; };
+    async function doSave() {
+      if (!(window.DotNet && DotNet.on)) return tell('<h2>通信できません</h2><p>この画面では使えません。</p>');
+      if (!(await ask(`<h2>クラウドに保存しますか？</h2><p>この端末のデータを、クラウドに保存します。${cloud ? '<br>クラウドにあるデータは、上書きされます。' : ''}</p>`, '保存する'))) return;
+      msgTxt = '保存しています…'; draw();
+      try {
+        const on = ensureOnline(); if (!on.fid) { try { await publishMe(); } catch (_) {} }
+        save.savedAt = Date.now();
+        const c = await DotNet.cloudPut(save.cloudCode, save, cloudInfoOf(save), ensureOnline().fid || null);
+        save.cloudCode = c; store(); try { publishMe(); } catch (_) {}
+        cloud = { info: cloudInfoOf(save), at: Date.now() }; msgTxt = '';
+        draw();
+        await tell(`<h2>クラウドに保存しました</h2><p>引き継ぎコード</p><p style="font-size:26px;font-weight:900;letter-spacing:2px;font-family:ui-monospace,Menlo,monospace">${fmtCode(c)}</p><p>新しい端末で「クラウドから復元」を押して、このコードを入れてください。<br><b>コードはなくさないように、スクリーンショットやメモで残してください。</b></p>`);
+      } catch (e) { msgTxt = ''; draw(); tell(`<h2>保存できませんでした</h2><p>通信できる所で、もう一度ためしてください。</p><p><small>${esc(String(e && e.message || e))}</small></p>`); }
+    }
+    async function doLoad() {
+      if (!(window.DotNet && DotNet.on)) return tell('<h2>通信できません</h2>');
+      scr.style.visibility = 'hidden';
+      const inp = await new Promise((res) => {
+        $('#crModalBody').innerHTML = `<h2>クラウドから復元</h2><p>引き継ぎコード（12文字）を入れてください</p><input id="clIn" maxlength="16" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX" value="${code() ? fmtCode(code()) : ''}" style="width:100%;box-sizing:border-box;font-size:22px;padding:8px;text-align:center;letter-spacing:2px;font-family:ui-monospace,Menlo,monospace"><div class="cr-mbtns"><button data-k="0" class="${ibCls('やめる', false)}">やめる</button><button data-k="1" class="primary ${ibCls('次へ', true)}">次へ</button></div>`;
+        $('#crModal').hidden = false; const el = $('#clIn'); setTimeout(() => { try { el.focus(); } catch (_) {} }, 50);
+        $('#crModalBody').querySelectorAll('.cr-mbtns button').forEach((b) => b.onclick = () => { $('#crModal').hidden = true; res(b.dataset.k === '1' ? el.value : null); });
+      });
+      scr.style.visibility = '';
+      if (inp == null) return;
+      const c = DotNet.normCode(inp); if (c.length !== 12) return tell('<h2>コードがちがいます</h2><p>引き継ぎコードは12文字です（ハイフンは入れなくてもOK）。</p>');
+      msgTxt = 'クラウドのデータを読んでいます…'; draw();
+      let got = null; try { got = await DotNet.cloudGet(c); } catch (e) { msgTxt = ''; draw(); return tell('<h2>通信できませんでした</h2><p>通信できる所で、もう一度ためしてください。</p>'); }
+      msgTxt = ''; draw();
+      if (!got || !got.save) return tell('<h2>見つかりませんでした</h2><p>この引き継ぎコードのデータはありません。コードをもう一度確かめてください。</p>');
+      if (!(await ask(`<h2>このデータで上書きしますか？</h2><p style="text-align:left;line-height:1.6"><b>クラウド</b><br>${infoHtml(got.info, got.at).replace(/<\/?(b|span|small)[^>]*>/g, ' ')}</p><p style="text-align:left;line-height:1.6"><b>この端末（消えます）</b><br>${save ? infoHtml(cloudInfoOf(save), save.savedAt).replace(/<\/?(b|span|small)[^>]*>/g, ' ') : 'なし'}</p><p><b>この端末のデータは、クラウドのデータで上書きされます。</b>元には戻せません。</p>`, '復元する'))) return;
+      try {
+        const sv = got.save; sv.cloudCode = c; sv.savedAt = Date.now();
+        localStorage.setItem(KEY, JSON.stringify(sv));
+        try { await DotNet.cloudClaim(c, (sv.online && sv.online.fid) || got.fid || null); } catch (_) {}
+        await tell('<h2>復元しました</h2><p>データを読み直します。</p>');
+        location.reload();
+      } catch (e) { tell(`<h2>復元できませんでした</h2><p><small>${esc(String(e && e.message || e))}</small></p>`); }
+    }
+    draw();
+    if (code() && window.DotNet && DotNet.on) { try { const r = await DotNet.cloudInfo(code()); cloud = r ? { info: r.info, at: r.at } : null; } catch (_) { msgTxt = '通信できませんでした（クラウドの情報が読めません）'; } if (document.body.contains(scr)) draw(); }
+  }
   window.__career = { trainResult: (o) => trainResult(o), airport, openPost, syncPost, onlineDone, setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
+  window.__career.openCloud = openCloud;
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====
@@ -4447,6 +4534,7 @@
     if (!m) return;
     sheet.hidden = true;
     if (m === 'career') window.__career.open();
+    else if (m === 'cloud') { window.__career.openCloud(); return; }
     else if (m === 'free') $('#newGame').click();
     else if (m === 'champdemo') { sheet.hidden = true; if (!window.__career.save) window.__career.open(); setTimeout(() => { window.__career.champDemo(); }, 300); return; }   // 版581：（テスト用）
     else if (m === 'testcoin') { const sv = window.__career.save; sv.coins = (sv.coins || 0) + 10000; window.__career.store(); sheet.hidden = true; try { window.__career.renderHome(); } catch (_) {} return; }   // 版552：演出のテスト用
