@@ -546,7 +546,7 @@
     else { const left = C.SEASON_WEEKS - save.week + 1; body = `<p class="h2-h">オフシーズン</p><p class="h2-sub">${esc(save.league.name)}</p><p class="h2-left">新シーズンまであと${left}週</p>`; }
     let card = home.querySelector('.h2-card'); if (!card) { card = document.createElement('div'); card.className = 'h2-card'; home.appendChild(card); card.onclick = () => go('assoc'); }
     card.innerHTML = body;
-    { const go2 = card.querySelector('.nm2-when.today'); if (go2) go2.onclick = async (e) => { e.stopPropagation(); if (!(await confirmLeft('試合に進む'))) return; stadium(true); }; }   // 版655：赤いボタンはスタジアムへ（ほかの所は今まで通り試合日程）
+    { const go2 = card.querySelector('.nm2-when.today'); if (go2) go2.onclick = (e) => { e.stopPropagation(); advance(); }; }   // 版657：赤いボタンは「週を進める」と同じく、コーチが「スタジアムに移動しますか？」と聞く（ほかの所は今まで通り試合日程）
   }
   // ================= クラブハウス：練習グラウンド（カルチョビットAのように、ななめのグラウンドで色んな練習） =================
   const cc = $('#clubCv'), cx = cc.getContext('2d');
