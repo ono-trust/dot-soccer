@@ -3371,3 +3371,13 @@ html.short .nm2-num{width:28px;height:28px;font-size:18px}html.short .nm2-big{fo
 .aw-cost{color:#1d4fb8}.aw-cost .kk-ico{width:30px;height:30px}
 .aw-pip.on{background:radial-gradient(circle at 35% 30%,#e0f2ff,#3a9aff 60%,#1446b0);border-color:#0a2a6a}
 .ap2 .ap-rw2-i .kk-ico{width:30px;height:30px}
+/* 版647：ホームの上の帯は左に寄せて、コインの横に覚醒のカケラ */
+.h2-bar{left:max(14px,env(safe-area-inset-left));transform:none}
+.h2-kk{display:flex;align-items:center;gap:4px;height:44px;padding:0 14px 0 6px;border-radius:999px;background:#10265e;color:#fff}
+.h2-kk .kk-ico{width:34px;height:34px;margin:0;vertical-align:0}
+.h2-kk b{font:900 20px/1 "Arial Black",'M PLUS 1p',sans-serif;min-width:30px;text-align:right}
+html.short .h2-kk{height:36px;padding:0 10px 0 4px}html.short .h2-kk .kk-ico{width:28px;height:28px}html.short .h2-kk b{font-size:16px}
+/* ガチャ左上のカケラの絵 */
+.gc3-kk .kk-ico{width:28px;height:28px;margin:0;vertical-align:0}
+/* 選手データ：右に「特訓」と「覚醒」 */
+#pcModal.pc-club .pc-awk{gap:10px}
