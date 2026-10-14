@@ -3394,3 +3394,6 @@ html.short .h2-kk{height:36px;padding:0 10px 0 4px}html.short .h2-kk .kk-ico{wid
 .rbtns.rb-img button img{width:100%;height:100%;display:block;filter:drop-shadow(0 3px 0 rgba(0,0,0,.35))}
 .rbtns.rb-img button:active img{transform:scale(.93)}
 html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
+/* 版653：ホームの絵が読み終わるまでは、何も見せない */
+#cv-home.h2wait>*{visibility:hidden!important}
+#cv-home.h2wait{background:#0d6b32}

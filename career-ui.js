@@ -413,6 +413,10 @@
   const H2_POST = new Image(); H2_POST.src = 'icons/post.png';
   const h2Ok = (im) => im && im.complete && im.naturalWidth > 0;
   const h2Ready = () => h2Ok(H2.last) || h2Ok(H2.cur());
+  // 版653：次に使いそうな絵（次の季節・ひとつ上と下のスタジアム）を先に読んでおく
+  function h2Preload() { if (h2Preload.k === (save && save.week) + '|' + h2Tier()) return; h2Preload.k = (save && save.week) + '|' + h2Tier();
+    try { const SN = ['spring', 'summer', 'autumn', 'winter'], sn = seasonOfMonth(cal(save.week || 1).m), nx = SN[(SN.indexOf(sn) + 1) % 4], k = h2Tier();
+      setTimeout(() => { H2.bgOf(nx, k); if (k < 4) H2.bgOf(sn, k + 1); if (k > 0) H2.bgOf(sn, k - 1); }, 1500); } catch (_) {} }
   function h2Tier() { try { return Math.max(0, Math.min(4, (C.LG[save.league.id] || {}).tier ?? 0)); } catch (_) { return 0; } }
   function h2Label(c, L) {
     c.save(); c.font = '900 21px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; const tw = c.measureText(L.t).width; c.font = '800 13px "M PLUS 1p","Hiragino Kaku Gothic ProN",sans-serif'; const sw = c.measureText(L.s).width;
@@ -426,7 +430,7 @@
   }
   function drawHome2(t) {
     const c = hx; c.clearRect(0, 0, 1280, 720);
-    { const b = H2.cur(); if (h2Ok(b)) H2.last = b; if (H2.last) c.drawImage(H2.last, 0, 0, 1280, 720); }   // 版599：スタジアム込みの絵をそのまま描く（読み込み中は前の絵）
+    { const b = H2.cur(); H2.last = b; c.drawImage(b, 0, 0, 1280, 720); }   // 版653：前の絵は描かない（今の季節・スタジアムの絵だけ）
     { const sn = save ? seasonOfMonth(cal(save.week || 1).m) : 'spring'; if (seasonNow !== sn) seasonNow = sn; try { seasonFx(c, (t || 0) / 1000); } catch (_) {} }   // 版593：桜の花びら・落ち葉・雪
     const hs = [];
     // 版619：クラブハウスの前のポスト（未読があると数字を出して、ぴょこぴょこ）
@@ -443,6 +447,8 @@
     hot = hs;
   }
   function drawHome(t) {
+    // 版653：今の絵が読み終わるまでは何も見せない（前のホームの絵・昔の街の絵が一瞬映らないように）
+    { const home = document.getElementById('cv-home'), ok = h2Ok(H2.cur()); home.classList.toggle('h2wait', !ok); if (!ok) { hx.clearRect(0, 0, 1280, 720); hot = []; const im = H2.cur(); if (!im._w) { im._w = 1; im.addEventListener('load', () => { if (view === 'home') { try { drawHome(performance.now()); } catch (_) {} } }); } return; } h2Preload(); }
     if (h2Ready()) { if (!document.getElementById('cv-home').classList.contains('home2')) { document.getElementById('cv-home').classList.add('home2'); try { renderHome(); } catch (_) {} } drawHome2(t); return; }
     { const sn = save ? seasonOfMonth(cal(save.week || 1).m) : 'spring'; if (sn !== seasonNow) { seasonNow = sn; townCv = null; } }
     if (!townCv || townSeason !== seasonNow) { buildTown(); townSeason = seasonNow; }
