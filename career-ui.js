@@ -2920,7 +2920,8 @@
     };
     const RED = '#e0261d', GRAY = '#9a9a9a';
     // 版658：負けたチームは名前を薄く（どこまで残っているか分かりやすく）
-    const lost = new Set(); for (const h of cup.hist || []) for (const g of h.games || []) if (g && g.w) { if (g.a && g.a !== g.w) lost.add(g.a); if (g.b && g.b !== g.w) lost.add(g.b); }
+    const RR = view === 'pre' ? [0] : view === 'final' ? [4, 5, 6] : [1, 2, 3];   // この表に出ている回戦の負けだけ
+    const lost = new Set(); for (const h of (cup.hist || []).filter((h) => RR.includes(h.round))) for (const g of h.games || []) if (g && g.w) { if (g.a && g.a !== g.w) lost.add(g.a); if (g.b && g.b !== g.w) lost.add(g.b); }
     // ひとつの試合の線：2つの入口(y1,y2)を x0→x で受けて、勝った方を赤くし、xから先へ出す
     const match = (x0, x, y1, y2, g, dir) => {
       const ym = (y1 + y2) / 2, w = g && g.w, aWin = w && w === g.a, bWin = w && w === g.b, d = dir || 1;
@@ -2931,7 +2932,7 @@
     };
     let svg = '', W = 1256, Hh = 540;
     if (view === 'pre') {
-      const g = H(0); W = 640; Hh = 252;   // 版490：出場決定戦は2試合だけなので、表示を大きく（見る範囲をせまく）
+      const g = H(0); W = 900; Hh = 252;   // 版659：勝者の名前が右で切れないように広く   // 版490：出場決定戦は2試合だけなので、表示を大きく（見る範囲をせまく）
       svg = (cup.pre || []).map(([a, b], k) => { const gg = g && g.games[k]; const y = 30 + k * 128; const m = match(330, 470, y, y + 52, gg); return label(a, 20, y) + label(b, 20, y + 52) + m.svg + `<path d="M470 ${m.ym}H560" stroke="${m.out}" stroke-width="${m.outW}"/>` + (gg ? label(gg.w, 570, m.ym) : `<text x="570" y="${m.ym + 6}" font-size="16" fill="#888">1回戦へ</text>`); }).join('');
     } else if (view === 'final') {
       const r3 = H(3), qf = H(4), sf = H(5), fn = H(6);
