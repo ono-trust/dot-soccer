@@ -2456,7 +2456,7 @@
         const played = mt.played.slice();
         for (const nm of subsIn) { const i = save.team.players.findIndex((q) => q.name === nm); if (i >= 0 && !played.includes(i)) played.push(i); }
         done(score, (A().match || {}).events || [], played);
-      }, { venue: venueNow, kits: C.kitsFor(save, opTeamInfo.name, (meta || {}).kitSel, (meta || {}).oppSel), tut: window.__tut ? window.__tut.matchOpts(meta || {}) : null, onSub: (info) => subSheet(mt, info, ms), noIntro: true, comp: (meta || {}).comp || title, label: (meta || {}).label || '', absent: save.team.players.filter((q) => q.injury > 0 || q.suspend > 0).map((q) => ({ name: q.name, pos: q.position, number: q.number, weeks: q.injury, why: q.suspend > 0 ? '出場停止' : `ケガ（あと${q.injury}週）` })), homeName: save.team.name, awayName: opTeamInfo.name, champCheck: (meta || {}).fx ? (sc) => champView((meta || {}).fx, sc) : null, halfOthers: ((meta || {}).practice || (meta || {}).online) ? null : (my, minute) => halfOthers(my, minute), oneHalf: !!((meta || {}).practice && !(meta || {}).tut), embH: emblemURL(save.team.name, 48), embA: emblemURL(opTeamInfo.name, 48), grade: (q, k, tm) => { const sp = tm ? null : save.team.players.find((x) => x.name === q.name); if (sp) { C.ensurePts(sp); return C.rankInfo(sp.pts[k]).g; } return C.rankInfo(C.toPts((q.params || q)[k])).g; } });
+      }, { venue: venueNow, kits: C.kitsFor(save, opTeamInfo.name, (meta || {}).kitSel, (meta || {}).oppSel), tut: window.__tut ? window.__tut.matchOpts(meta || {}) : null, onSub: (info) => subSheet(mt, info, ms), noIntro: true, comp: (meta || {}).comp || title, label: (meta || {}).label || '', absent: save.team.players.filter((q) => q.injury > 0 || q.suspend > 0).map((q) => ({ name: q.name, pos: q.position, number: q.number, weeks: q.injury, why: q.suspend > 0 ? '出場停止' : `ケガ（あと${q.injury}週）` })), homeName: save.team.name, awayName: opTeamInfo.name, champCheck: (meta || {}).fx ? (sc) => champView((meta || {}).fx, sc) : null, halfOthers: ((meta || {}).practice || (meta || {}).online) ? null : (my, minute) => halfOthers(my, minute), oneHalf: !!((meta || {}).practice && !(meta || {}).tut), embH: emblemURL(save.team.name, 48), embA: emblemURL(opTeamInfo.name, 48), grade: (q, k, tm) => { const sp = tm ? null : save.team.players.find((x) => x.name === q.name); if (sp) { C.ensurePts(sp); return C.rankInfo(sp.pts[k]).g; } { const op = tm ? (opp.players || []).find((x) => x.name === q.name && x.bg) : null; if (op && op.bg[k]) return op.bg[k]; } return C.rankInfo(C.toPts((q.params || q)[k])).g; } });
       return;
     }
     const r = D.simulateMatch(mt.team, opp, seed, { frames: false });
@@ -2630,7 +2630,7 @@
     A().startWith(ta, tb, seed, shA, shB, (score) => {
       C.pinWatch(save, R.id, R.round, f.a, f.b, score, (A().match || {}).events || []); store();
       open(); openAssoc({ tab: 'watch' });
-    }, { confirmQuit: () => coachAsk('観戦をやめますか？'), onQuit: () => { open(); openAssoc({ tab: 'watch' }); }, venue: 4, kits: C.kitsPair(save, f.A, f.B), watch: true, noIntro: true, comp: 'D1観戦', label: `第${R.round + 1}節`, homeName: f.A, awayName: f.B, embH: emblemURL(f.A, 48), embA: emblemURL(f.B, 48), grade: (q, k) => C.rankInfo(C.toPts((q.params || q)[k])).g });
+    }, { confirmQuit: () => coachAsk('観戦をやめますか？'), onQuit: () => { open(); openAssoc({ tab: 'watch' }); }, venue: 4, kits: C.kitsPair(save, f.A, f.B), watch: true, noIntro: true, comp: 'D1観戦', label: `第${R.round + 1}節`, homeName: f.A, awayName: f.B, embH: emblemURL(f.A, 48), embA: emblemURL(f.B, 48), grade: (q, k, tm) => { const pl = ((tm ? gd : hd).team.players || []).find((x) => x.name === q.name && x.number === q.number) || ((tm ? gd : hd).team.players || []).find((x) => x.name === q.name); if (pl && pl.bg && pl.bg[k]) return pl.bg[k]; return C.rankInfo(C.toPts((q.params || q)[k])).g; } });   // 版629：クラブ画面と同じ、素の能力ランクを表示
   }
   // ================= サッカー協会（本家の N.LEAGUE の画面）：試合日程・成績・監督成績・移籍情報 =================
   const LG_ORDER = ['d1', 'd2', 'd3', 'regE1', 'regW1', 'regE2', 'regW2'];
@@ -4020,7 +4020,7 @@
     A().startWith(hostTeam, guestTeam, r.seed, hd.short || hd.name, gd.short || gd.name, (score) => {
       const my = me === 'host' ? score.slice() : [score[1], score[0]];
       onlineDone('friend', op, my);
-    }, { venue: venueNow, kits: [k0, k1], noIntro: true, lockEdit: true, comp: 'フレンド対戦', label: 'ルーム', homeName: hd.name, awayName: gd.name, embH: embFromLook(hd.emb, 48), embA: embFromLook(gd.emb, 48), grade: (q, k) => C.rankInfo(C.toPts((q.params || q)[k])).g });
+    }, { venue: venueNow, kits: [k0, k1], noIntro: true, lockEdit: true, comp: 'フレンド対戦', label: 'ルーム', homeName: hd.name, awayName: gd.name, embH: embFromLook(hd.emb, 48), embA: embFromLook(gd.emb, 48), grade: (q, k, tm) => { const pl = ((tm ? gd : hd).team.players || []).find((x) => x.name === q.name && x.number === q.number) || ((tm ? gd : hd).team.players || []).find((x) => x.name === q.name); if (pl && pl.bg && pl.bg[k]) return pl.bg[k]; return C.rankInfo(C.toPts((q.params || q)[k])).g; } });   // 版629：クラブ画面と同じ、素の能力ランクを表示
   }
   // 版624：ポストの見張り（申請・招待・挑戦が届いたら、すぐポストに入れて知らせる）
   let mailWatching = false;
