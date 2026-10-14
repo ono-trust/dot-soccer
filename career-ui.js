@@ -2952,12 +2952,14 @@
     const g = c.createRadialGradient(780, 380, 80, 780, 380, 760); g.addColorStop(0, 'rgba(255,220,150,0.10)'); g.addColorStop(1, 'rgba(0,0,0,0.35)'); c.fillStyle = g; c.fillRect(0, 0, 1280, 720);
     return (clubBg = cv.toDataURL());
   }
+  // 版588：トロフィーの絵（監督の絵）。リーグごとに違う。カップは今は金（D1）と同じ
+  const trophyImg = (kind, lgId) => { if (kind === 'cup') return 'img/trophy/d1.png'; const id = lgId || save.league.id; return `img/trophy/${/^reg.2/.test(id) ? 'reg2' : /^reg.1/.test(id) ? 'reg1' : id}.png`; };
   // ================= 版580：優勝 =================
   // 試合の最後に出す演出のための情報（app.js の優勝演出が使う）
   function champView(fx, sc) {
     const ch = C.champPeek(save, fx, sc); if (!ch) return null;
     const ps = save.team.players.slice(0, 18);
-    return { ...ch, team: save.team.name, short: save.team.short || save.team.name, faces: ps.map((p) => faceOf(p)).filter(Boolean), emb: emblemURL(save.team.name, 96),
+    return { ...ch, team: save.team.name, short: save.team.short || save.team.name, faces: ps.map((p) => faceOf(p)).filter(Boolean), emb: emblemURL(save.team.name, 96), trophy: trophyImg(ch.kind),
       sec: staffImg.sec || '', small: ch.kind === 'cup' ? 'DOT SOCCER CUP' : 'DOT SOCCER LEAGUE' };
   }
   // だれかが話す画面（背景・顔・名前・文）。タップで次へ
@@ -2978,8 +2980,9 @@
   function trophyHTML(ch, anim) {
     const lgName = (C.LG[save.league.id] || {}).name || 'リーグ', got = (save.trophies || []).filter((t) => t.season === save.season);
     const slots = [{ kind: 'league', label: lgName, c: ['#d9dde3', '#7d8590'] }, { kind: 'cup', label: '国内カップ', c: ['#ffd84a', '#a86f00'] }];
+    const cup = (s) => `<img class="tr-cup" src="${trophyImg(s.kind)}" alt="">`;
     return `<div class="tr-bg"></div><div class="tr-floor"></div>${slots.map((s, i) => { const has = got.some((g) => g.kind === s.kind), now = anim && s.kind === ch.kind;
-      return `<div class="tr-slot${has ? ' has' : ''}${now ? ' now' : ''}" style="left:${300 + i * 560}px"><i class="tr-spot"></i>${TROPHY_SVG(s.c[0], s.c[1])}<b>${esc(s.label)}</b></div>`; }).join('')}`;
+      return `<div class="tr-slot${has ? ' has' : ''}${now ? ' now' : ''}" style="left:${300 + i * 560}px"><i class="tr-spot"></i>${cup(s)}<b>${esc(s.label)}</b></div>`; }).join('')}`;
   }
   function trophyRoom(ch) {
     const el = fullScreen('trophyScreen', 'tr-wrap'), box = el.querySelector('.lk-box');
@@ -3596,7 +3599,7 @@
   function champDemo() {
     const fx = C.nextFixture(save); if (!fx) return false;
     const ch = { kind: 'league', title: (C.LG[save.league.id] || {}).name || 'リーグ', n: 1, last: true };
-    const v = { ...ch, team: save.team.name, short: save.team.short || save.team.name, faces: save.team.players.slice(0, 18).map((p) => faceOf(p)).filter(Boolean), emb: emblemURL(save.team.name, 96), sec: staffImg.sec || '', small: 'DOT SOCCER LEAGUE' };
+    const v = { ...ch, team: save.team.name, short: save.team.short || save.team.name, faces: save.team.players.slice(0, 18).map((p) => faceOf(p)).filter(Boolean), emb: emblemURL(save.team.name, 96), trophy: trophyImg('league'), sec: staffImg.sec || '', small: 'DOT SOCCER LEAGUE' };
     document.querySelectorAll('.lk-wrap').forEach((w) => { w.hidden = true; });   // 版582：開いている画面（クラブ事務所など）を閉じてから（前は事務所の上で演出が出ていた）
     { const pc = document.getElementById('pcModal'); if (pc) pc.hidden = true; }
     const m0 = A().match;

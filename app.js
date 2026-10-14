@@ -408,7 +408,7 @@
     } else if (k === 2) {
       SND().play('reveal5');
       box.innerHTML = `<div class="ch-board"><div class="ch-sky"></div><div class="ch-frame"><i class="ch-lamp a"></i><i class="ch-lamp b"></i><div class="ch-screen"><div class="ch-wipe"></div>
-        <div class="ch-txt"><small>${E(c.small)}</small><em style="font-size:${Math.min(64, Math.floor(760 / Math.max(1, [...String(c.title)].length)))}px">${E(c.title)}</em><span>${E(c.team)}</span></div><div class="ch-trophy">${CH_TROPHY}</div><b class="ch-win">優勝</b></div></div><div class="ch-rail"></div></div>`;
+        <div class="ch-txt"><small>${E(c.small)}</small><em style="font-size:${Math.min(64, Math.floor(760 / Math.max(1, [...String(c.title)].length)))}px">${E(c.title)}</em><span>${E(c.team)}</span></div><div class="ch-trophy">${c.trophy ? `<img src="${c.trophy}" alt="">` : CH_TROPHY}</div><b class="ch-win">優勝</b></div></div><div class="ch-rail"></div></div>`;
       setTimeout(() => SND().play('uniq'), 2600);
     } else if (k === 3) {
       SND().play('cheer');
