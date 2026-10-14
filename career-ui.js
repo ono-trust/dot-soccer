@@ -3811,6 +3811,8 @@
     { n: 'ビギナー', c: '#8fa3b8', lg: ['regW2', 'regE2'] }, { n: 'ブロンズ', c: '#c07a3a', lg: ['regW1', 'regE1'] }, { n: 'シルバー', c: '#b8c2cc', lg: ['d3'] },
     { n: 'ゴールド', c: '#f2c21c', lg: ['d2'] }, { n: 'プラチナ', c: '#5fd3c8', lg: ['d1'], part: [0.5, 1] }, { n: 'ダイヤ', c: '#6aa8ff', lg: ['d1'], part: [0.2, 0.6] }, { n: 'マスター', c: '#d66aff', lg: ['d1'], part: [0, 0.25] }];
   const RP_STEP = 100, RP_WIN = 30, RP_DRAW = 10, RP_LOSE = 15;
+  // 版611：ランク到達のごほうび（上のランクほど豪華。マスターはコイン500枚）
+  const RANK_REWARD = [null, { coins: 30, cards: 3, kak: 0 }, { coins: 60, cards: 5, kak: 5 }, { coins: 100, cards: 10, kak: 10, pack: '金のパック×1' }, { coins: 180, cards: 20, kak: 20, pack: '金のパック×2' }, { coins: 300, cards: 20, kak: 35, pack: '金のパック×2' }, { coins: 500, cards: 30, kak: 60, pack: '金のパック×3' }];
   function ensureOnline() { if (!save.online) save.online = { rp: 0, best: 0, w: 0, d: 0, l: 0, fw: 0, fd: 0, fl: 0, friends: [] }; return save.online; }
   const rankIdx = (rp) => Math.min(RANKS.length - 1, Math.floor(rp / RP_STEP));
   function rankBadge(i, big) { const R = RANKS[i]; return `<span class="ap-rank${big ? ' big' : ''}" style="--rc:${R.c}"><i>★</i>${R.n}</span>`; }
@@ -3850,10 +3852,11 @@
       on[res.toLowerCase()]++;
       const i1 = rankIdx(on.rp);
       if (i1 > i0 && i1 > rankIdx(on.best || 0)) {   // はじめて上がったランクだけ、ごほうび
-        const pool = Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat !== 'sup' && !C.CARDS[c].sp), nC = 2 + i1;
-        const cards = Array.from({ length: nC }, () => pool[Math.floor(Math.random() * pool.length)]);
+        const RW = RANK_REWARD[i1] || RANK_REWARD[1];
+        const main = Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat !== 'sup' && !C.CARDS[c].sp), sup = Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat === 'sup');
+        const cards = Array.from({ length: RW.cards }, () => (Math.random() < 0.25 && sup.length ? sup[Math.floor(Math.random() * sup.length)] : main[Math.floor(Math.random() * main.length)]));
         save.cards = save.cards || {}; for (const c of cards) save.cards[c] = Math.min(C.CARD_MAX, (save.cards[c] || 0) + 1);
-        const kak = [0, 2, 3, 5, 8, 12, 20][i1] || 2, coins = Math.min(20, 10 + i1 * 2);
+        const kak = RW.kak, coins = RW.coins;
         C.ensureGacha(save); save.kakera = (save.kakera || 0) + kak; save.coins = (save.coins || 0) + coins;
         rewards = { cards, kak, coins, rank: i1 };
       }
@@ -3870,7 +3873,7 @@
     store(); open();
     (async () => {
       await modal(html, [{ label: 'OK', primary: true }]);
-      if (rewards) await modal(`<h2>${RANKS[rewards.rank].n} 到達のごほうび！</h2><p class="coin big">${COIN}+${rewards.coins} コイン　／　覚醒のカケラ +${rewards.kak}</p><div class="hrow rw">${rewards.cards.map((c) => artCard(c, { ups: true })).join('')}</div>`, [{ label: 'OK', primary: true }]);
+      if (rewards) await modal(`<h2>${rankBadge(rewards.rank, true)} 到達のごほうび！</h2><p class="coin big">${COIN}+${rewards.coins} コイン${rewards.kak ? `　／　覚醒のカケラ +${rewards.kak}` : ''}</p><p>特訓カード ${rewards.cards.length}枚${RANK_REWARD[rewards.rank].pack ? `（${RANK_REWARD[rewards.rank].pack}）` : ''}</p><div class="hrow rw ap-rw">${[...new Set(rewards.cards)].map((c) => { const n = rewards.cards.filter((x) => x === c).length; return `<div class="ap-rwc">${artCard(c, { ups: true })}${n > 1 ? `<b>×${n}</b>` : ''}</div>`; }).join('')}</div>`, [{ label: 'OK', primary: true }]);
       store(); try { renderHome(); } catch (_) {}
     })();
   }
@@ -3920,6 +3923,7 @@
     const v = await modal(`<h2>✈️ 空港（対戦）</h2>
       <div class="ap-card"><div class="ap-rp">${rankBadge(i, true)}<b>${on.rp} RP</b></div>
         ${last ? '<p class="ap-sm">最高ランク！</p>' : `<div class="ap-bar"><i style="width:${into}%"></i></div><p class="ap-sm">次の「${RANKS[i + 1].n}」まで あと ${RP_STEP - into} RP</p>`}
+        ${last ? '' : (() => { const R = RANK_REWARD[i + 1], got = rankIdx(on.best || 0) >= i + 1; return `<p class="ap-sm ap-next">${got ? '（ごほうびは受け取りずみ）' : `「${RANKS[i + 1].n}」到達のごほうび：コイン${R.coins}枚・特訓カード${R.cards}枚${R.kak ? `・カケラ${R.kak}` : ''}`}</p>`; })()}
         <p class="ap-sm">ランクマッチ ${on.w}勝 ${on.d}分 ${on.l}敗　／　フレンド ${on.fw}勝 ${on.fd}分 ${on.fl}敗</p></div>
       <p class="hintp">ランクが上がるとごほうび（特訓カード・覚醒のカケラ・コイン）。<br>※ いまのランクマッチの相手はCPUのクラブです（ほかの人のチームと当たるのは、サーバーの準備ができてから）。</p>`,
       [{ label: 'ランクマッチ', primary: true, value: 'rank' }, { label: 'フレンド対戦', value: 'friend' }, { label: 'もどる', value: 'back' }]);
@@ -3932,7 +3936,7 @@
     history.replaceState(null, '', location.pathname + location.search);
     try { const d = await unpackCode(m[1]); await startFriend(d); } catch (_) { modal('<h2>対戦のリンクを読みこめませんでした</h2>', [{ label: 'OK', primary: true }]); }
   }
-  window.__career = { airport, setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
+  window.__career = { airport, onlineDone, setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====
