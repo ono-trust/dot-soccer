@@ -2519,7 +2519,7 @@
     meta = meta || {};
     const tierOf = (name) => ((C.LG[lgOf(name)] || {}).tier ?? 2);
     if (meta.practice) return Math.min(1, tierOf(save.team.name));
-    return tierOf(meta.home ? save.team.name : op.name);
+    return Math.max(tierOf(save.team.name), tierOf(op.name));   // 版658：会場は、リーグが上のチームのスタジアムに合わせる（カップ戦など）
   }
   // 試合のユニフォームを選ぶ（カルチョビットAの、ホーム・アウェー・キーパーが並ぶ画面）
   function kitPick(el, op, meta, back) {
@@ -2915,9 +2915,12 @@
       const img = real ? `<image href="${emblemURL(n, 32)}" x="${right ? x - 26 : x}" y="${y - 13}" width="26" height="26"/>` : '';
       const bx = right ? x - 60 : x + 30, badge = t ? `<rect x="${bx}" y="${y - 9}" width="28" height="18" rx="3" fill="${t[1]}"/><text x="${bx + 14}" y="${y + 5}" font-size="12" font-weight="900" fill="#fff" text-anchor="middle">${t[0]}</text>` : '';
       const tx = right ? x - 66 : x + (t ? 64 : real ? 30 : 0);
-      return `${img}${badge}<text x="${tx}" y="${y + 6}" font-size="17" font-weight="${n === me ? 900 : 700}" fill="${real ? col : '#888'}" text-anchor="${right ? 'end' : 'start'}">${esc2(nm)}</text>`;
+      const out = `${img}${badge}<text x="${tx}" y="${y + 6}" font-size="17" font-weight="${n === me ? 900 : 700}" fill="${real ? col : '#888'}" text-anchor="${right ? 'end' : 'start'}">${esc2(nm)}</text>`;
+      return lost.has(n) ? `<g opacity=".3">${out}</g>` : out;
     };
     const RED = '#e0261d', GRAY = '#9a9a9a';
+    // 版658：負けたチームは名前を薄く（どこまで残っているか分かりやすく）
+    const lost = new Set(); for (const h of cup.hist || []) for (const g of h.games || []) if (g && g.w) { if (g.a && g.a !== g.w) lost.add(g.a); if (g.b && g.b !== g.w) lost.add(g.b); }
     // ひとつの試合の線：2つの入口(y1,y2)を x0→x で受けて、勝った方を赤くし、xから先へ出す
     const match = (x0, x, y1, y2, g, dir) => {
       const ym = (y1 + y2) / 2, w = g && g.w, aWin = w && w === g.a, bWin = w && w === g.b, d = dir || 1;
