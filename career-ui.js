@@ -1227,13 +1227,22 @@
     return `<button class="acard ${CATC[cd.cat]} ${opt.cls || ''}" data-c="${c}" title="${esc(tip)}"><img src="cards/${c}.jpg" alt="${esc(cd.name)}" draggable="false">${opt.ups ? `<span class="ac-up">${upsHTML(cd)}<em>疲労${cd.fat > 0 ? '+' : ''}${cd.fat}</em></span>` : ''}${opt.cnt != null ? `<i class="ac-cnt">×${opt.cnt}</i>` : ''}${opt.extra || ''}</button>`;
   }
   // 特訓画面：いつも同じ大きさの「ボード」に組んで、画面に合わせて拡大縮小（スクロールなしで全部のカードが見える）
-  const TRB_W = 1120, TRB_H = 620;
+  const TRB_W = 1120, TRB_H = 640;   // 版632：手札の見出しのぶん少し高く
   function fitBoard() {
     const b = document.querySelector('#clubLayer .trb'); if (!b) return;
     const L = $('#clubLayer'), w = L.clientWidth, h = L.clientHeight, s = Math.min(w / TRB_W, h / TRB_H);
     b.style.transform = `scale(${s})`; b.style.left = Math.max(0, (w - TRB_W * s) / 2) + 'px'; b.style.top = Math.max(0, (h - TRB_H * s) / 2) + 'px';
   }
   addEventListener('stagefit', fitBoard); addEventListener('resize', fitBoard);
+  // 版632：特訓画面の見出しアイコン（線画のSVG）
+  const HG_JP = { tact: '戦術', tech: '技術', phys: 'フィジカル', sup: 'サポート' };
+  const HG_ICO = {
+    tact: '<svg viewBox="0 0 32 32" class="hg-i"><circle cx="16" cy="16" r="13" fill="#fff" stroke="#123" stroke-width="2.5"/><polygon points="16,10 21.5,14 19.5,20.5 12.5,20.5 10.5,14" fill="#123"/><path d="M16 3v7M28 12l-6.5 2M24 26l-4.5-5.5M8 26l4.5-5.5M4 12l6.5 2" stroke="#123" stroke-width="2"/></svg>',
+    tech: '<svg viewBox="0 0 32 32" class="hg-i"><path d="M13 4h6l6 22H7z" fill="#ff8a1e" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/><path d="M11 13h10M9.5 19h13" stroke="#fff" stroke-width="3"/><rect x="3" y="25" width="26" height="4" rx="1.5" fill="#fff"/></svg>',
+    phys: '<svg viewBox="0 0 32 32" class="hg-i"><rect x="3" y="10" width="4" height="12" rx="1.5" fill="#fff"/><rect x="8" y="7" width="5" height="18" rx="1.5" fill="#fff"/><rect x="25" y="10" width="4" height="12" rx="1.5" fill="#fff"/><rect x="19" y="7" width="5" height="18" rx="1.5" fill="#fff"/><rect x="13" y="14" width="6" height="4" fill="#fff"/></svg>',
+    sup: '<svg viewBox="0 0 32 32" class="hg-i"><circle cx="16" cy="10" r="5" fill="#fff"/><path d="M7 28c0-6 4-10 9-10s9 4 9 10z" fill="#fff"/><circle cx="7" cy="12" r="3.6" fill="#fff" opacity=".85"/><path d="M1 26c0-4.5 2.6-7.5 6-7.5 1.2 0 2.3.3 3.2.9-1.8 1.8-2.9 4.3-3.1 6.6z" fill="#fff" opacity=".85"/><circle cx="25" cy="12" r="3.6" fill="#fff" opacity=".85"/><path d="M31 26c0-4.5-2.6-7.5-6-7.5-1.2 0-2.3.3-3.2.9 1.8 1.8 2.9 4.3 3.1 6.6z" fill="#fff" opacity=".85"/></svg>',
+    sp: '<svg viewBox="0 0 32 32" class="ts-i"><path d="M16 2l12 5v8c0 8-5.5 13-12 15C9.5 28 4 23 4 15V7z" fill="#1d3f8f" stroke="#fff" stroke-width="2.2"/><circle cx="16" cy="15" r="7" fill="#fff"/><polygon points="16,11.5 19,13.6 18,17.2 14,17.2 13,13.6" fill="#1d3f8f"/></svg>'
+  };
   let trbScroll = null;
   function renderTrain() {
     { const old = document.querySelector('#clubLayer .trb-line'); if (old) trbScroll = old.scrollLeft; }   // 版538：選手を選んでも、横の位置をそのままに
@@ -1248,20 +1257,21 @@
     // 選手の列（顔と背番号）
     const line = ps.map((q, i) => `<button class="tl2${i === selIdx ? ' sel' : ''}${q.injury > 0 ? ' inj' : ''}${i >= 11 ? ' sub' : ''}${i >= 11 + C.BENCH_N ? ' out' : ''}${i === 11 || i === 11 + C.BENCH_N ? ' gap' : ''}" data-i="${i}">${facePic(q, 'tl2f', i >= 11)}<b><i class="pos ${POSC[q.position]}">${q.position}</i>${q.number}</b><small class="tl2n">${esc(q.name)}</small>${C.trainedThisWeek(save, q) ? '<em class="dn">済</em>' : C.trainsDone(save, q) ? `<em class="hf">あと${lim - C.trainsDone(save, q)}</em>` : (save.plan.cards[i] || []).length ? `<em class="pl">${(save.plan.cards[i] || []).length}枚</em>` : ''}</button>`).join('');
     // セット枠
-    const slots = [0, 1, 2].map((k) => mine[k] ? artCard(mine[k], { cls: 'slot', extra: '<i class="x"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></i>' }) : '<div class="tslot2">カード</div>').join('');
+    const slots = [0, 1, 2].map((k) => mine[k] ? artCard(mine[k], { cls: 'slot', extra: '<i class="x"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></i>' }) : '<div class="tslot2">カードを<br>選択</div>').join('<i class="ts-plus">＋</i>');   // 版632：あいだに「＋」
     const sp = pv.sp ? (found.has(pv.sp.id) ? `<div class="spban">スペシャルメニュー「${esc(pv.sp.name)}」${pv.sp.skill ? `<small>${(p.skills || []).includes(pv.sp.skill) ? `${esc(D.SKILLS[pv.sp.skill].name)}は習得ずみ（能力だけ上がる）` : `${esc(D.SKILLS[pv.sp.skill].name)}を覚えるチャンス（${Math.round(C.skillRate(p, pv.sp.skill) * 100)}%）`}</small>` : pv.sp.type ? `<small>タイプが${esc(pv.sp.type)}に近づく</small>` : ''}</div>` : '<div class="spban new">！？ スペシャルメニューの予感…</div>') : '';
-    const msg = p.injury > 0 ? 'ケガで今週は休みです' : done ? `今週の特訓（${lim}回）は終わりました` : camp && nDone ? `合宿中なので、もう1回特訓できます（${nDone}/${lim}回目終了）` : mine.length ? '' : '下のカードを最大3枚えらぼう（3枚の組み合わせでスペシャルメニュー）';
+    const msg = p.injury > 0 ? 'ケガで今週は休みです' : done ? `今週の特訓（${lim}回）は終わりました` : camp && nDone ? `合宿中なので、もう1回特訓できます（${nDone}/${lim}回目終了）` : mine.length ? '' : 'カードを最大3枚組み合わせよう';
     // 手札（全種類を並べる。持っていないカードは暗く）
     const cats = ['tact', 'tech', 'phys', 'sup'];
-    const hand = cats.map((cat) => `<div class="hg ${CATC[cat]}"><span class="hg-l">${C.CAT_NAME[cat]}</span><div class="hg-c">${Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat === cat).map((c) => { const n = cardLeft(c); return artCard(c, { cnt: n, cls: n <= 0 || p.injury > 0 || done ? 'none' : '' }); }).join('')}</div></div>`).join('');
+    const hand = cats.map((cat) => `<div class="hg ${CATC[cat]}"><span class="hg-l">${HG_ICO[cat]}<b>${HG_JP[cat]}</b></span><div class="hg-c">${Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat === cat).map((c) => { const n = cardLeft(c); return artCard(c, { cnt: n, cls: n <= 0 || p.injury > 0 || done ? 'none' : '' }); }).join('')}</div></div>`).join('');
     $('#clubLayer').innerHTML = `<div class="trb" style="width:${TRB_W}px;height:${TRB_H}px">
       <div class="trb-card">${playerCardHTML(selIdx, pv.ups, true)}</div>
       <div class="trb-set">
-        <div class="ts-h">${camp ? `<span class="tauto camp">⛺ ${esc(camp.name)}（${camp.week}/${camp.weeks}週目）特訓は週${camp.trains}回・効果${camp.mult}倍</span>` : '<span class="tauto">全体練習は毎週自動</span>'}<button id="spList" class="splist">SPリスト</button></div>
-        <div class="tslots2">${slots}</div>${sp}${msg ? `<p class="ts-msg">${msg}</p>` : ''}
-        ${mine.length && !done && !(p.injury > 0) ? '<button id="doTrain" class="dotrain">特訓する！</button>' : ''}
+        <div class="ts-h"><span class="ts-ttl">${HG_ICO.sp}SPメニューをつくる</span></div>
+        <div class="ts-in">${camp ? `<span class="tauto camp">⛺ ${esc(camp.name)}（${camp.week}/${camp.weeks}週目）特訓は週${camp.trains}回・効果${camp.mult}倍</span>` : ''}
+        <div class="tslots2">${slots}</div>${sp}${msg ? `<p class="ts-msg"><span>${msg}</span></p>` : ''}
+        <div class="ts-btns"><button id="spList" class="splist2">SPメニュー一覧</button>${mine.length && !done && !(p.injury > 0) ? '<button id="doTrain" class="dotrain">特訓する！</button>' : ''}</div></div>
       </div>
-      <div class="trb-line">${line}</div>
+      <div class="trb-lw"><button class="trb-arw l" data-arw="-1" aria-label="左へ"></button><div class="trb-line">${line}</div><button class="trb-arw r" data-arw="1" aria-label="右へ"></button></div>
       <div class="trb-hand">${hand}</div>
     </div>`;
     fitBoard();
@@ -1274,6 +1284,7 @@
       mine.push(c); save.plan.cards[selIdx] = mine; store(); renderTrain();
     });
     $('#spList').onclick = () => spList();
+    L.querySelectorAll('.trb-arw').forEach((b) => b.onclick = () => { const ln = L.querySelector('.trb-line'); ln.scrollBy({ left: +b.dataset.arw * ln.clientWidth * 0.8, behavior: 'smooth' }); });   // 版632：◀▶で選手の列を送る
     const bt = $('#doTrain'); if (bt) bt.onclick = () => doTrain(selIdx);
   }
   // SPリスト（版467・作り直し）：スペシャルメニューの図鑑。見つけたメニューはカードの絵・効果・覚えるスキルまで見られ、選手を選んでそのまま特訓できる
@@ -1811,6 +1822,41 @@
     if (o.injured) notes.push('<b class="cr-inj">ケガをしてしまった…</b>');
     return `<div class="rcard"><div class="rc-h">${portrait(p)}<div><b>${p.number} ${esc(o.name)}</b><span>${o.cards.map((c) => `<i class="mini ${CATC[C.CARDS[c].cat]}">${esc(C.CARDS[c].name)}</i>`).join('')}</span></div></div>${notes.join('')}<div class="rc-p">${rows || '<p class="hintp">―</p>'}</div></div>`;
   }
+  // 版632：特訓の結果（参考画像の形）：顔・使ったカード・「特訓完了！」か「スキル習得！」・能力の成長
+  function trainResult(o) {
+    const p = save.team.players[o.i], spm = o.sp != null ? C.SP[o.sp] : null, camp = C.campState(save);
+    const cards = o.cards.map((c) => artCard(c)).join('<i class="trr-plus">＋</i>');
+    let ban;
+    if (o.learned && o.got) ban = `<div class="trr-ban gold"><span class="trr-shield">${HG_ICO.sp}</span><div class="trr-bt"><b class="trr-big">スキル習得！</b><span class="trr-rib">${esc(D.SKILLS[o.learned].name)}</span>${spm ? `<small class="trr-sub">スペシャルメニュー「${esc(spm.name)}」成功${o.spNew ? '<em>NEW</em>' : ''}</small>` : ''}</div><i class="trr-sp s1"></i><i class="trr-sp s2"></i><i class="trr-sp s3"></i><i class="trr-sp s4"></i></div>`;
+    else {
+      const sub = o.skillMiss ? `<div class="trr-pill"><b>${esc(D.SKILLS[o.skillMiss].name)}</b><span>未習得</span></div><small class="trr-sub dk">今回はスキルを習得できませんでした（次の成功率 ${Math.round((o.nextRate || 0) * 100)}%）</small>`
+        : spm ? `<small class="trr-sub">スペシャルメニュー「${esc(spm.name)}」${o.spNew ? '<em>NEW</em>' : ''}</small>` : '';
+      ban = `<div class="trr-ban blue"><div class="trr-bt"><b class="trr-big">特訓完了！</b>${sub}</div></div>`;
+    }
+    const notes = [];
+    if (o.learned && o.got && o.forgot) notes.push(`${esc(D.SKILLS[o.forgot].name)}を忘れた`);
+    if (o.learned && o.skipped) notes.push(`「${esc(D.SKILLS[o.learned].name)}」は覚えなかった`);
+    if (o.typeTo) notes.push(`<b class="ty">タイプが ${esc(o.typeFrom)} → ${esc(o.typeTo)} に変わった！</b>`);
+    if (o.injured) notes.push('<b class="inj">ケガをしてしまった…</b>');
+    const ups = Object.entries(o.ups).filter(([, v]) => v >= 1 || v <= -1).sort((x, y) => y[1] - x[1]);
+    const rows = ups.map(([k, v]) => { const b0 = o.before[k], a = C.rankInfo(b0), b = C.rankInfo(Math.min(C.PMAX - 1, Math.max(0, b0 + v))), up = b.g !== a.g;
+      const g0 = up ? 0 : a.pct, g1 = v > 0 ? b.pct : a.pct;
+      return `<div class="trr-row"><span class="trr-ic">${ico(k)}</span><span class="trr-pn">${esc(PSHORT[k] || C.PNAME[k])}</span><span class="trr-rk">${up ? `<b class="gr-${a.g}">${a.g}</b><i>→</i>` : ''}<b class="gr-${b.g}">${b.g}</b></span><span class="trr-bar"><s style="width:${(v > 0 ? g0 : g1) * 100}%"></s>${v > 0 ? `<u style="left:${g0 * 100}%;width:${Math.max(2, (g1 - g0) * 100)}%"></u>` : ''}</span><b class="trr-v${v < 0 ? ' m' : ''}">${v > 0 ? '+' : ''}${Math.round(v)}</b></div>`; }).join('');
+    const cols = ups.length > 8 ? 3 : ups.length > 4 ? 2 : 1;
+    let el = document.getElementById('trRes');
+    if (!el) { el = document.createElement('div'); el.id = 'trRes'; (document.getElementById('app') || document.body).appendChild(el); }
+    el.innerHTML = `<div class="trr-box">
+      <div class="trr-h"><b>特訓の結果</b>${camp ? `<small>合宿ボーナス ×${C.CAMP.mult}</small>` : ''}</div>
+      <div class="trr-top"><div class="trr-face">${facePic(p, '')}</div><div class="trr-info"><div class="trr-nm"><i class="pos ${POSC[p.position]}">${p.position}</i><b>${p.number}</b><span>${esc(p.name)}</span></div><div class="trr-cards">${cards}</div></div></div>
+      ${ban}
+      ${notes.length ? `<p class="trr-notes">${notes.join('　')}</p>` : ''}
+      <div class="trr-gr"><span class="trr-gl">能力の成長</span><div class="trr-rows c${cols}">${rows || '<p class="trr-none">―</p>'}</div></div>
+      <button class="trr-ok">OK</button></div>`;
+    const fit = () => { const bx = el.querySelector('.trr-box'); if (!bx) return; const k = Math.min((el.clientWidth || innerWidth) * 0.97 / 860, (el.clientHeight || innerHeight) * 0.97 / 580); bx.style.transform = `scale(${k})`; bx.style.setProperty('--k', k); };
+    el.hidden = false; fit(); addEventListener('resize', fit); requestAnimationFrame(() => el.classList.add('on'));
+    try { window.DotSound && DotSound.play(o.got ? 'skill' : 'ok'); } catch (_) {}
+    return new Promise((res) => { el.querySelector('.trr-ok').onclick = () => { removeEventListener('resize', fit); el.classList.remove('on'); el.hidden = true; res(); }; });
+  }
   // 「特訓する！」：その場でこの選手だけ特訓して結果を見せる
   async function doTrain(i) {
     const o = C.trainOne(save, i, (save.plan.cards || {})[i] || []);
@@ -1827,7 +1873,7 @@
       }
       store();
     }
-    await modal(`<h2>特訓の結果${C.campState(save) ? '<small>（合宿ボーナス ×' + C.CAMP.mult + '）</small>' : ''}</h2><div class="rgrid one">${resultCard(o)}</div>`, [{ label: 'OK', primary: true }]);
+    await trainResult(o);   // 版632：特訓の結果を専用の画面で
     // 次の未特訓の選手へ自動で移る
     const ps = save.team.players;
     for (let k = 1; k <= ps.length; k++) { const j = (i + k) % ps.length; if (!(ps[j].injury > 0) && !C.trainedThisWeek(save, ps[j])) { selIdx = j; break; } }
@@ -4217,7 +4263,7 @@
     history.replaceState(null, '', location.pathname + location.search);
     modal('<h2>フレンド対戦は、フレンドどうしだけです</h2><p>空港かクラブ事務所の「フレンド」で、相手のフレンドIDに申請してください。相手が承認するとフレンドになり、対戦できます。</p>', [{ label: 'OK', primary: true }]);   // 版621：リンクだけでは対戦しない
   }
-  window.__career = { airport, openPost, syncPost, onlineDone, setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
+  window.__career = { trainResult: (o) => trainResult(o), airport, openPost, syncPost, onlineDone, setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====
