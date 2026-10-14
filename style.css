@@ -3397,3 +3397,4 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 /* 版653：ホームの絵が読み終わるまでは、何も見せない */
 #cv-home.h2wait>*{visibility:hidden!important}
 #cv-home.h2wait{background:#0d6b32}
+.nm2-when.today{cursor:pointer}.nm2-when.today:active{transform:translateY(2px) scale(.98)}
