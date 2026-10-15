@@ -119,6 +119,7 @@
   // タイプの変わりやすさ（hid：カードで動きのくせが動く量、spPull：タイプ養成SPで近づく割合）
   const TYPE_TUNE = { hid: 0.45, spPull: 0.22 };   // 2枚組み合わせで平均10回ほど、タイプ養成SPは2〜3回でタイプが変わる
   function moveHidden(p, hid, mul) {
+    if (p.uniq) return;   // 版677：国内屈指級（固有スキルを持つ選手）は、動き方のくせ（裏パラ）もタイプも変わらない
     for (const k in hid) p[k] = k === 'zone_man' ? clamp(p[k] + hid[k] * mul, -90, 95) : clamp(p[k] + hid[k] * mul, 0, 100);
   }
   // 裏パラから選手タイプを決める（ポジションごとに一番近いタイプ）
@@ -126,6 +127,7 @@
   const HKEYS = ['zone_man', 'press', 'support', 'overlap', 'run_space', 'goal_wait'];
   function protoOf(t) { return { ...D.HIDDEN0, ...(D.TYPE_HIDDEN[t] || {}) }; }
   function decideType(p) {
+    if (p.uniq) return p.type || (D.UNIQ[p.uniq] && D.UNIQ[p.uniq].type) || 'バランス';   // 版677：国内屈指級はタイプが変わらない
     const list = TYPES_BY_POS[p.position] || [];
     if (p.position === 'GK') {   // GK：飛び出す癖（run_space）が強ければスイーパーキーパー
       const dd = (t) => { const pr = protoOf(t); return ['run_space', 'goal_wait'].reduce((a, k) => a + (p[k] - pr[k]) ** 2, 0); };
@@ -1602,7 +1604,7 @@
       if (!pv.sp) fat += (cd.fat || 0) / 12; if (cd.cond) p.cond = clamp((p.cond || 0) + cd.cond, -2, 2); }
     if (pv.sp) { out.sp = pv.sp.id; fat += (pv.sp.fat ?? 100) / 6;
       if (!save.spFound.includes(pv.sp.id)) { save.spFound.push(pv.sp.id); out.spNew = true; }
-      if (pv.sp.type) { const pr = protoOf(pv.sp.type); for (const k of HKEYS) p[k] += (pr[k] - p[k]) * TYPE_TUNE.spPull; }
+      if (pv.sp.type && !p.uniq) { const pr = protoOf(pv.sp.type); for (const k of HKEYS) p[k] += (pr[k] - p[k]) * TYPE_TUNE.spPull; }
       if (pv.sp.skill && !(p.skills || []).includes(pv.sp.skill)) { const k = pv.sp.skill; out.rate = skillRate(p, k); if (r() < out.rate) { out.learned = k; if (p.skTry) delete p.skTry[k]; } else { out.skillMiss = k; p.skTry = p.skTry || {}; p.skTry[k] = (p.skTry[k] || 0) + 1; out.nextRate = skillRate(p, k); } } }
     p.fatigue = clamp(p.fatigue + fat, 0, 100);
     if (p.fatigue > 75 && r() < (p.fatigue - 70) * 0.006) { out.injured = injure(save, p, r, 'train'); save.news.pop(); }
@@ -1741,6 +1743,7 @@
     const r0 = rng(save);
     if (save.potVer !== 3) { for (const p of save.team.players.concat(save.reserve || [])) { delete p.pot; p.cond = condOf(p); } save.potVer = 3; }   // 版514：ポテンシャルをやめて調子に   // ポテンシャルの進み方を本家のペースに直したので、付け直す
     for (const p of save.team.players) { ensurePts(p); }
+    for (const p of [...save.team.players, ...(save.reserve || [])]) { const U = p.uniq && D.UNIQ[p.uniq]; if (U && U.type && p.type !== U.type) { p.type = U.type; const pr = protoOf(U.type); for (const k of HKEYS) p[k] = pr[k]; } }   // 版677：国内屈指級で、前の版でタイプが変わってしまった選手は、元のタイプに戻す
     if (!(save.cardsVer >= 4)) { save.cards = starterCards(); save.cardsVer = 4; if (save.plan) save.plan.cards = {}; }
     if (save.coins == null || save.coinsVer !== 2) { save.coins = 0; save.coinsVer = 2; }
     if (TEST_MAX_CARDS) for (const c of CARD_POOL) save.cards[c] = CARD_MAX;
