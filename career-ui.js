@@ -3863,7 +3863,9 @@
       const got = await DotNet.payClaim(); if (!got.length) return;
       for (const g of got) {
         const c0 = save.coins || 0; save.coins = c0 + (g.coins || 0); if (g.premDays) premAdd(g.premDays);
-        (save.buys = save.buys || []).push({ id: g.item, coins: g.coins, yen: g.yen, at: Date.now(), pay: g.id, live: !!g.live }); delete save.payPending; store(); premSync();
+        (save.buys = save.buys || []).push({ id: g.item, coins: g.coins, yen: g.yen, at: Date.now(), pay: g.id, live: !!g.live }); delete save.payPending;
+        addPost({ kind: 'buy', coins: g.coins || 0, yen: g.yen || 0, prem: g.premDays || 0, test: !g.live }); try { postBadge(); } catch (_) {}   // 版705：ポストに記録
+        store(); premSync();
         const cs = document.querySelector('#coinScreen:not([hidden]) .lk-box'), sb = document.querySelector('#shopScreen:not([hidden]) .lk-box');
         if (cs && g.coins) { coinGain(cs, cs.querySelector('.cs-have') || cs, c0, save.coins, null); await new Promise((r) => setTimeout(r, 1900)); }
         else if (sb && g.coins) { const cn = sb.querySelector('.sh3-cn'), tg = sb.querySelector('.sh3-coin'); if (cn) { coinGain(sb, sb.querySelector('.pm-buy') || tg, c0, save.coins, null, { to: tg, num: cn }); await new Promise((r) => setTimeout(r, 1900)); } }
@@ -4181,7 +4183,7 @@
     })().finally(() => { postBusy = null; });
     return postBusy;
   }
-  const POST_ICO = { room: '⚽', freq: '🤝', fok: '🎉', def: '🛡️', info: '📣', reward: '🎁', news: '📰' };
+  const POST_ICO = { buy: '🪙', room: '⚽', freq: '🤝', fok: '🎉', def: '🛡️', info: '📣', reward: '🎁', news: '📰' };
   const fmtAt = (t) => { const d = new Date(t || Date.now()); return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
   async function openPost(back) {
     back = back || (() => {});
@@ -4195,6 +4197,7 @@
         else if (it.kind === 'fok') { t = 'フレンドになりました！'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}がフレンド申請を承認しました。空港の「フレンド」から対戦できます。`; }
         else if (it.kind === 'def') { t = it.r === 'W' ? '守った！' : it.r === 'D' ? '引き分け' : 'やられた…'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}がランクマッチで挑んできました。<em>${it.s[0]} − ${it.s[1]}</em>`; }
         else if (it.kind === 'reward') { t = `${RANKS[it.rank].n}ライセンス取得！`; body = `ごほうび：コイン${it.coins}枚・特訓カード${it.cards}枚${it.kak ? `・覚醒のカケラ${it.kak}` : ''}（受け取りずみ）`; }
+        else if (it.kind === 'buy') { t = it.prem ? 'プレミアムパスのご購入' : 'Dコインのご購入'; body = `ご購入ありがとうございます。<br>${it.prem ? `<b>プレミアムパス（${it.prem}日）</b>と ` : ''}<b class="po-coin">${COIN}${(it.coins || 0).toLocaleString()} コイン</b>が入りました（¥${(it.yen || 0).toLocaleString()}）。${it.test ? '<br><small>（テストの購入です。本当のお金はかかっていません）</small>' : ''}`; }   // 版705：課金の記録
         else if (it.kind === 'room') { t = 'フレンド対戦の招待'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}がルームを作りました。`; btns = Date.now() - (it.at || 0) < 30 * 60 * 1000 ? `<button class="po-ok" data-room="${it.id}">ルームに入る</button>` : '<span class="po-done">時間切れ</span>'; }
         else if (it.kind === 'news') { t = it.title || 'お知らせ'; body = esc(it.text || '').replace(/\n/g, '<br>'); }
         else { t = it.title || 'お知らせ'; body = esc(it.text || ''); }
