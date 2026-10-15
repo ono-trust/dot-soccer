@@ -53,7 +53,10 @@ exports.payWebhook = onRequest({ region: REGION, secrets: [STRIPE_KEY, STRIPE_WH
   const stripe = new Stripe(STRIPE_KEY.value().trim());
   let ev;
   try { ev = stripe.webhooks.constructEvent(req.rawBody, req.headers['stripe-signature'], STRIPE_WH.value().trim()); }
-  catch (e) { res.status(400).send('bad signature'); return; }
+  catch (e) {   // 原因が分かるように記録する（鍵そのものは出さない。形と長さだけ）
+    const k = STRIPE_WH.value().trim();
+    console.error('webhook verify failed', { msg: e && e.message, keyHead: k.slice(0, 6), keyLen: k.length, hasSig: !!req.headers['stripe-signature'], hasRaw: !!req.rawBody });
+    res.status(400).send('bad signature: ' + (e && e.message ? String(e.message).slice(0, 160) : '') + ' / key ' + k.slice(0, 6) + '… len ' + k.length); return; }
   if (ev.type === 'checkout.session.completed' || ev.type === 'checkout.session.async_payment_succeeded') {
     const s = ev.data.object;
     if (s.payment_status === 'paid') {
