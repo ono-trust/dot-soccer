@@ -180,6 +180,7 @@
   let fnP = null;
   const fns = () => fnP || (fnP = (async () => { if (!(await ready())) throw new Error('offline'); if (!firebase.functions) await load(SDK + 'firebase-functions-compat.js'); return firebase.app().functions('asia-northeast1'); })().catch((e) => { fnP = null; throw e; }));
   async function payCheckout(item) { const f = await fns(); const r = await withTimeout(f.httpsCallable('payCheckout')({ item, back: location.href }), 20000); return r.data; }
-  async function payClaim() { const f = await fns(); const r = await withTimeout(f.httpsCallable('payClaim')({}), 20000); return (r.data && r.data.items) || []; }
-  window.DotNet = { PAY_ON, payCheckout, payClaim, FID_MOVE, cloudInfo, cloudPut, cloudGet, cloudClaim, normCode, get watchState() { return watchState; }, get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news, createRoom, roomUpdate, roomGet, roomWatch, roomInvites, roomStart, watchMail };
+  async function payClaim() { const f = await fns(); const r = await withTimeout(f.httpsCallable('payClaim')({}), 20000); const a = (r.data && r.data.items) || []; a.sub = (r.data && r.data.sub) || null; return a; }   // 版712：a.sub＝月額パスの今の状態
+  async function payPortal() { const f = await fns(); const r = await withTimeout(f.httpsCallable('payPortal')({ back: location.href }), 20000); return r.data; }
+  window.DotNet = { PAY_ON, payCheckout, payClaim, payPortal, FID_MOVE, cloudInfo, cloudPut, cloudGet, cloudClaim, normCode, get watchState() { return watchState; }, get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news, createRoom, roomUpdate, roomGet, roomWatch, roomInvites, roomStart, watchMail };
 })();

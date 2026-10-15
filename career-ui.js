@@ -3847,41 +3847,61 @@
   // 版703：お金での購入（Stripe）。支払いの画面へ行き、払い終わったらサーバーから受け取る
   const payReal = () => !!(window.DotNet && DotNet.on && DotNet.PAY_ON);
   async function payGo(item, label, yen) {
-    if (!(await coachAsk(`<b>${label}</b>を <b>¥${yen.toLocaleString()}</b> で購入しますか？<br><small>支払いの画面（Stripe）が開きます。払い終わったら、ゲームにもどってください。</small>`, [{ label: '支払いへ進む', value: true }, { label: 'やめる', value: false }], 'sec'))) return;
+    const q = item === 'prem'
+      ? `<b>プレミアムパス</b>を <b>月額 ¥${yen.toLocaleString()}</b> ではじめますか？<br><small>毎月、自動で ¥${yen.toLocaleString()} のお支払いがあり、パスが続きます。<br>解約はいつでもできます。解約しても、その月の終わりまで使えます。<br>支払いの画面（Stripe）が開きます。払い終わったら、ゲームにもどってください。</small>`
+      : `<b>${label}</b>を <b>¥${yen.toLocaleString()}</b> で購入しますか？<br><small>支払いの画面（Stripe）が開きます。払い終わったら、ゲームにもどってください。</small>`;
+    if (!(await coachAsk(q, [{ label: '支払いへ進む', value: true }, { label: 'やめる', value: false }], 'sec'))) return;
     const t = document.createElement('div'); t.className = 'pay-wait'; t.innerHTML = '<p>支払いの画面を開いています…</p>'; (document.getElementById('app') || document.body).appendChild(t);
     try { const r = await DotNet.payCheckout(item); save.payPending = { item, at: Date.now() }; store();
+      payOpen(t, r.url); }
+    catch (e) { t.remove(); const code = String((e && (e.code || e.message)) || e);
+      if (/already-exists/.test(code)) { await coachAsk('プレミアムパスは、もう申し込みずみです。<br><small>解約やカードの変更は、ショップのプレミアムパスの「お支払いの管理」からできます。</small>', [{ label: 'OK', value: true }], 'sec'); payCollect(); return; }
+      coachAsk(`支払いの画面を開けませんでした。<br><small>ネットにつながっているか確かめて、もう一度お試しください。<br>（${esc(code.slice(0, 80))}）</small>`, [{ label: 'OK', value: true }], 'sec'); }
+  }
+  // 版712：月額パスの解約・カードの変更（Stripeのお客さま用ページ）
+  async function payManage() {
+    const t = document.createElement('div'); t.className = 'pay-wait'; t.innerHTML = '<p>お支払いの管理の画面を開いています…</p>'; (document.getElementById('app') || document.body).appendChild(t);
+    try { const r = await DotNet.payPortal(); payOpen(t, r.url); }
+    catch (e) { t.remove(); coachAsk(`お支払いの管理の画面を開けませんでした。<br><small>ネットにつながっているか確かめて、もう一度お試しください。<br>（${esc(String((e && (e.code || e.message)) || e).slice(0, 80))}）</small>`, [{ label: 'OK', value: true }], 'sec'); }
+  }
+  function payOpen(t, url) {
       if (window.top !== window) {   // 版709：PCなど、ページの中で開いている時。自動で開けない時は、押して開くボタンを出す
-        let w = null; try { w = window.open(r.url, '_blank'); } catch (_) {}
+        let w = null; try { w = window.open(url, '_blank'); } catch (_) {}
         if (w) t.remove();
-        else { t.innerHTML = `<p>下のボタンを押すと、支払いの画面が<br>別のタブで開きます。</p><a class="pay-wait-go" href="${esc(r.url)}" target="_blank" rel="noopener">支払いの画面を開く</a><button type="button" class="pay-wait-x">やめる</button>`;
+        else { t.innerHTML = `<p>下のボタンを押すと、支払いの画面が<br>別のタブで開きます。</p><a class="pay-wait-go" href="${esc(url)}" target="_blank" rel="noopener">支払いの画面を開く</a><button type="button" class="pay-wait-x">やめる</button>`;
           t.querySelector('.pay-wait-go').onclick = () => setTimeout(() => t.remove(), 300); t.querySelector('.pay-wait-x').onclick = () => t.remove(); }
       } else {
-        location.href = r.url;
+        location.href = url;
         // 版708：支払いの画面を閉じてもどった時（iPhoneのホーム画面アプリなど）に「開いています…」が残らないように
         setTimeout(() => { if (t.isConnected) { t.innerHTML = '<p>支払いの画面を開いています…</p><button type="button" class="pay-wait-x">閉じる</button>'; t.querySelector('button').onclick = () => t.remove(); } }, 5000);
-      } }
-    catch (e) { t.remove(); coachAsk(`支払いの画面を開けませんでした。<br><small>ネットにつながっているか確かめて、もう一度お試しください。<br>（${esc(String((e && (e.code || e.message)) || e).slice(0, 80))}）</small>`, [{ label: 'OK', value: true }], 'sec'); }
+      }
   }
-  // パスを足す（購入・受け取りの時）
-  function premAdd(days) { const now = Date.now(); if (C.premOn(save)) save.prem.until += days * DAY; else save.prem = { start: midnight(now), until: midnight(now) + days * DAY, got: [] }; }
+  // パスを足す（購入・受け取りの時）。until：月額パスの時は、Stripeの「この月の終わり」＋1日（更新の受け取りが少し遅れても切れないように）
+  function premAdd(days, until) { const now = Date.now();
+    if (until) { const u = until + DAY; if (C.premOn(save)) save.prem.until = Math.max(save.prem.until, u); else save.prem = { start: midnight(now), until: u, got: [] }; return; }
+    if (C.premOn(save)) save.prem.until += days * DAY; else save.prem = { start: midnight(now), until: midnight(now) + days * DAY, got: [] }; }
+  const subLive = () => { const S = save && save.premSub; return !!(S && ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(S.status)); };
   // 払い終わったものを受け取る（ゲームにもどった時・ホーム・ショップを開いた時）
   let payBusy = false;
   async function payCollect() {
     if (payBusy || !save || !payReal()) return; payBusy = true;
     try {
-      const got = await DotNet.payClaim(); if (!got.length) return;
+      const got = await DotNet.payClaim();
+      { const old = JSON.stringify(save.premSub || null); save.premSub = got.sub || null;   // 版712：月額パスの状態（自動更新中・解約予定）
+        if (JSON.stringify(save.premSub) !== old) { store(); const sb = document.querySelector('#shopScreen:not([hidden])'); if (sb && sb._redraw) sb._redraw(); } }
+      if (!got.length) return;
       for (let i = 0; i < 600 && document.getElementById('ttTitle'); i++) await new Promise((r) => setTimeout(r, 200));   // 版707：タイトル画面の上では飛ばさない
       for (const g of got) {
-        const c0 = save.coins || 0; save.coins = c0 + (g.coins || 0); if (g.premDays) premAdd(g.premDays);
+        const c0 = save.coins || 0; save.coins = c0 + (g.coins || 0); if (g.premDays) premAdd(g.premDays, g.premUntil);
         (save.buys = save.buys || []).push({ id: g.item, coins: g.coins, yen: g.yen, at: Date.now(), pay: g.id, live: !!g.live }); delete save.payPending;
-        addPost({ kind: 'buy', coins: g.coins || 0, yen: g.yen || 0, prem: g.premDays || 0, test: !g.live }); try { postBadge(); } catch (_) {}   // 版705：ポストに記録
+        addPost({ kind: 'buy', coins: g.coins || 0, yen: g.yen || 0, prem: g.premDays || 0, renew: !!g.renew, test: !g.live }); try { postBadge(); } catch (_) {}   // 版705：ポストに記録
         store(); premSync();
         const cs = document.querySelector('#coinScreen:not([hidden]) .lk-box'), sb = document.querySelector('#shopScreen:not([hidden]) .lk-box');
         if (cs && g.coins) { coinGain(cs, cs.querySelector('.cs-have') || cs, c0, save.coins, null); await new Promise((r) => setTimeout(r, 1900)); }
         else if (sb && g.coins) { const cn = sb.querySelector('.sh3-cn'), tg = sb.querySelector('.sh3-coin'); if (cn) { coinGain(sb, sb.querySelector('.pm-buy') || tg, c0, save.coins, null, { to: tg, num: cn }); await new Promise((r) => setTimeout(r, 1900)); } }
         else { const hc = document.querySelector('.h2-coin'), hb = hc && hc.querySelector('b');   // 版706：ホームの時は、上の帯のコインへ飛ばす
           if (hc && hb && g.coins) { homeCoinFly(hc, hb, c0, save.coins); await new Promise((r) => setTimeout(r, 1900)); } else { try { DotSound.play('coinBurst'); } catch (_) {} } }
-        await coachAsk(g.item === 'prem' ? `ご購入ありがとうございます！<br><b>プレミアムパス（${g.premDays}日）</b>を手に入れました。<br><b>${g.coins}コイン</b>もどうぞ。` : `ご購入ありがとうございます！<br><b>${(g.coins || 0).toLocaleString()} コイン</b>が届きました。`, [{ label: 'OK', value: true }], 'sec');
+        await coachAsk(g.item === 'prem' ? (g.renew ? `プレミアムパスが<b>自動で更新</b>されました。<br>今月もよろしくお願いします！<b>${g.coins}コイン</b>をどうぞ。` : `ご購入ありがとうございます！<br><b>プレミアムパス（月額）</b>がはじまりました。<br><b>${g.coins}コイン</b>もどうぞ。<br><small>毎月、自動で更新されます。解約は、ショップのプレミアムパスからいつでもできます。</small>`) : `ご購入ありがとうございます！<br><b>${(g.coins || 0).toLocaleString()} コイン</b>が届きました。`, [{ label: 'OK', value: true }], 'sec');
       }
       if (got.some((g) => g.item === 'prem')) premDaily();
     } catch (_) {} finally { payBusy = false; }
@@ -3892,7 +3912,12 @@
   addEventListener('focus', () => setTimeout(payCollect, 400));
   async function buyPrem(redraw) {
     const P = C.PREM, on = C.premOn(save);
-    if (payReal()) return payGo('prem', `プレミアムパス（${P.days}日）`, P.yen);
+    if (payReal()) {   // 版712：月額パス
+      if (!subLive()) return payGo('prem', 'プレミアムパス（月額）', P.yen);
+      const S = save.premSub, end = S.until ? new Date(S.until) : null, ds = end ? `${end.getMonth() + 1}月${end.getDate()}日` : '';
+      const v = await coachAsk(S.cancelAtEnd ? `プレミアムパスは<b>解約ずみ</b>です。<br><small>${ds ? `${ds}まで使えます。そのあとは、お金はかかりません。<br>` : ''}続けたくなったら、「お支払いの管理」から解約を取り消せます。</small>` : `プレミアムパスは<b>自動更新中</b>です。<br><small>${ds ? `次の更新日：${ds}（¥${P.yen.toLocaleString()}）<br>` : ''}解約・カードの変更は「お支払いの管理」からできます。<br>解約しても、${ds || 'その月の終わり'}まで使えます。</small>`, [{ label: 'お支払いの管理', value: true }, { label: '閉じる', value: false }], 'sec');
+      if (v) payManage(); return;
+    }
     const ok = await coachAsk(`<b>プレミアムパス（${P.days}日）</b>を <b>¥${P.yen.toLocaleString()}</b> で購入しますか？${on ? `<br><small>今のパスに ${P.days}日 足されます（残り ${premLeft()}日 → ${premLeft() + P.days}日）</small>` : ''}<br><small>（テスト版のため、本当のお金はかかりません）</small>`, [{ label: '購入する', value: true }, { label: 'やめる', value: false }], 'sec');
     if (!ok) return;
     const now = Date.now();
@@ -4034,8 +4059,10 @@
       } else if (S.tab === 'prem') {
         const on = C.premOn(save);
         h = `<div class="sh3 sh3-prem"><img class="sh3-bgimg" src="img/shop_prem.jpg" alt="">${head}
-          <div class="pm-perks"><b>パスを持っている間</b><span>・毎日 コイン・カード・カケラ</span><span>・試合の早送り（2倍・4倍）</span><span>・SPメニューのヒント（毎週1枚）</span><span>・特訓カードを199枚まで持てる</span><span>・名前の横に金のマーク</span><span>・買った時に ${C.PREM.bonus}コイン</span></div>
-          <button class="pm-buy${on ? ' on' : ''}" data-prem="1">${on ? `<small>残り ${premLeft()}日</small>延長する ¥${C.PREM.yen.toLocaleString()}` : `購入する <b>¥${C.PREM.yen.toLocaleString()}</b><small>30日</small>`}</button>${on ? '<button class="pm-cal" data-pcal="1">毎日のプレゼント</button>' : ''}</div>`;
+          <div class="pm-perks"><b>パスを持っている間</b><span>・毎日 コイン・カード・カケラ</span><span>・試合の早送り（2倍・4倍）</span><span>・SPメニューのヒント（毎週1枚）</span><span>・特訓カードを199枚まで持てる</span><span>・名前の横に金のマーク</span><span>・${payReal() ? '毎月' : '買った時に'} ${C.PREM.bonus}コイン</span></div>
+          <button class="pm-buy${on ? ' on' : ''}" data-prem="1">${payReal()
+            ? (subLive() ? (save.premSub.cancelAtEnd ? `<small>残り ${premLeft()}日</small>解約ずみ・管理` : `<small>自動更新中</small>お支払いの管理`) : on ? `<small>残り ${premLeft()}日</small>月額で続ける ¥${C.PREM.yen.toLocaleString()}` : `はじめる <b>月額¥${C.PREM.yen.toLocaleString()}</b>`)
+            : (on ? `<small>残り ${premLeft()}日</small>延長する ¥${C.PREM.yen.toLocaleString()}` : `購入する <b>¥${C.PREM.yen.toLocaleString()}</b><small>30日</small>`)}</button>${on ? '<button class="pm-cal" data-pcal="1">毎日のプレゼント</button>' : ''}</div>`;
       } else {
         const list = Object.keys(C.CARDS).filter((c) => S.cat === 'all' || C.CARDS[c].cat === S.cat);
         if (!S.sel || !list.includes(S.sel)) { S.sel = list[0]; S.qty = 1; }
@@ -4073,6 +4100,7 @@
       { const go = box.querySelector('.sh3-go'); if (go) go.onclick = () => { const c = shopSt.sel, had = (save.cards || {})[c] || 0, coin0 = save.coins || 0; let n = 0; for (let k = 0; k < shopSt.qty; k++) { if (C.buyCard(save, c)) n++; else break; } store(); const g = box.querySelector('.sh3-grid'), st = g ? g.scrollTop : 0; shopSt.qty = 1; draw(); const g2 = box.querySelector('.sh3-grid'); if (g2) g2.scrollTop = st; try { DotSound.play(n ? 'ok' : 'back'); } catch (_) {} toast(n ? `<img class="sh3-tc" src="cards/${c}.jpg" alt=""><span><b>${esc(C.CARDS[c].name)}</b> を ${n}枚 買いました！<br><small>所持 ${had}枚 → <em>${save.cards[c]}枚</em>　／　コイン ${coin0.toLocaleString()} → ${(save.coins || 0).toLocaleString()}</small></span>` : had >= C.CARD_MAX ? 'もう99枚持っているので買えません' : 'コインが足りません'); }; }   // 版562：買えたことが分かるように、枚数とコインの変化を見せる
       { const bg = box.querySelector('.sh3-ban-bg'); if (bg) { const bn = C.gachaBanner(); gcBgFor(bn.uniq.chip, (u) => { bg.style.backgroundImage = `url(${u})`; }); } }
     };
+    el._redraw = () => draw();   // 版712：月額パスの状態が変わった時に描き直す
     draw(); el.hidden = false; el._fit();
   }
 
@@ -4236,7 +4264,7 @@
         else if (it.kind === 'fok') { t = 'フレンドになりました！'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}がフレンド申請を承認しました。空港の「フレンド」から対戦できます。`; }
         else if (it.kind === 'def') { t = it.r === 'W' ? '守った！' : it.r === 'D' ? '引き分け' : 'やられた…'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}がランクマッチで挑んできました。<em>${it.s[0]} − ${it.s[1]}</em>`; }
         else if (it.kind === 'reward') { t = `${RANKS[it.rank].n}ライセンス取得！`; body = `ごほうび：コイン${it.coins}枚・特訓カード${it.cards}枚${it.kak ? `・覚醒のカケラ${it.kak}` : ''}（受け取りずみ）`; }
-        else if (it.kind === 'buy') { t = it.prem ? 'プレミアムパスのご購入' : 'Dコインのご購入'; body = `ご購入ありがとうございます。<br>${it.prem ? `<b>プレミアムパス（${it.prem}日）</b>と ` : ''}<b class="po-coin">${COIN}${(it.coins || 0).toLocaleString()} コイン</b>が入りました（¥${(it.yen || 0).toLocaleString()}）。${it.test ? '<br><small>（テストの購入です。本当のお金はかかっていません）</small>' : ''}`; }   // 版705：課金の記録
+        else if (it.kind === 'buy') { t = it.prem ? (it.renew ? 'プレミアムパスの更新' : 'プレミアムパスのご購入') : 'Dコインのご購入'; body = `ご購入ありがとうございます。<br>${it.prem ? `<b>プレミアムパス（${it.renew ? '自動更新・' : ''}${it.prem}日）</b>と ` : ''}<b class="po-coin">${COIN}${(it.coins || 0).toLocaleString()} コイン</b>が入りました（¥${(it.yen || 0).toLocaleString()}）。${it.test ? '<br><small>（テストの購入です。本当のお金はかかっていません）</small>' : ''}`; }   // 版705：課金の記録
         else if (it.kind === 'room') { t = 'フレンド対戦の招待'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}がルームを作りました。`; btns = Date.now() - (it.at || 0) < 30 * 60 * 1000 ? `<button class="po-ok" data-room="${it.id}">ルームに入る</button>` : '<span class="po-done">時間切れ</span>'; }
         else if (it.kind === 'news') { t = it.title || 'お知らせ'; body = esc(it.text || '').replace(/\n/g, '<br>'); }
         else { t = it.title || 'お知らせ'; body = esc(it.text || ''); }

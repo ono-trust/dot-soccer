@@ -9,8 +9,10 @@ a{display:inline-block;background:linear-gradient(#ffe36a,#f0a514);color:#5a3a00
 small{display:block;margin-top:14px;color:#667;font-size:13px}
 </style></head><body><div class="box" id="b"></div>
 <script>
-var ok = /[?&]ok=1/.test(location.search);
-document.getElementById('b').innerHTML = ok
-  ? '<h1>お支払いが完了しました</h1><p>ご購入ありがとうございます。<br>ゲームにもどると、コイン・パスが届きます。</p><a href="./index.html?paid=1">ゲームにもどる</a><small>このページを別のタブで開いている時は、このタブを閉じてゲームの画面にもどってください。</small>'
+var ok = /[?&]ok=1/.test(location.search), mg = /[?&]ok=3/.test(location.search);
+document.getElementById('b').innerHTML = mg
+  ? '<h1>お支払いの管理</h1><p>設定の画面を閉じました。<br>解約した時も、今の月の終わりまでパスは使えます。</p><a href="./index.html?paid=1">ゲームにもどる</a><small>このページを別のタブで開いている時は、このタブを閉じてゲームの画面にもどってください。</small>'
+  : ok
+  ? '<h1>お支払いが完了しました</h1><p>ご購入ありがとうございます。<br>ゲームにもどると、コイン・パスが届きます。<br>プレミアムパスは毎月、自動で更新されます。</p><a href="./index.html?paid=1">ゲームにもどる</a><small>このページを別のタブで開いている時は、このタブを閉じてゲームの画面にもどってください。</small>'
   : '<h1>お支払いをやめました</h1><p>お金はかかっていません。</p><a href="./index.html?paid=1">ゲームにもどる</a>';
 </script></body></html>
