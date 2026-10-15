@@ -3514,3 +3514,6 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 /* 版687：切りかえボタンを表の外（右下・フレンドの下）に出す。表にかぶらないように */
 .ot-mode,.ot-mode.ui-img{width:92px;height:92px;right:-122px;bottom:6px}
 .ot-sc{padding-bottom:0}
+/* 版688：名前が2行にならないように。能力の表示は列が多いので少しつめる */
+.ot td{white-space:nowrap}
+.ot.ab td{padding:4px 3px}.ot.ab .rk2{font-size:23px}.ot.ab .tbadge{font-size:13px;padding:2px 8px}.ot.ab th.ic .pico{width:26px;height:24px}.ot.ab th{padding:6px 3px}
