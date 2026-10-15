@@ -3498,3 +3498,16 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 .ap-neterr{display:block;color:#c0392b;font-size:11px;font-weight:700;text-align:left;margin:-2px 0 2px;line-height:1.2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 /* 版685：ランクマッチのVSが右のカードにかかっていた（斜めの文字ははみ出すので、小さく・少し左に） */
 .rk-vs{gap:22px}.rk-vs .ap-vs-t{font-size:88px;letter-spacing:-3px;transform:translateX(-9px);flex:none}
+/* 版686：チーム編成の表を大きく（本家くらいの文字の大きさ。行の高さ約46px） */
+.of-team{left:140px;top:14px;width:1000px;height:692px;padding:8px 12px}
+.ot-h{font-size:26px;margin-bottom:4px}.ot-h span{font-size:17px;padding:2px 12px}
+.ot-sc{height:610px}
+.ot{font-size:27px}
+.ot th{font-size:18px;padding:6px 6px}.ot th.ic .pico{width:30px;height:28px}
+.ot td{padding:5px 6px;height:46px;box-sizing:border-box}.ot td.no{font:italic 900 26px Arial}
+.ot .pos{font-size:19px;min-width:54px;padding:3px 0}.ot .cdot{width:28px;height:28px}.ot .tbadge{font-size:16px;padding:2px 10px}
+.ot .ob-y{width:14px;height:19px}
+.ot-hint{display:none}
+.ot-mode,.ot-mode.ui-img{width:70px;height:70px;right:14px;bottom:12px}
+.ot .rk2{font-size:26px}.ot td .tz{font-size:24px}.ot td .capb{font-size:17px;padding:2px 10px}.ot td .capb b{font-size:22px}
+.ot-sc{padding-bottom:74px;box-sizing:border-box}
