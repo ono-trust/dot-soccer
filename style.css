@@ -3561,3 +3561,10 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 .s2mu{align-items:stretch}
 .s2mu button{width:100%;box-sizing:border-box;padding:0 4px!important;font-size:13px!important;overflow:hidden;text-overflow:clip;letter-spacing:-.03em;min-width:0}
 .sq2.ph .s2mu button{font-size:11px!important}
+/* 版694：総合評価（E〜S）の札。リザーブ・ピッチ・ベンチの選手 */
+.ovr{display:inline-block;font:italic 900 15px/1 Arial,sans-serif;padding:2px 5px 2px 4px;border-radius:6px;background:#14234a;border:2px solid #fff;font-style:italic;pointer-events:none}
+.ovr.g-S{color:#ffa21f;background:#3a1a00}.ovr.g-A{color:#ff4a3a}.ovr.g-B{color:#3fc0ff}.ovr.g-C{color:#ffe02a}.ovr.g-D{color:#f2f2f2}.ovr.g-E{color:#a8b0b0}
+.s2sc .ovr.s2pw{position:absolute;left:4px;top:2px;z-index:3;font-size:16px}
+.s2p .ovr.s2ov{position:absolute;right:-12px;top:-2px;z-index:4;font-size:14px;padding:1px 4px}
+.s2p.bn .ovr.s2ov{right:-14px;top:-4px;font-size:12px}
+.sq2.ph .s2p .ovr.s2ov{font-size:12px;right:-10px}

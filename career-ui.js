@@ -1394,7 +1394,11 @@
   const ROLE_NAME = { captain: 'キャプテン', pk: 'PKキッカー', fk: 'FKキッカー', ck: 'CKキッカー' }, ROLE_TAG = { captain: 'C', pk: 'PK', fk: 'FK', ck: 'CK' };
   // ================= スタメン（カルチョビットAのボード）：マス目のピッチに顔を並べ、ドラッグで動かす・入れ替える =================
   let sqShow = 'cond', sqDrag = null, sqPop = -1, sqNote = false, sqFromHome = false, sqRes = -1, sqResOpen = false, sqMulti = null;   // sqMulti：まとめて放出で選んだ選手（版692）
-  const resPow = (q) => { try { C.ensurePts(q); return Math.round(D.PARAMS.reduce((a, x) => a + (q.pts[x.k] || 0), 0) / D.PARAMS.length); } catch (_) { return 0; } };   // 版692：リザーブの総合（能力の平均）
+  const resPow = (q) => { try { C.ensurePts(q); return Math.round(D.PARAMS.reduce((a, x) => a + (q.pts[x.k] || 0), 0) / D.PARAMS.length); } catch (_) { return 0; } };   // 版692：総合（能力の平均）
+  // 版694：総合評価（E〜S）。平均の値に合わせた目安：地域2部＝E、地域1部＝D、D3＝C、D2＝B、D1＝A、D1の上位＝S
+  const OVR = [['E', 0], ['D', 60], ['C', 150], ['B', 300], ['A', 480], ['S', 720]];
+  const ovrG = (q) => { const v = resPow(q); let g = 'E'; for (const [k, t] of OVR) if (v >= t) g = k; return g; };
+  const ovrTag = (q, cls) => { const g = ovrG(q); return `<i class="ovr g-${g}${cls ? ' ' + cls : ''}" title="総合評価">${g}</i>`; };
   // 顔の白い背景を抜く（ふちから続く白だけ透明に）。小さく描いてもにじまないよう、ほどよい大きさで作っておく
   const cutCache = new Map();
   function cutFace(img) {
@@ -1477,7 +1481,7 @@
       if (sqShow !== 'cond') return `<i class="s2b cdot ${condDot(q)}"></i>`;
       return `<i class="s2b cdot ${condDot(q)}"></i><span class="s2ca">${condArrow(q, 22)}</span>`;
     };
-    const chip = (q, i, x, y, cls) => `<div class="s2p ${cls || ''}${i === pick ? ' sel' : ''}${q.injury > 0 ? ' inj' : ''}" data-i="${i}" style="left:${x}px;top:${y}px">${sqTag(q)}<span class="s2tags">${tagsOf(q)}</span>${facePic(q, 's2f', i >= 11)}${badge(q)}${i > 0 && i < 11 && q.position !== roles[i] && q.position !== 'GK' ? '<em class="s2mis" title="本来のポジションとちがう">!</em>' : ''}</div>`;
+    const chip = (q, i, x, y, cls) => `<div class="s2p ${cls || ''}${i === pick ? ' sel' : ''}${q.injury > 0 ? ' inj' : ''}" data-i="${i}" style="left:${x}px;top:${y}px">${sqTag(q)}<span class="s2tags">${tagsOf(q)}</span>${facePic(q, 's2f', i >= 11)}${badge(q)}${ovrTag(q, 's2ov')}${i > 0 && i < 11 && q.position !== roles[i] && q.position !== 'GK' ? '<em class="s2mis" title="本来のポジションとちがう">!</em>' : ''}</div>`;
     let dots = chip(ps[0], 0, PX0 + PW / 2, PY0 + R * CH + CH * 1.05, 'gk');
     for (let i = 1; i < 11; i++) { const c = cells[i]; if (c) dots += chip(ps[i], i, cx(c.c), cy(c.r)); }
     // 控え：1列目（ベンチ入り）・2列目（灰色）
@@ -1512,7 +1516,7 @@
       <button class="s2btn s2db" data-a="show" title="表示の切りかえ（名前・調子／タイプ／星）"><span><img class="s2chg" src="icons/ui_change.png" alt="切りかえ"></span></button>
       <button class="s2btn s2tb" data-a="tac"><span>${RB_TAC_SVG}</span><b>戦術</b></button>
       ${(save.reserve || []).length ? `<button class="s2btn s2rb" data-a="res"><span>${(save.reserve || []).length}</span><b>リザーブ</b></button>` : ''}
-      ${sqResOpen && (save.reserve || []).length ? `<div class="s2strip"><div class="s2st-h"><b>リザーブ</b><button class="s2res-x xbtn" title="とじる"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></button></div><div class="s2st-l">${save.reserve.map((q, k) => `<div class="s2sc${k === sqRes ? ' on' : ''}${sqMulti && sqMulti.has(q) ? ' chk' : ''}" data-r="${k}">${facePic(q, 's2sf')}<i class="s2pw" title="総合（能力の平均）">${C.rankInfo(resPow(q)).g}</i>${sqMulti ? `<i class="s2ck">${sqMulti.has(q) ? '✓' : ''}</i>` : ''}${sqTag(q)}</div>`).join('')}</div>${sqMulti ? `<div class="s2mu"><button class="s2mu-go"${sqMulti.size ? '' : ' disabled'}>${sqMulti.size}人を放出</button><button class="s2mu-x">やめる</button></div>` : (sqRes < 0 ? '<div class="s2mu"><button class="s2mu-on">まとめて放出</button></div>' : '') + (sqRes >= 0 ? `<button class="s2rel s2rel2" data-rel="${sqRes}" title="放出"><img src="icons/pc_release.png" alt="放出"></button>` : '<p class="s2st-hint">タップ→チームの選手をタップ／横に引っぱって置く</p>')}</div>` : ''}
+      ${sqResOpen && (save.reserve || []).length ? `<div class="s2strip"><div class="s2st-h"><b>リザーブ</b><button class="s2res-x xbtn" title="とじる"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></button></div><div class="s2st-l">${save.reserve.map((q, k) => `<div class="s2sc${k === sqRes ? ' on' : ''}${sqMulti && sqMulti.has(q) ? ' chk' : ''}" data-r="${k}">${facePic(q, 's2sf')}${ovrTag(q, 's2pw')}${sqMulti ? `<i class="s2ck">${sqMulti.has(q) ? '✓' : ''}</i>` : ''}${sqTag(q)}</div>`).join('')}</div>${sqMulti ? `<div class="s2mu"><button class="s2mu-go"${sqMulti.size ? '' : ' disabled'}>${sqMulti.size}人を放出</button><button class="s2mu-x">やめる</button></div>` : (sqRes < 0 ? '<div class="s2mu"><button class="s2mu-on">まとめて放出</button></div>' : '') + (sqRes >= 0 ? `<button class="s2rel s2rel2" data-rel="${sqRes}" title="放出"><img src="icons/pc_release.png" alt="放出"></button>` : '<p class="s2st-hint">タップ→チームの選手をタップ／横に引っぱって置く</p>')}</div>` : ''}
       ${forms}
       <p class="s2hint">選手をドラッグして、マスに置く・ほかの選手（控えとも）と入れ替える。タップでくわしく。</p></div>`;
     const L = $('#clubLayer'), board = L.querySelector('.s2board'); fitSq2();
