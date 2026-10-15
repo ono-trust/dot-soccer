@@ -3593,6 +3593,12 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 .pd-f p{margin:0;font-size:18px;font-weight:800;display:flex;align-items:center;gap:4px;flex-wrap:wrap}.pd-f b{color:#ffd23a;font-size:22px;margin:0 2px}.pd-f .coin-ico,.pd-f .kk-ico{width:26px;height:26px}
 .pd-go{min-width:200px;height:60px;border-radius:999px;border:4px solid #fff;background:linear-gradient(#ffe36a,#f0a514);color:#5a3a00;font:900 26px/1 "Hiragino Kaku Gothic ProN",sans-serif;box-shadow:0 5px 0 #8a5a00;cursor:pointer}
 .pd-got{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:900}.pd-got .pd-card{width:46px;height:62px;object-fit:cover;border-radius:6px;border:2px solid #fff}
-.spt.hint{box-shadow:0 0 0 3px #ffd23a}.spc.hintc{box-shadow:0 0 0 3px #ffd23a,0 0 10px #ffd23a}
+.spc.hintc{box-shadow:0 0 0 3px #ffd23a,0 0 10px #ffd23a}
 .sp2-hint{margin:4px 0 0;color:#b07a00;font-weight:900;font-size:13px;text-align:center}
 .sh3-coin .sh3-cn{font-style:normal}
+/* 版697：SPメニュー一覧の左上のふちが切れていた。ヒントのメニューは点線のふち＋「ヒント」の札に */
+.sp2-grid{padding:8px 10px 10px 8px}
+.spt.sphint{box-shadow:0 3px 0 rgba(0,0,0,.3);border:3px dashed #ffd23a}
+.spt.sphint.sel{border-style:solid;box-shadow:0 0 0 3px #ffe23a,0 3px 0 rgba(0,0,0,.3)}
+.spt.sphint::before{content:'ヒント';position:absolute;left:-4px;top:-6px;z-index:2;background:#ffd23a;color:#5a3a00;font:900 12px/1 "Hiragino Kaku Gothic ProN",sans-serif;padding:3px 7px;border-radius:999px;box-shadow:0 2px 0 rgba(0,0,0,.3)}
+.spc.hintc{box-shadow:0 0 0 2px #ffd23a}
