@@ -176,7 +176,7 @@
     } catch (_) {}
   }
   // 版703：お金での購入（Stripe）。支払いの画面のURLをサーバーで作る・払い終わったものを受け取る
-  const PAY_ON = false;   // 版703：サーバーの準備ができたら true にする。false にすると、前のテスト版（お金のかからない購入）にもどる
+  const PAY_ON = true;   // 版704：本物の支払い（Stripe）を使う。false にすると、前のテスト版（お金のかからない購入）にもどる
   let fnP = null;
   const fns = () => fnP || (fnP = (async () => { if (!(await ready())) throw new Error('offline'); if (!firebase.functions) await load(SDK + 'firebase-functions-compat.js'); return firebase.app().functions('asia-northeast1'); })().catch((e) => { fnP = null; throw e; }));
   async function payCheckout(item) { const f = await fns(); const r = await withTimeout(f.httpsCallable('payCheckout')({ item, back: location.href }), 20000); return r.data; }
