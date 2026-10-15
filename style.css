@@ -3481,3 +3481,12 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 .ob-tro img{height:110px;object-fit:contain;display:block;margin:0 auto 6px}.ob-tro b{display:block;font-size:14px}.ob-tro small{color:#9ab;font-size:12px}
 .ob-empty{flex:1;display:grid;place-items:center;text-align:center;color:#cfe;font-size:18px;line-height:1.8}
 .ob-gold{color:#ffd84a}
+/* 版683：設定のアカウントIDの行が折り返さないように（コピーした時も幅を変えない） */
+#mSheet .st-al,#mSheet .st-id,#mSheet .st-dev{white-space:nowrap;flex:none}
+#mSheet .st-copy{width:150px!important;padding:0!important;white-space:nowrap;flex:none}
+#mSheet .st-copy.ok{background:#e4f6e4!important;border-color:#2a8a3a!important;color:#1f6e2c;box-shadow:0 2px 0 #2a8a3a}
+/* 版683：監督ライセンスのバッジ絵（D・C・B・A・S） */
+.ap-medal.ap-lic,.ap2 .ap-rankp .ap-medal.ap-lic{background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+.ap-medal.ap-lic img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 4px 0 rgba(0,0,0,.18))}
+.ap-lad img{width:42px;height:48px;object-fit:contain;display:block}
+.ap-lad.on img{filter:drop-shadow(0 0 6px var(--rc))}

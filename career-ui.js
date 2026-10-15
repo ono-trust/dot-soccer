@@ -4317,7 +4317,7 @@
   // 空港の背景：ホームの絵の空港あたりを大きく写して、ぼかす
   function apBg() { let src = ''; try { const im = H2.cur(); src = im && im.src; } catch (_) {} return src ? `<div class="ap-bg" style="background-image:url('${src}')"></div>` : '<div class="ap-bg"></div>'; }
   function apTop(t, sub, ic) { return `<div class="ap-top"><img src="${ic || 'icons/home_online.png'}" alt=""><div><b>${t}</b><small>${sub}</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>`; }
-  function apMedal(i, size) { const R = RANKS[i]; return `<div class="ap-medal" style="--rc:${R.c};--sz:${size}px"><i>${R.k}</i><b>LICENSE</b></div>`; }
+  function apMedal(i, size) { const R = RANKS[i]; return `<div class="ap-medal ap-lic" style="--rc:${R.c};--sz:${size}px"><img src="icons/lic/${R.k}.png" alt="${R.n}" draggable="false"></div>`; }   // 版683：ライセンスのバッジ絵
   async function friendMenu(back) {
     if (typeof back === 'function') friendMenu.back = back; else if (back !== 'keep') friendMenu.back = null;
     const on = ensureOnline(); on.flist = on.flist || [];
@@ -4356,7 +4356,7 @@
     const on = ensureOnline(), i = rankIdx(on.rp), last = i === RANKS.length - 1, lo = RANK_AT[i], hi = last ? lo : RANK_AT[i + 1], into = on.rp - lo, span = hi - lo, pct = last ? 100 : Math.round(into / span * 100);
     const el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box');
     const nx = last ? null : RANK_REWARD[i + 1], gotNx = !last && rankIdx(on.best || 0) >= i + 1;
-    const ladder = RANKS.map((R, k) => `<div class="ap-lad${k === i ? ' on' : ''}${k < i ? ' done' : ''}" style="--rc:${R.c}"><i>${R.k}</i><small>${R.n}</small></div>`).join('<span class="ap-lad-ln"></span>');
+    const ladder = RANKS.map((R, k) => `<div class="ap-lad${k === i ? ' on' : ''}${k < i ? ' done' : ''}" style="--rc:${R.c}"><img src="icons/lic/${R.k}.png" alt="" draggable="false"><small>${R.n}</small></div>`).join('<span class="ap-lad-ln"></span>');
     const net = !!(window.DotNet && DotNet.on), f0 = (on.flist || [])[0];
     const statRow = (ic, l, v) => `<div><span class="ap-si">${AP_SVG[ic]}</span><small>${l}</small><b>${v}</b></div>`;
     const wdl = (w, d, l) => `${w || 0}<i>勝</i> ${d || 0}<i>分</i> ${l || 0}<i>敗</i>`;
@@ -4642,7 +4642,7 @@
     const tb = e.target.closest ? e.target.closest('[data-m]') : null, m = tb && tb.dataset.m;   // 版679：ボタンの中の絵や文字を押しても効くように
     if (e.target === sheet) { sheet.hidden = true; return; }
     if (!m) return;
-    if (m === 'copyid') { if (acctFid) { try { await navigator.clipboard.writeText(String(acctFid)); tb.textContent = 'コピー済み'; setTimeout(() => { tb.textContent = 'コピー'; }, 1500); } catch (_) { tb.textContent = 'できません'; } } return; }
+    if (m === 'copyid') { if (acctFid) { try { await navigator.clipboard.writeText(String(acctFid)); tb.textContent = 'コピーした'; tb.classList.add('ok'); setTimeout(() => { tb.textContent = 'コピー'; tb.classList.remove('ok'); }, 1500); } catch (_) { tb.textContent = 'できません'; } } return; }
     sheet.hidden = true;
     if (m === 'career') window.__career.open();
     else if (m === 'cloud') { window.__career.openCloud(); return; }
