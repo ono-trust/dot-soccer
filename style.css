@@ -3541,3 +3541,7 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 #ttTitle .ttl-bw{position:absolute;left:0;top:0;width:34px;height:34px;z-index:2}
 #ttTitle .ttl-bw::before{content:"";position:absolute;left:3px;bottom:-5px;width:30px;height:8px;border-radius:50%;background:rgba(0,40,0,.3)}
 #ttTitle .ttl-bw canvas{position:relative;width:34px;height:34px;image-rendering:pixelated;display:block}
+/* 版691：タップしたら少し暗くなってから、ホームへ */
+#ttTitle::after{content:'';position:absolute;inset:0;z-index:9;background:#000;opacity:0;pointer-events:none;transition:opacity .38s ease-in}
+#ttTitle.dim::after{opacity:.6}
+#ttTitle.out{opacity:0;transition:opacity .5s ease-out}

@@ -177,13 +177,14 @@
         ppl.forEach((p, i) => {
           const x = head - dir * GAP * i - 45; p.t += dt * 9;
           const f = ((Math.floor(p.t) % 4) + 4) % 4, c = p.cv.getContext('2d'); c.clearRect(0, 0, p.cv.width, p.cv.height); c.drawImage(p.fr[f], 0, 0);
-          p.box.style.transform = `translate(${x}px,${rowY}px)`; p.cv.style.transform = dir > 0 ? 'scaleX(-1)' : '';   // 横向きの絵は左向きなので、右へ走る時に裏返す
+          p.box.style.transform = `translate(${x}px,${rowY}px)`; p.cv.style.transform = dir < 0 ? 'scaleX(-1)' : '';   // 横向きの絵は右向き。左へ走る時だけ裏返す
         });
         drawBall(bang); bwrap.style.transform = `translate(${bx - 17}px,${rowY + 120 - 32}px)`;
         raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
-      el.onclick = () => { el.classList.add('out'); setTimeout(() => { cancelAnimationFrame(raf); removeEventListener('resize', fit); el.remove(); res(); }, 450); };
+      // 版691：タップ → 少し暗くなりながら、ホーム画面へ
+      el.onclick = () => { if (el.classList.contains('dim')) return; el.classList.add('dim'); try { window.DotSound && DotSound.play('tap'); } catch (_) {} setTimeout(() => el.classList.add('out'), 380); setTimeout(() => { cancelAnimationFrame(raf); removeEventListener('resize', fit); el.remove(); res(); }, 900); };
     });
   }
   // 背景（クラブハウス）と秘書の立ち絵だけの場面
@@ -433,12 +434,14 @@
     const ok = await idleHome(); homeWait = false;
     if (ok && active()) run(onHomeIdle);
   }
+  let titled = false;
   const T = {
     // 育成モードを開いた時：はじめての人ならチュートリアルを始める（true＝こちらで面倒を見る）
     boot(sv) {
       save = sv; if (LAB) return false;
       if (!save.tut) save.tut = { s: (!save.clubSet && (save.week || 1) <= 1 && save.season === 1 && !(save.history || []).length) ? 'start' : 'done' };
-      if (step() === 'start') { run(opening); return true; }
+      if (step() === 'start') { titled = true; run(opening); return true; }
+      if (!titled) { titled = true; title(); }   // 版691：アプリを開くたびにタイトル画面
       if (active()) kickHome();
       return active();
     },
