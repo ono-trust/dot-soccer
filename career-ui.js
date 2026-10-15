@@ -1911,7 +1911,9 @@
     const notes = [];
     if (o.learned && o.got && o.forgot) notes.push(`${esc(D.SKILLS[o.forgot].name)}を忘れた`);
     if (o.learned && o.skipped) notes.push(`「${esc(D.SKILLS[o.learned].name)}」は覚えなかった`);
-    if (o.typeTo) notes.push(`<b class="ty">タイプが ${esc(o.typeFrom)} → ${esc(o.typeTo)} に変わった！</b>`);
+    // 版699：タイプが変わったら大きく見せる（音つき）。タイプのメニューで変わらなかった時は「近づいた」
+    const tyBan = o.typeTo ? `<div class="trr-type"><b class="trr-tyh">タイプチェンジ！</b><span class="tbadge ${TYPE_CLS[o.typeFrom] || 'ty-bal'}">${esc(o.typeFrom || '')}</span><i class="trr-tyar">▶</i><span class="tbadge big ${TYPE_CLS[o.typeTo] || 'ty-bal'}">${esc(o.typeTo)}</span></div>`
+      : spm && spm.type && p.type !== spm.type ? `<p class="trr-tynear">タイプ「${esc(spm.type)}」に近づいた（もう少しで変わるかも）</p>` : '';
     if (o.injured) notes.push('<b class="inj">ケガをしてしまった…</b>');
     const ups = Object.entries(o.ups).filter(([, v]) => v >= 1 || v <= -1).sort((x, y) => y[1] - x[1]);
     const rows = ups.map(([k, v]) => { const b0 = o.before[k], a = C.rankInfo(b0), b = C.rankInfo(Math.min(C.PMAX - 1, Math.max(0, b0 + v))), up = b.g !== a.g;
@@ -1924,12 +1926,14 @@
       <div class="trr-h"><b>特訓の結果</b>${camp ? `<small>合宿ボーナス ×${C.CAMP.mult}</small>` : ''}</div>
       <div class="trr-top"><div class="trr-face">${facePic(p, '')}</div><div class="trr-info"><div class="trr-nm"><i class="pos ${POSC[p.position]}">${p.position}</i><b>${p.number}</b><span>${esc(p.name)}</span></div><div class="trr-cards">${cards}</div></div></div>
       ${ban}
+      ${tyBan}
       ${notes.length ? `<p class="trr-notes">${notes.join('　')}</p>` : ''}
       <div class="trr-gr"><span class="trr-gl">能力の成長</span><div class="trr-rows c${cols}">${rows || '<p class="trr-none">―</p>'}</div></div>
       <button class="trr-ok">OK</button></div>`;
     const fit = () => { const bx = el.querySelector('.trr-box'); if (!bx) return; const k = Math.min((el.clientWidth || innerWidth) * 0.97 / 860, (el.clientHeight || innerHeight) * 0.97 / Math.max(580, bx.offsetHeight || 580));   /* 版675：上がった能力が多い時は箱が縦に伸びるので、その分小さくして全部見せる */ bx.style.transform = `scale(${k})`; bx.style.setProperty('--k', k); };
     el.hidden = false; fit(); addEventListener('resize', fit); requestAnimationFrame(() => el.classList.add('on'));
     try { window.DotSound && DotSound.play(o.got ? 'skill' : 'ok'); } catch (_) {}
+    if (o.typeTo) setTimeout(() => { try { window.DotSound && DotSound.play('typeChange'); } catch (_) {} }, 650);
     return new Promise((res) => { el.querySelector('.trr-ok').onclick = () => { removeEventListener('resize', fit); el.classList.remove('on'); el.hidden = true; res(); }; });
   }
   // 「特訓する！」：その場でこの選手だけ特訓して結果を見せる

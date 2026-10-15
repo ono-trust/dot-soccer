@@ -3607,3 +3607,11 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 b.gr-S{color:#ffa21f;-webkit-text-stroke-color:#5a2a00}b.gr-A{color:#ff3a2a;-webkit-text-stroke-color:#5a0a00}b.gr-B{color:#2fb0f0;-webkit-text-stroke-color:#082a4a}
 b.gr-C{color:#ffe02a;-webkit-text-stroke-color:#4a3a00}b.gr-D{color:#f2f2f2;-webkit-text-stroke-color:#333}b.gr-E{color:#9aa0a0;-webkit-text-stroke-color:#222}
 .trr-rk b{-webkit-text-stroke-width:1.6px}
+/* 版699：特訓の結果：タイプチェンジ */
+.trr-type{flex:none;margin:8px 40px 0;display:flex;align-items:center;justify-content:center;gap:14px;padding:8px 14px;border-radius:12px;background:linear-gradient(90deg,#3a1a7a,#7a2ad0,#3a1a7a);border:3px solid #ffd23a;box-shadow:0 0 18px rgba(255,210,58,.6);animation:trrTy .7s .5s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes trrTy{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}
+.trr-tyh{font:italic 900 24px/1 "Hiragino Kaku Gothic ProN",sans-serif;color:#ffe23a;text-shadow:0 2px 0 #3a1a00;margin-right:6px}
+.trr-type .tbadge{font-size:17px;padding:4px 14px;opacity:.8}.trr-type .tbadge.big{font-size:21px;padding:5px 18px;opacity:1;box-shadow:0 0 0 3px #fff,0 0 14px #fff}
+.trr-tyar{font-style:normal;color:#fff;font-size:20px;animation:trrAr .8s ease-in-out infinite}
+@keyframes trrAr{50%{transform:translateX(5px)}}
+.trr-tynear{flex:none;margin:6px 16px 0;text-align:center;font-size:14px;font-weight:900;color:#7a2ad0}

@@ -153,6 +153,8 @@
     gachaOrb() { tone(220, 1.4, 'triangle', 0.12, 0, 880); noise(1.5, 0.06, 'highpass', 3000, 0.2, null, 0.6); },
     gachaRare() { tone(220, 1.4, 'square', 0.08, 0, 1760); [0.6, 0.8, 1.0, 1.2].forEach((t, i) => tone(N(['C6', 'E6', 'G6', 'C7'][i]), 0.3, 'triangle', 0.1, t)); noise(1.6, 0.08, 'highpass', 4000, 0.2, null, 0.6); },
     reveal() { tone(1318, 0.06, 'square', 0.06); tone(1760, 0.08, 'square', 0.05, 0.05); },
+    // 版699：タイプが変わった時（キュイーン→キラキラ）
+    typeChange() { tone(330, 0.45, 'triangle', 0.12, 0, 1320); ['E5', 'G#5', 'B5', 'E6'].forEach((n, i) => tone(N(n), 0.16, 'square', 0.09, 0.42 + i * 0.07)); tone(N('E6'), 0.5, 'triangle', 0.12, 0.72); noise(0.6, 0.05, 'highpass', 5000, 0.45); },
     // 版696：コインの音（チャリン）。coinBurst＝買った時にじゃらっと出る音
     coin() { const k = 0.94 + Math.random() * 0.12; tone(1976 * k, 0.05, 'square', 0.05); tone(2637 * k, 0.16, 'square', 0.045, 0.05); },
     coinBurst() { for (let i = 0; i < 7; i++) { const k = 0.9 + Math.random() * 0.25, t = i * 0.055 + Math.random() * 0.02; tone(1976 * k, 0.04, 'square', 0.04, t); tone(2637 * k, 0.12, 'triangle', 0.06, t + 0.035); } noise(0.35, 0.05, 'highpass', 6000, 0.02); },
