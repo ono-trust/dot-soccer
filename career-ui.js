@@ -4552,7 +4552,7 @@
   window.__career = { trainResult: (o) => trainResult(o), airport, openPost, syncPost, onlineDone, setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
   window.__career.openCloud = openCloud;
   window.__career.embURL = () => { try { return save ? embFromLook(C.ensureClub(save).emb, 96) : ''; } catch (_) { return ''; } };   // 版680：設定のアカウントIDの横に出す、自分のクラブのエンブレム
-  window.__career.myFid = async () => { if (!save) return null; const on = ensureOnline(); if (on.fid) return on.fid; return publishMe(); };   // 版678：アカウントID（なければ作る）
+  window.__career.myFid = async () => { if (!save) return null; const on = ensureOnline(); if (on.fid && !(window.DotNet && DotNet.FID_MOVE && DotNet.FID_MOVE[on.fid])) return on.fid; return (await publishMe()) || on.fid; };   // 版678：アカウントID（なければ作る）
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====
@@ -4629,13 +4629,13 @@
   window.__openMenu = () => $('#mMenu').onclick();
   const sndLabel = () => { const P = window.DotSound ? DotSound.pref : { sfx: true, bgm: true }; for (const [id, on] of [['#mSfx', P.sfx], ['#mBgm', P.bgm]]) { const b = $(id); if (!b) continue; b.classList.toggle('on', !!on); const em = b.querySelector('.st-sw em'); if (em) em.textContent = on ? 'ON' : 'OFF'; } };   // 版679：スイッチの見た目
   // 版678：アカウントID（＝フレンドID・8けた）を設定に出す。テスト用のボタンは、開発用のアカウントだけに出す
-  const DEV_IDS = [];   // ここに開発用のアカウントID（8けた）を入れる
+  const DEV_IDS = ['11111111', '99995139', '84539075'];   // ここに開発用のアカウントID（8けた）を入れる
   let acctFid = null;
   const acctShow = (fid) => { acctFid = fid || null; const dev = !!(fid && DEV_IDS.includes(String(fid))); const b = $('#mAcct .st-id'); if (b) b.textContent = fid ? String(fid).replace(/(\d{4})(\d{4})/, '$1 $2') : '―'; const sm = $('#mAcct .st-dev'); if (sm) sm.hidden = !dev; const dv = $('#mDev'); if (dv) dv.hidden = !dev; stFit(); };
   const stFit = () => { const bx = document.querySelector('#mSheet .st-box'); if (!bx || $('#mSheet').hidden) return; const h = bx.offsetHeight || 420; bx.style.transform = `translate(-50%,-50%) scale(${Math.min(1.4, innerWidth * 0.84 / 760, innerHeight * 0.94 / h)})`; };
   addEventListener('resize', stFit);
   window.__devIds = DEV_IDS;
-  const acctRefresh = async () => { { const im = document.querySelector('#mAcct .st-emb'), u = window.__career && window.__career.embURL && window.__career.embURL(); if (im) { if (u) { im.src = u; im.hidden = false; } else im.hidden = true; } } const sv = window.__career && window.__career.save; let fid = sv && sv.online && sv.online.fid; acctShow(fid); if (!fid && window.__career && window.__career.myFid) { try { fid = await window.__career.myFid(); } catch (_) {} acctShow(fid); } };
+  const acctRefresh = async () => { { const im = document.querySelector('#mAcct .st-emb'), u = window.__career && window.__career.embURL && window.__career.embURL(); if (im) { if (u) { im.src = u; im.hidden = false; } else im.hidden = true; } } const sv = window.__career && window.__career.save; let fid = sv && sv.online && sv.online.fid; acctShow(fid); if ((!fid || (window.DotNet && DotNet.FID_MOVE && DotNet.FID_MOVE[fid])) && window.__career && window.__career.myFid) { try { fid = await window.__career.myFid(); } catch (_) {} acctShow(fid); } };
   $('#mMenu').onclick = () => { setTimeout(stFit, 0); acctRefresh(); sndLabel(); $('#mFull').textContent = document.fullscreenElement ? '全画面をやめる' : '全画面にする'; if ($('#mGap')) $('#mGap').textContent = topGap ? '画面の上を空けない（上までゲームを広げる）' : '画面の上を空ける（上がさわれない時）'; sheet.hidden = false; };
   addEventListener('fullscreenchange', refit); addEventListener('webkitfullscreenchange', refit);
   sheet.addEventListener('click', async (e) => {

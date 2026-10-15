@@ -27,8 +27,13 @@
   }
   const withTimeout = (p, ms = 8000) => Promise.race([p, new Promise((_, ng) => setTimeout(() => ng(new Error('timeout')), ms))]);
   // フレンドID（8けたの数字）：はじめての時に作る。ほかの人と重ならないように fids/{id} を取る
+  // 版682：開発用アカウントのIDを、決めた番号に付けかえる（持ち主の端末でだけ動く）
+  const FID_MOVE = { '84539075': '11111111' };
   async function ensureFid(want) {
-    if (want) { const d = await db.collection('fids').doc(want).get(); if (d.exists && d.data().uid === uid) return want; }
+    if (want) { const d = await db.collection('fids').doc(want).get(); if (d.exists && d.data().uid === uid) {
+      const to = FID_MOVE[want];
+      if (to) { try { const sv = d.data().sv || null; await db.runTransaction(async (tx) => { const ref = db.collection('fids').doc(to); const e = await tx.get(ref); if (e.exists && e.data().uid !== uid) throw new Error('used'); tx.set(ref, sv ? { uid, sv } : { uid }); }); return to; } catch (_) {} }
+      return want; } }
     for (let k = 0; k < 8; k++) {
       const id = String(10000000 + Math.floor(Math.random() * 90000000));
       try { await db.runTransaction(async (tx) => { const ref = db.collection('fids').doc(id); const d = await tx.get(ref); if (d.exists) throw new Error('used'); tx.set(ref, { uid }); }); return id; } catch (_) {}
@@ -169,5 +174,5 @@
       if (old && old !== uid) await db.collection('players').doc(old).delete().catch(() => {});
     } catch (_) {}
   }
-  window.DotNet = { cloudInfo, cloudPut, cloudGet, cloudClaim, normCode, get watchState() { return watchState; }, get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news, createRoom, roomUpdate, roomGet, roomWatch, roomInvites, roomStart, watchMail };
+  window.DotNet = { FID_MOVE, cloudInfo, cloudPut, cloudGet, cloudClaim, normCode, get watchState() { return watchState; }, get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news, createRoom, roomUpdate, roomGet, roomWatch, roomInvites, roomStart, watchMail };
 })();
