@@ -46,6 +46,7 @@ exports.payCheckout = onCall({ region: REGION, secrets: [STRIPE_KEY] }, async (r
     success_url: base + 'pay-done.html?ok=1',
     cancel_url: base + 'pay-done.html?ok=0',
   });
+  await db.collection('pending').doc(s.id).set({ uid: req.auth.uid, item: req.data.item, at: Date.now() });   // 受け取りの時に、Stripeへ直接たしかめる（Webhookが届かない時のため）
   return { url: s.url, id: s.id };
 });
 
@@ -71,8 +72,27 @@ exports.payWebhook = onRequest({ region: REGION, secrets: [STRIPE_KEY, STRIPE_WH
   res.json({ received: true });
 });
 
-exports.payClaim = onCall({ region: REGION }, async (req) => {
+// 払い終わった支払いを grants に書く（Webhookと受け取りの両方から使う。同じ支払いは1回だけ）
+async function grantFrom(sess) {
+  if (!sess || sess.payment_status !== 'paid') return false;
+  const key = sess.metadata && sess.metadata.item, it = ITEMS[key], uid = (sess.metadata && sess.metadata.uid) || sess.client_reference_id;
+  if (!it || !uid || sess.amount_total !== it.yen) return false;
+  const ref = db.collection('grants').doc(sess.id);
+  await db.runTransaction(async (tx) => { const d = await tx.get(ref); if (d.exists) return;
+    tx.set(ref, { uid, item: key, coins: it.coins || 0, premDays: it.premDays || 0, yen: it.yen, live: !!sess.livemode, at: Date.now(), claimed: false }); });
+  return true;
+}
+exports.payClaim = onCall({ region: REGION, secrets: [STRIPE_KEY] }, async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'login');
+  // まだ確かめていない支払いを、Stripeに直接たしかめる（24時間以内）
+  try {
+    const stripe = new Stripe(STRIPE_KEY.value().trim());
+    const pq = await db.collection('pending').where('uid', '==', req.auth.uid).limit(10).get();
+    for (const d of pq.docs) {
+      try { const sess = await stripe.checkout.sessions.retrieve(d.id);
+        if (await grantFrom(sess) || Date.now() - (d.data().at || 0) > 86400000 || sess.status === 'expired') await d.ref.delete(); } catch (e) { console.error('pending check', d.id, e && e.message); }
+    }
+  } catch (e) { console.error('pending', e && e.message); }
   const q = await db.collection('grants').where('uid', '==', req.auth.uid).where('claimed', '==', false).limit(20).get();
   const out = [];
   for (const d of q.docs) {
