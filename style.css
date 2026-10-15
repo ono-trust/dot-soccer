@@ -3537,3 +3537,7 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 #ttTitle .ttl-tap{bottom:9%;font-size:34px;font-weight:900;letter-spacing:.06em;color:#fff;text-shadow:0 4px 0 #13233f,3px 0 0 #13233f,-3px 0 0 #13233f,0 -3px 0 #13233f,2px 2px 0 #13233f,-2px 2px 0 #13233f,2px -2px 0 #13233f,-2px -2px 0 #13233f;animation:ttltap 2.4s ease-in-out infinite;z-index:4}
 @keyframes ttltap{0%,100%{opacity:1}50%{opacity:.35}}
 #ttTitle .ttl-ver{z-index:4;font-weight:800;opacity:.85;text-shadow:0 1px 2px rgba(0,0,0,.5);font-size:14px}
+/* 版690：一列で走る選手とドットのボール */
+#ttTitle .ttl-bw{position:absolute;left:0;top:0;width:34px;height:34px;z-index:2}
+#ttTitle .ttl-bw::before{content:"";position:absolute;left:3px;bottom:-5px;width:30px;height:8px;border-radius:50%;background:rgba(0,40,0,.3)}
+#ttTitle .ttl-bw canvas{position:relative;width:34px;height:34px;image-rendering:pixelated;display:block}

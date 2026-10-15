@@ -121,39 +121,65 @@
       const SW = 1850, SH = 850;
       const fit = () => { const w = el.clientWidth || 1280, h = el.clientHeight || 720, k = Math.max(w / SW, h / SH); stage.style.transform = `translate(${(w - SW * k) / 2}px,${(h - SH * k) / 2}px) scale(${k})`; };
       fit(); addEventListener('resize', fit);
-      // 選手（試合と同じドット絵）。走りの絵をゆっくり切りかえて「歩き」にする
-      const ppl = [];
+      // 版690：選手が一列になって走る。先頭がボールをドリブル（ボールはドット絵で、転がると回る）
+      const ppl = [], N = 5, GAP = 150, V = 165;
       try {
-        const look = [[0, 0, 0], [1, 1, 1], [2, 2, 0], [3, 0, 2], [1, 2, 1]];
+        const look = [[2, 2, 0], [0, 0, 1], [1, 1, 2], [3, 0, 0], [1, 2, 1]];
         look.forEach(([hair, hc, skin], k) => {
-          const team = k % 2, info = { name: '', number: 1 + k, hair, hairColor: hc, skin, position: 'MF' };
-          const fr = [0, 1, 2, 3].map((f) => A().spriteCanvas(info, team, 'side', f, true, false));
+          const info = { name: '', number: 1 + k, hair, hairColor: hc, skin, position: 'MF' };
+          const fr = [0, 1, 2, 3].map((f) => A().spriteCanvas(info, 0, 'side', f, true, false));
           if (!fr[0]) return;
           const box = document.createElement('div'); box.className = 'ttl-man';
           const cv = document.createElement('canvas'); cv.width = fr[0].width; cv.height = fr[0].height; box.appendChild(cv);
-          const ball = document.createElement('i'); ball.className = 'ttl-ball'; ball.hidden = true; box.appendChild(ball);
-          men.appendChild(box);
-          const dir = k % 2 ? -1 : 1;
-          ppl.push({ box, cv, fr, ball, dir, x: 120 + k * 380 + Math.random() * 80, y: 565 + ((k * 37) % 5) * 22, sp: 34 + Math.random() * 14, drib: 0, next: 3 + k * 5 + Math.random() * 4, t: Math.random() * 4 });
+          men.appendChild(box); ppl.push({ box, cv, fr, t: k * 0.7 });
         });
       } catch (_) {}
+      // ボール：14×14ドット。サッカーボールの黒い五角形（正二十面体の頂点の向き）を、転がった角度で回して描く
+      const BP = (() => { const t = (1 + Math.sqrt(5)) / 2, v = []; for (const a of [-1, 1]) for (const b of [-t, t]) v.push([0, a, b], [a, b, 0], [b, 0, a]); return v.map((q) => { const n = Math.hypot(...q); return q.map((u) => u / n); }); })();
+      const bwrap = document.createElement('div'); bwrap.className = 'ttl-bw'; const bcv = document.createElement('canvas'); bcv.width = 14; bcv.height = 14; bwrap.appendChild(bcv); men.appendChild(bwrap);
+      const bctx = bcv.getContext('2d'), bimg = bctx.createImageData(14, 14);
+      const drawBall = (ang) => {
+        const c = Math.cos(ang), s = Math.sin(ang), d = bimg.data;
+        for (let py = 0; py < 14; py++) for (let px = 0; px < 14; px++) {
+          const x = (px + 0.5 - 7) / 6.3, y = (py + 0.5 - 7) / 6.3, rr = x * x + y * y, o = (py * 14 + px) * 4;
+          if (rr > 1) { d[o + 3] = 0; continue; }
+          let col;
+          if (rr > 0.7) col = [27, 42, 74];   // ふち
+          else {
+            const z = Math.sqrt(1 - rr);
+            // 画面の奥向きの軸で回す（横に転がる）＋少し傾けて模様を見やすく
+            const rx = x * c + y * s, ry = -x * s + y * c, ty = ry * 0.9 - z * 0.44, tz = ry * 0.44 + z * 0.9;
+            let best = -1; for (const q of BP) { const dd = q[0] * rx + q[1] * ty + q[2] * tz; if (dd > best) best = dd; }
+            const lit = 0.78 + 0.22 * (-x * 0.5 - y * 0.6 + z * 0.6);
+            col = best > 0.925 ? [30, 34, 48] : [Math.min(255, 255 * lit), Math.min(255, 255 * lit), Math.min(255, 258 * lit)];
+          }
+          d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = 255;
+        }
+        bctx.putImageData(bimg, 0, 0);
+      };
+      let dir = 1, head = -160, rowY = 556, wait = 0, bx = 0, bv = 0, bang = 0, lap = 0;
+      const startLap = () => { head = dir > 0 ? -160 : SW + 160; rowY = lap % 2 ? 578 : 556; bx = head + dir * 92; bv = 0; };
+      startLap();
       let last = performance.now(), raf = 0;
       const tick = (now) => {
         if (!el.isConnected) return;
         const dt = Math.max(0, Math.min(0.1, (now - last) / 1000)); last = now;
-        for (const p of ppl) {
-          p.next -= dt;
-          if (p.drib > 0) p.drib -= dt; else if (p.next <= 0 && !ppl.some((q) => q.drib > 0) && p.x > 100 && p.x < SW - 260) { p.drib = 2.5 + Math.random() * 2; p.next = 12 + Math.random() * 16; }   // ドリブルは一度にひとりだけ
-          const fast = p.drib > 0, v = fast ? p.sp * 2.4 : p.sp;
-          p.x += v * p.dir * dt; p.t += dt * (fast ? 9 : 4.2);
-          if (p.dir > 0 && p.x > SW + 80) { p.x = -120; p.y = 560 + Math.random() * 100; }
-          if (p.dir < 0 && p.x < -120) { p.x = SW + 80; p.y = 560 + Math.random() * 100; }
-          const f = ((Math.floor(p.t) % 4) + 4) % 4, c = p.cv.getContext('2d'); c.clearRect(0, 0, p.cv.width, p.cv.height); c.drawImage(p.fr[f], 0, 0);
-          p.box.style.transform = `translate(${p.x}px,${p.y}px)`; p.box.style.zIndex = Math.round(p.y);
-          p.cv.style.transform = p.dir < 0 ? 'scaleX(-1)' : '';
-          p.ball.hidden = !fast;
-          if (fast) { const kick = (Math.floor(p.t) % 4) < 2 ? 1 : 0; p.ball.style.transform = `translate(${p.dir > 0 ? 66 + kick * 10 : -2 - kick * 10}px,0)`; }
+        if (wait > 0) { wait -= dt; if (wait <= 0) { lap++; dir = -dir; startLap(); } }
+        else {
+          head += dir * V * dt;
+          // ボール：先頭の足が追いついたら軽く蹴り出す。転がりながら少しずつ遅くなる
+          const foot = head + dir * 70;
+          if ((bx - foot) * dir < 16) bv = V * 1.85;
+          bv = Math.max(0, bv - 230 * dt); bx += dir * bv * dt; bang += dir * (bv * dt) / 13;
+          const tail = head - dir * GAP * (ppl.length - 1);
+          if ((dir > 0 && tail > SW + 120) || (dir < 0 && tail < -220)) wait = 1.6;
         }
+        ppl.forEach((p, i) => {
+          const x = head - dir * GAP * i - 45; p.t += dt * 9;
+          const f = ((Math.floor(p.t) % 4) + 4) % 4, c = p.cv.getContext('2d'); c.clearRect(0, 0, p.cv.width, p.cv.height); c.drawImage(p.fr[f], 0, 0);
+          p.box.style.transform = `translate(${x}px,${rowY}px)`; p.cv.style.transform = dir > 0 ? 'scaleX(-1)' : '';   // 横向きの絵は左向きなので、右へ走る時に裏返す
+        });
+        drawBall(bang); bwrap.style.transform = `translate(${bx - 17}px,${rowY + 120 - 32}px)`;
         raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
