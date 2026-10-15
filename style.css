@@ -3410,3 +3410,7 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 .trb-set .ts-in.cp .spban{padding:1px 8px;line-height:1.25}
 .trb-set .ts-in.cp .ts-msg{font-size:12px}
 .ts-in.cp .ts-btns .splist2,.trb-set .ts-in.cp .dotrain{height:36px}
+
+/* 版678：設定のアカウントID */
+#mSheet .m-acct{margin:-6px 0 10px;font-size:13px;color:#445;user-select:text;-webkit-user-select:text}#mSheet .m-acct b{font-size:16px;letter-spacing:1px;font-family:ui-monospace,Menlo,monospace;color:#123}#mSheet .m-acct small{color:#c05a00;font-weight:800}
+#mDev{display:contents}#mDev[hidden]{display:none}

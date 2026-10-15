@@ -4524,6 +4524,7 @@
   }
   window.__career = { trainResult: (o) => trainResult(o), airport, openPost, syncPost, onlineDone, setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
   window.__career.openCloud = openCloud;
+  window.__career.myFid = async () => { if (!save) return null; const on = ensureOnline(); if (on.fid) return on.fid; return publishMe(); };   // 版678：アカウントID（なければ作る）
 })();
 
 // ===== 画面の器：論理サイズで組んで、端末に合わせて拡大縮小（PC・スマホ横画面共通） =====
@@ -4599,7 +4600,12 @@
   if (!inFrame && $('#mTab')) $('#mTab').hidden = true;
   window.__openMenu = () => $('#mMenu').onclick();
   const sndLabel = () => { const P = window.DotSound ? DotSound.pref : { sfx: true, bgm: true }; if ($('#mSfx')) $('#mSfx').textContent = '効果音：' + (P.sfx ? 'オン' : 'オフ'); if ($('#mBgm')) $('#mBgm').textContent = 'BGM：' + (P.bgm ? 'オン' : 'オフ'); };
-  $('#mMenu').onclick = () => { sndLabel(); $('#mFull').textContent = document.fullscreenElement ? '全画面をやめる' : '全画面にする'; if ($('#mGap')) $('#mGap').textContent = topGap ? '画面の上を空けない（上までゲームを広げる）' : '画面の上を空ける（上がさわれない時）'; sheet.hidden = false; };
+  // 版678：アカウントID（＝フレンドID・8けた）を設定に出す。テスト用のボタンは、開発用のアカウントだけに出す
+  const DEV_IDS = [];   // ここに開発用のアカウントID（8けた）を入れる
+  const acctShow = (fid) => { const el = $('#mAcct'); if (el) el.innerHTML = `アカウントID：<b>${fid ? String(fid).replace(/(\d{4})(\d{4})/, '$1 $2') : '―'}</b>${fid && DEV_IDS.includes(String(fid)) ? ' <small>（開発用）</small>' : ''}`; const dv = $('#mDev'); if (dv) dv.hidden = !(fid && DEV_IDS.includes(String(fid))); };
+  window.__devIds = DEV_IDS;
+  const acctRefresh = async () => { const sv = window.__career && window.__career.save; let fid = sv && sv.online && sv.online.fid; acctShow(fid); if (!fid && window.__career && window.__career.myFid) { try { fid = await window.__career.myFid(); } catch (_) {} acctShow(fid); } };
+  $('#mMenu').onclick = () => { acctRefresh(); sndLabel(); $('#mFull').textContent = document.fullscreenElement ? '全画面をやめる' : '全画面にする'; if ($('#mGap')) $('#mGap').textContent = topGap ? '画面の上を空けない（上までゲームを広げる）' : '画面の上を空ける（上がさわれない時）'; sheet.hidden = false; };
   addEventListener('fullscreenchange', refit); addEventListener('webkitfullscreenchange', refit);
   sheet.addEventListener('click', async (e) => {
     const m = e.target.dataset && e.target.dataset.m;
@@ -4610,6 +4616,7 @@
     else if (m === 'cloud') { window.__career.openCloud(); return; }
     else if (m === 'free') $('#newGame').click();
     else if (m === 'champdemo') { sheet.hidden = true; if (!window.__career.save) window.__career.open(); setTimeout(() => { window.__career.champDemo(); }, 300); return; }   // 版581：（テスト用）
+    else if (m === 'testkk') { const sv = window.__career.save; sv.kakera = (sv.kakera || 0) + 1000; window.__career.store(); sheet.hidden = true; try { window.__career.renderHome(); } catch (_) {} return; }
     else if (m === 'testcoin') { const sv = window.__career.save; sv.coins = (sv.coins || 0) + 10000; window.__career.store(); sheet.hidden = true; try { window.__career.renderHome(); } catch (_) {} return; }   // 版552：演出のテスト用
     else if (m === 'tut') { if (window.__tut) { const of = $('#officeScreen'); if (of) { of.hidden = true; try { window.__career.go('home'); } catch (_) {} } if ($('#career').hidden) window.__career.open(); setTimeout(() => window.__tut.replay(), 300); } }
     else if (m === 'sfx' || m === 'bgm') { if (window.DotSound) DotSound.set(m, !DotSound.pref[m]); sndLabel(); sheet.hidden = false; return; }
