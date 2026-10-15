@@ -3845,9 +3845,12 @@
     const now = Date.now();
     if (on) save.prem.until += P.days * DAY;
     else save.prem = { start: midnight(now), until: midnight(now) + P.days * DAY, got: [] };
-    save.coins = (save.coins || 0) + P.bonus;
+    const c0 = save.coins || 0; save.coins = c0 + P.bonus;
     (save.buys = save.buys || []).push({ id: 'prem', yen: P.yen, at: now, test: true });
     store(); premSync();
+    // 版696：コインが左上へ飛んでいく（ショップの画面の時）
+    { const sb = document.querySelector('#shopScreen:not([hidden]) .lk-box'), btn = sb && sb.querySelector('.pm-buy'), cn = sb && sb.querySelector('.sh3-cn'), tg = sb && sb.querySelector('.sh3-coin');
+      if (btn && cn) { coinGain(sb, btn, c0, save.coins, null, { to: tg, num: cn }); await new Promise((r) => setTimeout(r, 1900)); } }
     await coachAsk(`プレミアムパスを手に入れました！<br><b>${P.bonus}コイン</b>をどうぞ。<br><small>これから${P.days}日間、毎日ホームでプレゼントを受け取れます。</small>`, [{ label: 'OK', value: true }], 'sec');
     if (redraw) redraw();
     premDaily();
@@ -3874,7 +3877,7 @@
     const cards = Object.keys(C.CARDS); let cd = null;
     for (let k = 0; k < D0.cards; k++) { for (let j = 0; j < 40; j++) { const c = cards[Math.floor(Math.random() * cards.length)]; if ((save.cards[c] || 0) < C.cardMax(save)) { cd = c; break; } } if (cd) save.cards[cd] = (save.cards[cd] || 0) + 1; }
     save.coins = (save.coins || 0) + D0.coins; save.kakera = (save.kakera || 0) + D0.kak; P.got.push(n); store();
-    try { window.DotSound && DotSound.play('reveal'); } catch (_) {}
+    try { window.DotSound && DotSound.play('coinBurst'); } catch (_) {}
     el.querySelector('.pd-c.today').classList.add('got'); el.querySelector('.pd-c.today').insertAdjacentHTML('beforeend', '<b class="pd-ok">受取済</b>');
     el.querySelector('.pd-f').innerHTML = `<div class="pd-got">${COIN}<b>+${D0.coins}</b>${cd ? `<img class="pd-card" src="cards/${cd}.jpg" alt=""><b>${esc(C.CARDS[cd].name)}</b>` : ''}<img class="kk-ico" src="icons/kakera.png" alt=""><b>+${D0.kak}</b></div><button class="pd-go">OK</button>`;
     await new Promise((ok) => { el.querySelector('.pd-go').onclick = ok; });
@@ -3913,19 +3916,20 @@
     draw(); el.hidden = false; el._fit();
   }
   // 買ったあとの演出：押したところからコインが飛び出して、上の数字へ吸い込まれ、数字が増えていく
-  function coinGain(box, from, c0, c1, redraw) {
+  function coinGain(box, from, c0, c1, redraw, opt) {   // 版696：opt＝{ to: 吸い込まれる先, num: 数字の所 }（ショップのパスでも使う）
     const S = (n) => { try { DotSound.play(n); } catch (_) {} };
-    const br = box.getBoundingClientRect(), k = br.width / 1280, fr = from.getBoundingClientRect(), to = box.querySelector('.cs-have .coin-ico').getBoundingClientRect();
+    const toEl = (opt && opt.to) || box.querySelector('.cs-have .coin-ico');
+    const br = box.getBoundingClientRect(), k = br.width / 1280, fr = from.getBoundingClientRect(), to = toEl.getBoundingClientRect();
     const fx = (fr.left + fr.width / 2 - br.left) / k, fy = (fr.top + fr.height / 2 - br.top) / k, tx = (to.left + to.width / 2 - br.left) / k, ty = (to.top + to.height / 2 - br.top) / k;
     const fl = document.createElement('div'); fl.className = 'cs-flash'; box.appendChild(fl);
-    S('uniq');
+    S('coinBurst');   // 版696：チャリチャリン
     for (let i = 0; i < 14; i++) {
       const c = document.createElement('img'); c.src = 'icons/coin.png'; c.className = 'cs-fly'; const a = Math.random() * Math.PI * 2, r = 60 + Math.random() * 90;
       c.style.cssText = `left:${fx}px;top:${fy}px;--mx:${Math.cos(a) * r}px;--my:${Math.sin(a) * r}px;--tx:${tx - fx}px;--ty:${ty - fy}px;animation-delay:${i * 40}ms`;
-      box.appendChild(c); setTimeout(() => { c.remove(); S('reveal'); }, 900 + i * 40);
+      box.appendChild(c); setTimeout(() => { c.remove(); S('coin'); if (toEl.animate) toEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.25)' }, { transform: 'scale(1)' }], { duration: 160 }); }, 900 + i * 40);
     }
-    const em = box.querySelector('.cs-have em'), t0 = performance.now() + 700, dur = 900;
-    const tick = (now) => { const u = Math.max(0, Math.min(1, (now - t0) / dur)), e = 1 - Math.pow(1 - u, 3); { const v = Math.round(c0 + (c1 - c0) * e); em.textContent = v.toLocaleString(); em.className = csN(v); } if (u < 1) requestAnimationFrame(tick); else { em.parentElement.classList.add('pop'); S('ok'); setTimeout(() => { fl.remove(); }, 400); } };
+    const em = (opt && opt.num) || box.querySelector('.cs-have em'), t0 = performance.now() + 700, dur = 900;
+    const tick = (now) => { const u = Math.max(0, Math.min(1, (now - t0) / dur)), e = 1 - Math.pow(1 - u, 3); { const v = Math.round(c0 + (c1 - c0) * e); em.textContent = v.toLocaleString(); if (!opt) em.className = csN(v); } if (u < 1) requestAnimationFrame(tick); else { em.parentElement.classList.add('pop'); S('ok'); setTimeout(() => { fl.remove(); }, 400); } };
     requestAnimationFrame(tick);
     const msg = document.createElement('p'); msg.className = 'cs-got'; msg.innerHTML = `${COIN}<b>+${(c1 - c0).toLocaleString()}</b> コイン`; box.appendChild(msg); setTimeout(() => msg.remove(), 2400);
   }
@@ -3940,7 +3944,7 @@
     const draw = () => {
       const S = shopSt; let h = '';
       // 版527：3つの画面で、上の帯（もどる・ショップ・コイン）とタブを同じ形に（監督の4枚目の絵）
-      const head = `<span class="sh3-coin" data-go="coin" title="コインを買う">${coins()}<small>コイン</small><img class="sh3-plus" src="icons/ui_plus.png" alt="コインを買う"></span>${hit('', 34, 12, 72, 70, 'data-go="back"', 'もどる')}
+      const head = `<span class="sh3-coin" data-go="coin" title="コインを買う"><em class="sh3-cn">${coins()}</em><small>コイン</small><img class="sh3-plus" src="icons/ui_plus.png" alt="コインを買う"></span>${hit('', 34, 12, 72, 70, 'data-go="back"', 'もどる')}
         <div class="sh3-tabs">${[['rec', 'おすすめ'], ['cards', '特訓カード'], ['prem', 'プレミアムパス']].map(([k, l]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
       if (S.tab === 'rec') {
         const bn = C.gachaBanner(), U = bn.uniq, q = C.rosterAt(bn.tid, 1).players.find((x) => x.no === bn.no), cc = U.chip || ['#c8141e', '#ffd23a', '#ffe45a'];
