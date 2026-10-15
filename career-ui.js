@@ -4199,7 +4199,7 @@
         for (const b of bl) { const my = b.s[1], op = b.s[0], r = my > op ? 'W' : my === op ? 'D' : 'L'; if (r === 'W') dw++; on['d' + r.toLowerCase()] = (on['d' + r.toLowerCase()] || 0) + 1;
           addPost({ kind: 'def', r, name: b.name, mgr: b.mgr, s: [my, op], at: b.at || Date.now() }); }
         on.rp = before + dw * RP_DEF; const i1 = rankIdx(on.rp), rw = rankReward(i0, i1); on.best = Math.max(on.best || 0, on.rp);
-        if (dw) addPost({ kind: 'info', title: `守備で ${dw}勝！ +${dw * RP_DEF} RP`, text: `ほかの監督の挑戦を ${dw}回 はね返しました。` });
+        if (dw) addPost({ kind: 'info', ico: 'defrp', title: `守備で ${dw}勝！ +${dw * RP_DEF} RP`, text: `ほかの監督の挑戦を ${dw}回 はね返しました。` });
         if (rw) addPost({ kind: 'reward', rank: rw.rank, coins: rw.coins, kak: rw.kak, cards: rw.cards.length });
         try { await DotNet.clearInbox(bl.map((b) => b.id)); } catch (_) {}
       }
@@ -4217,6 +4217,8 @@
     })().finally(() => { postBusy = null; });
     return postBusy;
   }
+  // 版710：絵文字のかわりに絵を使うお知らせ
+  const postImg = (it) => it.kind === 'buy' ? 'icons/coin.png' : (it.kind === 'def' && it.r === 'W') ? 'icons/post_def_win.png' : (it.ico === 'defrp' || (it.kind === 'info' && /^守備で/.test(it.title || ''))) ? 'icons/post_def_rp.png' : '';
   const POST_ICO = { buy: '🪙', room: '⚽', freq: '🤝', fok: '🎉', def: '🛡️', info: '📣', reward: '🎁', news: '📰' };
   const fmtAt = (t) => { const d = new Date(t || Date.now()); return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
   async function openPost(back) {
@@ -4235,7 +4237,7 @@
         else if (it.kind === 'room') { t = 'フレンド対戦の招待'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}がルームを作りました。`; btns = Date.now() - (it.at || 0) < 30 * 60 * 1000 ? `<button class="po-ok" data-room="${it.id}">ルームに入る</button>` : '<span class="po-done">時間切れ</span>'; }
         else if (it.kind === 'news') { t = it.title || 'お知らせ'; body = esc(it.text || '').replace(/\n/g, '<br>'); }
         else { t = it.title || 'お知らせ'; body = esc(it.text || ''); }
-        const emb = it.emb ? `<img src="${embFromLook(it.emb, 56)}" alt="">` : (it.kind === 'buy' ? `<span class="po-ico po-coin"><img src="icons/coin.png" alt="" draggable="false"></span>` : `<span class="po-ico">${POST_ICO[it.kind] || '✉️'}</span>`);
+        const emb = it.emb ? `<img src="${embFromLook(it.emb, 56)}" alt="">` : (postImg(it) ? `<span class="po-ico po-coin"><img src="${postImg(it)}" alt="" draggable="false"></span>` : `<span class="po-ico">${POST_ICO[it.kind] || '✉️'}</span>`);
         return `<div class="po-it${it.read ? '' : ' new'}${it.kind === 'def' ? ' def-' + it.r : ''}" data-id="${it.id}">${emb}<div class="po-b"><div class="po-t"><b>${esc(t)}</b><small>${fmtAt(it.at)}</small></div><p>${body}</p>${btns ? `<div class="po-btns">${btns}</div>` : ''}</div>${it.read ? '' : '<i class="po-dot"></i>'}</div>`;
       };
       box.innerHTML = `${apBg()}<div class="ap-top"><img class="po-top-img" src="icons/post.png" alt=""><div><b>ポスト</b><small>フレンド申請・対戦の結果・お知らせが届きます</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
