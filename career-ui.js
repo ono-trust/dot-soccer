@@ -3520,10 +3520,36 @@
       biz: '<svg viewBox="0 0 40 40"><rect x="5" y="22" width="7" height="12" fill="#2f8a4e"/><rect x="16" y="14" width="7" height="20" fill="#f2c21c"/><rect x="27" y="7" width="7" height="27" fill="#d83a3a"/></svg>',
       team: '<svg viewBox="0 0 40 40"><rect x="5" y="6" width="30" height="28" rx="3" fill="#2a5a32" stroke="#fff" stroke-width="2"/><path d="M9 13h22M9 19h22M9 25h22" stroke="#e7ff62" stroke-width="2.5"/></svg>',
     };
-    const BUDGET = ['500万円', '1,500万円', '5,000万円', '1億5,000万円', '4億円'];
-    const bizHTML = () => { const tier = (C.LG[save.league.id] || {}).tier || 0, tr = (save.history || []).filter((h) => /優勝/.test(h.msg) || h.cup).length;
-      return `<div class="of-p of-biz"><div class="ob-h"><img src="${emblemURL(save.team.name, 64)}" alt=""><div><b>${esc(save.team.name)}</b><small>（${esc(stadiumName({ name: save.team.name }, { home: true }))}）</small><em>${esc(save.manager || '')}${save.manager ? '監督' : ''}</em></div></div>
-        <table class="ob-t"><tr><th>所属</th><td>${lgBadge(save.league.id)} ${esc(save.league.name)}</td></tr><tr><th>予算</th><td>${BUDGET[tier]}<small>（リーグが上がると増えます）</small></td></tr><tr><th>シーズン</th><td>${save.season}年目</td></tr><tr><th>獲得タイトル</th><td>${tr}</td></tr></table></div>`; };
+    // 版681：経営状況 → 「クラブ情報」：今シーズン・クラブの歴史・トロフィーの3つのタブ（予算の数字はなくした）
+    let bizTab = 'now';
+    const bizHTML = () => {
+      const me = save.team.name, lgN = save.league.name, st = C.standings(save), pos = st.findIndex((t) => t.me) + 1, S = (st[pos - 1] || {}).stats || { P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, Pts: 0 };
+      const head = `<div class="ob-h"><img src="${emblemURL(me, 64)}" alt=""><div><b>${esc(me)}</b><small>（${esc(stadiumName({ name: me }, { home: true }))}）</small><em>${esc(save.manager || '')}${save.manager ? '監督　' : ''}${save.season}年目</em></div>
+        <div class="ob-tabs">${[['now', '今シーズン'], ['hist', 'クラブの歴史'], ['tro', 'トロフィー']].map(([k, n]) => `<button data-bt="${k}" class="${bizTab === k ? 'on' : ''}">${n}</button>`).join('')}</div></div>`;
+      let body = '';
+      if (bizTab === 'now') {
+        const cup = save.cup; let cupTxt = '―';
+        if (cup && cup.season === save.season) { const inCup = !cup.champion && (cup.round === 0 ? (cup.alive || []).includes(me) : (cup.slots || []).includes(me));
+          if (cup.champion === me) cupTxt = '<b class="ob-gold">優勝！</b>'; else if (inCup) cupTxt = cup.round === 0 ? 'これから' : `勝ち残り（次は${esc((C.CUP_LABELS || [])[cup.round] || `${cup.round + 1}回戦`)}）`;
+          else { const h = (cup.hist || []).filter((x) => JSON.stringify(x.games || []).includes(me)).pop(); cupTxt = h ? `${esc(h.label)}で敗退` : '敗退'; } }
+        const key = String(save.season), rk = (f) => save.team.players.map((p) => ({ p, v: ((p.rec || {})[key] || {})[f] || 0 })).filter((o) => o.v > 0).sort((a, b) => b.v - a.v).slice(0, 5);
+        const rank = (f, t, u) => `<div class="ob-rk"><b>${t}</b>${rk(f).map((o, k) => `<p><i>${k + 1}</i><span>${esc(o.p.name)}</span><em>${o.v}${u}</em></p>`).join('') || '<p class="ob-none">まだいません</p>'}</div>`;
+        body = `<div class="ob-now"><div class="ob-pos">${lgBadge(save.league.id)}<span>${esc(lgN)}</span><b>${pos}<small>位</small></b><em>/ ${st.length}チーム</em></div>
+          <div class="ob-rec">${[['試合', S.P], ['勝', S.W], ['分', S.D], ['敗', S.L], ['得点', S.GF], ['失点', S.GA], ['勝点', S.Pts]].map(([n, v]) => `<div><small>${n}</small><b>${v}</b></div>`).join('')}</div>
+          <p class="ob-cup"><span>国内カップ</span>${cupTxt}</p>
+          <div class="ob-rks">${rank('G', '得点', '点')}${rank('A', 'アシスト', '')}${rank('P', '出場', '試合')}</div></div>`;
+      } else if (bizTab === 'hist') {
+        const rows = (save.history || []).map((h) => `<tr><td>${h.season}年目</td><td>${esc(h.league)}</td><td class="c">${h.pos}位</td><td>${h.cup ? '<b class="ob-gold">優勝</b>' : '―'}</td><td class="m">${esc(h.msg || '')}</td></tr>`).join('');
+        body = `<div class="ob-sc"><table class="ob-ht"><tr><th>シーズン</th><th>リーグ</th><th>順位</th><th>カップ</th><th>できごと</th></tr>${rows}<tr class="now"><td>${save.season}年目</td><td>${esc(lgN)}</td><td class="c">${pos}位</td><td>${save.cup && save.cup.season === save.season && save.cup.champion === me ? '<b class="ob-gold">優勝</b>' : '―'}</td><td class="m">今シーズン（${S.P}試合）</td></tr></table></div>`;
+      } else {
+        const tr = [...(save.trophies || [])], has = (k, n) => tr.some((t) => t.season === n && t.kind === k);
+        (save.history || []).forEach((h) => { if (h.pos === 1 && !has('league', h.season)) tr.push({ season: h.season, kind: 'league', title: h.league }); if (h.cup && !has('cup', h.season)) tr.push({ season: h.season, kind: 'cup', title: '国内カップ' }); });
+        tr.sort((a, b) => a.season - b.season || (a.kind === 'cup') - (b.kind === 'cup'));
+        const lgId = (t) => { for (const k in C.LG) if (C.LG[k].name === t.title) return k; return null; };
+        body = tr.length ? `<div class="ob-tro">${tr.map((t) => `<div><img src="${trophyImg(t.kind, lgId(t))}" alt=""><b>${esc(t.title)}</b><small>${t.season}年目</small></div>`).join('')}</div>` : '<p class="ob-empty">まだタイトルはありません。<br>リーグ優勝・カップ優勝で、ここにトロフィーが並びます。</p>';
+      }
+      return `<div class="of-p of-biz">${head}${body}</div>`;
+    };
     const PK = D.PARAMS.map((q) => q.k);
     const teamHTML = () => {
       const ps = save.team.players.map((p, i) => ({ p, i })), key = String(save.season);
@@ -3557,6 +3583,7 @@
           if (ok) { el.hidden = true; save = C.newCareer(); store(); runners.length = 0; go('home'); open(); }
           else await coachAsk('やっぱり冗談ですよね。<br>これからもよろしくお願いします、監督！', [{ label: 'OK', value: true }], 'sec');
         } });
+      box.querySelectorAll('[data-bt]').forEach((b) => b.onclick = () => { bizTab = b.dataset.bt; draw(); });
       box.querySelector('.of-back').onclick = () => { if (panel) { panel = null; draw(); return; } el.hidden = true; go('home'); };
       box.querySelectorAll('[data-s]').forEach((t) => t.onclick = () => { const k = t.dataset.s; if (sortK === k) sortDir = -sortDir; else { sortK = k; sortDir = 1; } draw(); });
       { const m = box.querySelector('.ot-mode'); if (m) m.onclick = () => { mode = mode === 'st' ? 'ab' : mode === 'ab' ? 'cd' : 'st'; draw(); }; }

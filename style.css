@@ -3456,3 +3456,28 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 #mSheet .st-ft{display:flex;align-items:center;gap:16px;margin-top:12px;padding-top:10px;border-top:3px solid #a9bcd6}
 #mSheet .st-ft span{font-size:15px;font-weight:600;color:#475569}
 #mSheet .mlist .st-close{margin-left:auto;width:320px;height:60px;border:4px solid #0a1a3e;border-radius:14px;background:linear-gradient(#3f8cff,#1a56d8 60%,#1346b0);color:#fff;font-size:28px;font-weight:900;letter-spacing:4px;box-shadow:0 4px 0 #0a1a3e;cursor:pointer}
+/* 版681：事務所「クラブ情報」（今シーズン・クラブの歴史・トロフィー） */
+.of-biz{left:150px;top:24px;width:960px;height:672px;padding:14px 22px;display:flex;flex-direction:column}
+.of-biz .ob-h{flex:none}.of-biz .ob-h>div:nth-child(2){flex:1}
+.ob-tabs{display:flex;gap:6px}.ob-tabs button{font:900 17px inherit;font-family:inherit;padding:8px 16px;border-radius:999px;border:3px solid #0d1f12;background:#14301b;color:#cfe;cursor:pointer}
+.ob-tabs button.on{background:#e7ff62;color:#1b2a20}
+.ob-now{flex:1;display:flex;flex-direction:column;gap:12px;padding-top:12px;min-height:0}
+.ob-pos{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:800}.ob-pos .lgi{height:44px}.ob-pos b{font:italic 900 54px "Arial Black",Arial;color:#ffd84a;-webkit-text-stroke:2px #3a2a00;line-height:1}.ob-pos b small{font-size:24px;-webkit-text-stroke:0;margin-left:2px}.ob-pos em{font-style:normal;color:#9ab;font-size:17px}
+.ob-rec{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.ob-rec div{background:rgba(0,0,0,.25);border-radius:8px;text-align:center;padding:6px 0}.ob-rec small{display:block;color:#9fd;font-size:13px;font-weight:800}.ob-rec b{font:900 26px Arial}
+.ob-rec div:last-child{background:#f08a1c}.ob-rec div:last-child small{color:#fff}
+.ob-cup{margin:0;font-size:19px;font-weight:800;display:flex;gap:14px;align-items:center}.ob-cup span{background:#2f6fd6;padding:3px 12px;border-radius:6px;font-size:15px}
+.ob-rks{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;flex:1;min-height:0}
+.ob-rk{background:rgba(0,0,0,.22);border-radius:10px;padding:8px 12px}.ob-rk>b{display:block;color:#e7ff62;font-size:16px;border-bottom:1px solid rgba(255,255,255,.15);padding-bottom:4px;margin-bottom:4px}
+.ob-rk p{margin:5px 0;display:flex;gap:8px;align-items:center;font-size:17px}.ob-rk p i{font:italic 900 16px Arial;width:22px;height:22px;border-radius:50%;background:#555;display:grid;place-items:center;flex:none}
+.ob-rk p:nth-of-type(1) i{background:#d4a21c}.ob-rk p:nth-of-type(2) i{background:#9aa4ad}.ob-rk p:nth-of-type(3) i{background:#a8673a}
+.ob-rk p span{flex:1;font-weight:800;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.ob-rk p em{font-style:normal;font-weight:900}
+.ob-rk p.ob-none{color:#9ab;font-size:14px}
+.ob-rk p:nth-of-type(n+4) i{background:#3a5a42}
+.ob-sc{flex:1;overflow:auto;margin-top:10px;min-height:0}
+.ob-ht{width:100%;border-collapse:collapse;font-size:17px}.ob-ht th{position:sticky;top:0;background:#14301b;color:#cfe;font-size:14px;padding:6px;text-align:left}
+.ob-ht td{padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.08)}.ob-ht td.c{text-align:center;font-weight:900}.ob-ht td.m{color:#cfe;font-size:14px}.ob-ht tr.now td{background:rgba(231,255,98,.12)}
+.ob-tro{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding-top:12px;align-content:start;min-height:0}
+.ob-tro div{background:radial-gradient(circle at 50% 40%,rgba(255,230,140,.25),rgba(0,0,0,.25));border-radius:10px;text-align:center;padding:10px 4px}
+.ob-tro img{height:110px;object-fit:contain;display:block;margin:0 auto 6px}.ob-tro b{display:block;font-size:14px}.ob-tro small{color:#9ab;font-size:12px}
+.ob-empty{flex:1;display:grid;place-items:center;text-align:center;color:#cfe;font-size:18px;line-height:1.8}
+.ob-gold{color:#ffd84a}
