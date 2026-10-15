@@ -3557,3 +3557,7 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 .s2mu .s2mu-go{background:#c62828;border:2px solid #ffb0b0;color:#fff}.s2mu .s2mu-go[disabled]{opacity:.45}
 .s2mu .s2mu-x{background:#fff;border:2px solid #b9a6ff;color:#3a2a6a}
 .sq2.ph .s2mu button{font-size:11px;height:30px}
+/* 版693：リザーブ下のボタンが枠からはみ出していた（2けたの人数でも収まるように） */
+.s2mu{align-items:stretch}
+.s2mu button{width:100%;box-sizing:border-box;padding:0 4px!important;font-size:13px!important;overflow:hidden;text-overflow:clip;letter-spacing:-.03em;min-width:0}
+.sq2.ph .s2mu button{font-size:11px!important}

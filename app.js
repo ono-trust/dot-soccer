@@ -2,6 +2,19 @@
 // engine/engine.js が作った試合の記録（ボールと22人の位置）をそのまま再生する。
 (() => {
   'use strict';
+  // 版693：ボタンを押したまま指を外へずらして離したら、押さなかったことにする（スマホのふつうのボタンと同じ）
+  { let tc = null;
+    addEventListener('pointerdown', (e) => { tc = { id: e.pointerId, x: e.clientX, y: e.clientY, mv: 0, up: 0 }; }, true);
+    addEventListener('pointermove', (e) => { if (tc && e.pointerId === tc.id) tc.mv = Math.max(tc.mv, Math.hypot(e.clientX - tc.x, e.clientY - tc.y)); }, true);
+    addEventListener('pointerup', (e) => { if (tc && e.pointerId === tc.id) { tc.ux = e.clientX; tc.uy = e.clientY; tc.up = Date.now(); } }, true);
+    addEventListener('click', (e) => {
+      if (!tc || !tc.up || Date.now() - tc.up > 700 || !e.isTrusted) return;
+      const b = e.target && e.target.closest ? e.target.closest('button,a,[role="button"],.of-b,[data-a],[data-m]') : null; if (!b) return;
+      const r = b.getBoundingClientRect(), pad = 14;
+      const out = tc.ux < r.left - pad || tc.ux > r.right + pad || tc.uy < r.top - pad || tc.uy > r.bottom + pad;
+      if (out || tc.mv > 60) { e.stopImmediatePropagation(); e.preventDefault(); }
+      tc = null;
+    }, true); }
   const D = window.DotSoccer;
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];

@@ -1538,16 +1538,20 @@
     // リザーブの帯から、横に引っぱるとドラッグ（縦はスクロール）
     L.querySelectorAll('.s2sc').forEach((c) => {
       let dg = null;
+      // 版693：iPhoneでは縦のスクロールにとられてドラッグできないことがあったので、①横に引く ②少し長押し（0.3秒）のどちらでもドラッグを始める
+      const lift = (x, y) => { if (!dg || dg.on) return; dg.on = true; try { c.setPointerCapture(dg.id); } catch (_) {} const sq = L.querySelector('.sq2'); dg.sq = sq; dg.ghost = document.createElement('div'); dg.ghost.className = 's2drag'; const im = c.querySelector('img'); if (im) dg.ghost.appendChild(im.cloneNode(true)); sq.appendChild(dg.ghost); c.classList.add('lift'); const r = sq.getBoundingClientRect(), k = r.width / sq.offsetWidth; dg.ghost.style.left = (x - r.left) / k + 'px'; dg.ghost.style.top = (y - r.top) / k + 'px'; };
+      c.addEventListener('touchmove', (e) => { if (dg && (dg.on || dg.hold)) e.preventDefault(); }, { passive: false });
       c.addEventListener('pointerdown', (e) => { if (sqMulti || e.target.closest('.s2rel')) return; dg = { x0: e.clientX, y0: e.clientY, on: false, ghost: null, id: e.pointerId };
+        const me = dg; me.hold = false; me.tm = setTimeout(() => { if (dg === me && !me.on) { me.hold = true; lift(me.lx != null ? me.lx : me.x0, me.ly != null ? me.ly : me.y0); } }, 300);
         const fin = (ev) => { if (ev.pointerId !== e.pointerId) return; removeEventListener('pointerup', fin, true); removeEventListener('pointercancel', fin, true); if (dg && dg.on) end(ev.type === 'pointercancel' && dg.lx != null ? { clientX: dg.lx, clientY: dg.ly } : ev, false); };   // 版531：指を離した合図を画面全体でも受け取る
         addEventListener('pointerup', fin, true); addEventListener('pointercancel', fin, true); });
       c.addEventListener('pointermove', (e) => {
         if (!dg) return; dg.lx = e.clientX; dg.ly = e.clientY; const dx = e.clientX - dg.x0, dy = e.clientY - dg.y0;
-        if (!dg.on) { if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) { dg.on = true; try { c.setPointerCapture(dg.id); } catch (_) {} const sq = L.querySelector('.sq2'); dg.sq = sq; dg.ghost = document.createElement('div'); dg.ghost.className = 's2drag'; const im = c.querySelector('img'); if (im) dg.ghost.appendChild(im.cloneNode(true)); sq.appendChild(dg.ghost); c.classList.add('lift'); } else if (Math.abs(dy) > 10) { dg = null; return; } }
+        if (!dg.on) { if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 0.8) { clearTimeout(dg.tm); lift(e.clientX, e.clientY); } else if (Math.abs(dy) > 10) { clearTimeout(dg.tm); dg = null; return; } }
         if (dg && dg.on) { e.preventDefault(); const r = dg.sq.getBoundingClientRect(), k = r.width / dg.sq.offsetWidth; dg.ghost.style.left = (e.clientX - r.left) / k + 'px'; dg.ghost.style.top = (e.clientY - r.top) / k + 'px';
           L.querySelectorAll('.hov').forEach((h) => h.classList.remove('hov')); const t = document.elementsFromPoint(e.clientX, e.clientY).map((x) => x.closest && x.closest('.s2p:not(.ghost)')).find(Boolean); if (t) t.classList.add('hov'); }
       });
-      const end = (e, cancel) => { const d = dg; dg = null; if (!d || !d.on) return; d.ghost.remove(); c.classList.remove('lift'); c.dataset.drag = '1'; setTimeout(() => { delete c.dataset.drag; }, 50);
+      const end = (e, cancel) => { const d = dg; dg = null; if (d) clearTimeout(d.tm); if (!d || !d.on) return; d.ghost.remove(); c.classList.remove('lift'); c.dataset.drag = '1'; setTimeout(() => { delete c.dataset.drag; }, 50);
         if (cancel) { renderLineup2(); return; }
         const t = document.elementsFromPoint(e.clientX, e.clientY).map((x) => x.closest && x.closest('.s2p:not(.ghost)')).find(Boolean);
         if (t) swapRes(+c.dataset.r, +t.dataset.i); else renderLineup2(); };
