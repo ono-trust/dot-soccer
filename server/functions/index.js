@@ -35,7 +35,7 @@ exports.payCheckout = onCall({ region: REGION, secrets: [STRIPE_KEY] }, async (r
   if (!req.auth) throw new HttpsError('unauthenticated', 'login');
   const it = ITEMS[req.data && req.data.item];
   if (!it) throw new HttpsError('invalid-argument', 'item');
-  const stripe = new Stripe(STRIPE_KEY.value());
+  const stripe = new Stripe(STRIPE_KEY.value().trim());
   const base = backTo(req.data.back);
   const s = await stripe.checkout.sessions.create({
     mode: 'payment',
@@ -50,9 +50,9 @@ exports.payCheckout = onCall({ region: REGION, secrets: [STRIPE_KEY] }, async (r
 });
 
 exports.payWebhook = onRequest({ region: REGION, secrets: [STRIPE_KEY, STRIPE_WH] }, async (req, res) => {
-  const stripe = new Stripe(STRIPE_KEY.value());
+  const stripe = new Stripe(STRIPE_KEY.value().trim());
   let ev;
-  try { ev = stripe.webhooks.constructEvent(req.rawBody, req.headers['stripe-signature'], STRIPE_WH.value()); }
+  try { ev = stripe.webhooks.constructEvent(req.rawBody, req.headers['stripe-signature'], STRIPE_WH.value().trim()); }
   catch (e) { res.status(400).send('bad signature'); return; }
   if (ev.type === 'checkout.session.completed' || ev.type === 'checkout.session.async_payment_succeeded') {
     const s = ev.data.object;
