@@ -175,5 +175,11 @@
       if (old && old !== uid) await db.collection('players').doc(old).delete().catch(() => {});
     } catch (_) {}
   }
-  window.DotNet = { FID_MOVE, cloudInfo, cloudPut, cloudGet, cloudClaim, normCode, get watchState() { return watchState; }, get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news, createRoom, roomUpdate, roomGet, roomWatch, roomInvites, roomStart, watchMail };
+  // 版703：お金での購入（Stripe）。支払いの画面のURLをサーバーで作る・払い終わったものを受け取る
+  const PAY_ON = false;   // 版703：サーバーの準備ができたら true にする。false にすると、前のテスト版（お金のかからない購入）にもどる
+  let fnP = null;
+  const fns = () => fnP || (fnP = (async () => { if (!(await ready())) throw new Error('offline'); if (!firebase.functions) await load(SDK + 'firebase-functions-compat.js'); return firebase.app().functions('asia-northeast1'); })().catch((e) => { fnP = null; throw e; }));
+  async function payCheckout(item) { const f = await fns(); const r = await withTimeout(f.httpsCallable('payCheckout')({ item, back: location.href }), 20000); return r.data; }
+  async function payClaim() { const f = await fns(); const r = await withTimeout(f.httpsCallable('payClaim')({}), 20000); return (r.data && r.data.items) || []; }
+  window.DotNet = { PAY_ON, payCheckout, payClaim, FID_MOVE, cloudInfo, cloudPut, cloudGet, cloudClaim, normCode, get watchState() { return watchState; }, get on() { return !!FIREBASE_CONFIG; }, get uid() { return uid; }, get err() { return lastErr; }, ready, publish, byFid, byUid, rankRival, report, inbox, clearInbox, top, sendMail, mailbox, delMail, news, createRoom, roomUpdate, roomGet, roomWatch, roomInvites, roomStart, watchMail };
 })();

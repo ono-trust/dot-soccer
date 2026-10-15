@@ -66,7 +66,7 @@
     if (v === 'club') pickDrill();
     if (v === 'club') { const l = document.getElementById('rbLineup'), tt = document.getElementById('rbTac'); if (l) l.innerHTML = rbLineupSVG(); if (tt) tt.innerHTML = RB_TAC_SVG; rbLast = -1; }
     if (v === 'home') { renderHome(); try { drawHome(performance.now()); } catch (_) {} }
-    if (v === 'home') { premSync(); setTimeout(premDaily, 600); }   // 版695：プレミアムパスの毎日のプレゼント   // 版624：すぐ今のホームを描く（前に描いた古い絵が一瞬見えないように）
+    if (v === 'home') { premSync(); setTimeout(premDaily, 600); setTimeout(payCollect, 900); }   // 版695：プレミアムパスの毎日のプレゼント   // 版624：すぐ今のホームを描く（前に描いた古い絵が一瞬見えないように）
     if (v === 'data') renderData();
     if (v === 'train') renderTrain();
     if (v === 'lineup') renderLineup();
@@ -3844,8 +3844,40 @@
   const premLeft = () => { const P = save && save.prem; if (!C.premOn(save)) return 0; return Math.max(1, Math.ceil((P.until - Date.now()) / DAY)); };
   const premMark = (on) => (on ? '<i class="prem-mk" title="プレミアムパス">P</i>' : '');
   function premSync() { try { document.documentElement.classList.toggle('prem-on', C.premOn(save)); window.__premOn = C.premOn(save); } catch (_) {} }
+  // 版703：お金での購入（Stripe）。支払いの画面へ行き、払い終わったらサーバーから受け取る
+  const payReal = () => !!(window.DotNet && DotNet.on && DotNet.PAY_ON);
+  async function payGo(item, label, yen) {
+    if (!(await coachAsk(`<b>${label}</b>を <b>¥${yen.toLocaleString()}</b> で購入しますか？<br><small>支払いの画面（Stripe）が開きます。払い終わったら、ゲームにもどってください。</small>`, [{ label: '支払いへ進む', value: true }, { label: 'やめる', value: false }], 'sec'))) return;
+    const t = document.createElement('div'); t.className = 'pay-wait'; t.innerHTML = '<p>支払いの画面を開いています…</p>'; (document.getElementById('app') || document.body).appendChild(t);
+    try { const r = await DotNet.payCheckout(item); save.payPending = { item, at: Date.now() }; store();
+      if (window.top !== window) { window.open(r.url, '_blank'); t.remove(); } else location.href = r.url; }
+    catch (e) { t.remove(); coachAsk(`支払いの画面を開けませんでした。<br><small>ネットにつながっているか確かめて、もう一度お試しください。<br>（${esc(String((e && (e.code || e.message)) || e).slice(0, 80))}）</small>`, [{ label: 'OK', value: true }], 'sec'); }
+  }
+  // パスを足す（購入・受け取りの時）
+  function premAdd(days) { const now = Date.now(); if (C.premOn(save)) save.prem.until += days * DAY; else save.prem = { start: midnight(now), until: midnight(now) + days * DAY, got: [] }; }
+  // 払い終わったものを受け取る（ゲームにもどった時・ホーム・ショップを開いた時）
+  let payBusy = false;
+  async function payCollect() {
+    if (payBusy || !save || !payReal()) return; payBusy = true;
+    try {
+      const got = await DotNet.payClaim(); if (!got.length) return;
+      for (const g of got) {
+        const c0 = save.coins || 0; save.coins = c0 + (g.coins || 0); if (g.premDays) premAdd(g.premDays);
+        (save.buys = save.buys || []).push({ id: g.item, coins: g.coins, yen: g.yen, at: Date.now(), pay: g.id, live: !!g.live }); delete save.payPending; store(); premSync();
+        const cs = document.querySelector('#coinScreen:not([hidden]) .lk-box'), sb = document.querySelector('#shopScreen:not([hidden]) .lk-box');
+        if (cs && g.coins) { coinGain(cs, cs.querySelector('.cs-have') || cs, c0, save.coins, null); await new Promise((r) => setTimeout(r, 1900)); }
+        else if (sb && g.coins) { const cn = sb.querySelector('.sh3-cn'), tg = sb.querySelector('.sh3-coin'); if (cn) { coinGain(sb, sb.querySelector('.pm-buy') || tg, c0, save.coins, null, { to: tg, num: cn }); await new Promise((r) => setTimeout(r, 1900)); } }
+        else { try { DotSound.play('coinBurst'); } catch (_) {} }
+        await coachAsk(g.item === 'prem' ? `ご購入ありがとうございます！<br><b>プレミアムパス（${g.premDays}日）</b>を手に入れました。<br><b>${g.coins}コイン</b>もどうぞ。` : `ご購入ありがとうございます！<br><b>${(g.coins || 0).toLocaleString()} コイン</b>が届きました。`, [{ label: 'OK', value: true }], 'sec');
+      }
+      if (got.some((g) => g.item === 'prem')) premDaily();
+    } catch (_) {} finally { payBusy = false; }
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(payCollect, 400); });
+  addEventListener('focus', () => setTimeout(payCollect, 400));
   async function buyPrem(redraw) {
     const P = C.PREM, on = C.premOn(save);
+    if (payReal()) return payGo('prem', `プレミアムパス（${P.days}日）`, P.yen);
     const ok = await coachAsk(`<b>プレミアムパス（${P.days}日）</b>を <b>¥${P.yen.toLocaleString()}</b> で購入しますか？${on ? `<br><small>今のパスに ${P.days}日 足されます（残り ${premLeft()}日 → ${premLeft() + P.days}日）</small>` : ''}<br><small>（テスト版のため、本当のお金はかかりません）</small>`, [{ label: '購入する', value: true }, { label: 'やめる', value: false }], 'sec');
     if (!ok) return;
     const now = Date.now();
@@ -3914,12 +3946,13 @@
       box.querySelector('.cs-back').onclick = () => { el.hidden = true; if (onClose) onClose(); };
       box.querySelectorAll('.cs-item').forEach((b) => b.onclick = async () => {
         const p = COIN_PACKS.find((x) => x.id === b.dataset.id);
+        if (payReal()) return payGo(p.id, `${p.coins.toLocaleString()} コイン`, p.yen);   // 版703：本物の支払い
         if (!(await coachAsk(`<b>${p.coins.toLocaleString()} コイン</b>を <b>¥${p.yen.toLocaleString()}</b> で購入しますか？<br><small>（テスト版のため、本当のお金はかかりません）</small>`, [{ label: '購入する', value: true }, { label: 'やめる', value: false }], 'sec'))) return;
         const from = save.coins || 0; save.coins = from + p.coins; (save.buys = save.buys || []).push({ id: p.id, coins: p.coins, yen: p.yen, at: Date.now(), test: true }); store();
         coinGain(box, b, from, save.coins, draw);
       });
     };
-    draw(); el.hidden = false; el._fit();
+    draw(); el.hidden = false; el._fit(); setTimeout(payCollect, 300);
   }
   // 買ったあとの演出：押したところからコインが飛び出して、上の数字へ吸い込まれ、数字が増えていく
   function coinGain(box, from, c0, c1, redraw, opt) {   // 版696：opt＝{ to: 吸い込まれる先, num: 数字の所 }（ショップのパスでも使う）
