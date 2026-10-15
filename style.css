@@ -3545,3 +3545,15 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 #ttTitle::after{content:'';position:absolute;inset:0;z-index:9;background:#000;opacity:0;pointer-events:none;transition:opacity .38s ease-in}
 #ttTitle.dim::after{opacity:.6}
 #ttTitle.out{opacity:0;transition:opacity .5s ease-out}
+/* 版692：選手の小窓に利き足 */
+.s2ft{display:inline-flex;align-items:center;gap:3px;margin-left:8px;font-size:13px;font-weight:800;color:#445}.s2ft .footsvg{width:28px;height:22px}.s2ft b{font-size:14px}
+/* 版692：リザーブ：総合（能力の平均）の札・能力の高い順・まとめて放出 */
+.s2sc .s2pw{position:absolute;left:4px;top:2px;z-index:3;font:italic 900 16px/1 Arial;padding:2px 5px;border-radius:6px;background:#14234a;color:#ffe14a;border:2px solid #fff}
+.s2mu .s2mu-on{background:#a02020;border:2px solid #ffb0b0;color:#fff;font-size:13px}
+.s2sc .s2ck{position:absolute;right:6px;top:4px;z-index:3;width:24px;height:24px;border-radius:6px;border:3px solid #fff;background:#0006;color:#fff;font:900 16px/18px sans-serif;text-align:center;font-style:normal}
+.s2sc.chk{background:#ff505055;box-shadow:inset 0 0 0 3px #ff7070}.s2sc.chk .s2ck{background:#d02a2a}
+.s2mu{flex:none;display:flex;flex-direction:column;gap:4px;padding:6px;border-top:2px solid #fff3}
+.s2mu button{height:36px;border-radius:999px;font:900 14px/1 "Hiragino Kaku Gothic ProN",sans-serif;cursor:pointer;white-space:nowrap}
+.s2mu .s2mu-go{background:#c62828;border:2px solid #ffb0b0;color:#fff}.s2mu .s2mu-go[disabled]{opacity:.45}
+.s2mu .s2mu-x{background:#fff;border:2px solid #b9a6ff;color:#3a2a6a}
+.sq2.ph .s2mu button{font-size:11px;height:30px}

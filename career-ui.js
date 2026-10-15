@@ -1344,6 +1344,8 @@
     if (pi == null) pi = selIdx;
     const found = new Set(save.spFound || []);
     const el = fullScreen('spScreen', 'std-wrap sp-wrap'), box = el.querySelector('.lk-box');
+    // 版692：選び直しても、一覧のスクロール位置をそのままにする（前は上に戻っていた）
+    const keep = el.hidden ? null : { g: (box.querySelector('.sp2-grid') || {}).scrollTop, w: (box.querySelector('.sp2-ws') || {}).scrollLeft, d: (box.querySelector('.sp2-d') || {}).scrollTop };
     const J = { kick: 'キック', technique: 'テクニック', dribble: 'ドリブル', pass: 'パス', speed: 'スピード', dash: '瞬発力', stamina: 'スタミナ', physical: 'フィジカル', jump: 'ジャンプ', defense: '守備', vision: '判断', mental: 'メンタル' };
     const kindOf = (m) => (m.skill ? 'skill' : m.type ? 'type' : 'up');
     const all = C.SP.map((m, idx) => ({ m, idx })).filter((o) => spFilter === 'all' || kindOf(o.m) === spFilter);
@@ -1372,9 +1374,10 @@
     el.hidden = false; el._fit();
     box.querySelector('.sp2-back').onclick = () => { el.hidden = true; renderTrain(); };
     box.querySelectorAll('[data-sp]').forEach((b) => b.onclick = () => { spSel = +b.dataset.sp; spList(pi); });
-    box.querySelectorAll('[data-f]').forEach((b) => b.onclick = () => { spFilter = b.dataset.f; spSel = -1; spList(pi); });
+    box.querySelectorAll('[data-f]').forEach((b) => b.onclick = () => { spFilter = b.dataset.f; spSel = -1; { const g = box.querySelector('.sp2-grid'); if (g) g.scrollTop = 0; } spList(pi); });
     box.querySelectorAll('[data-pi]').forEach((b) => b.onclick = () => spList(+b.dataset.pi));
-    { const g = box.querySelector('.sp2-grid .sel'); if (g) g.scrollIntoView({ block: 'nearest' }); const w = box.querySelector('.spw.on'); if (w) w.scrollIntoView({ block: 'nearest', inline: 'center' }); }
+    if (keep && keep.g != null) { const g = box.querySelector('.sp2-grid'), w = box.querySelector('.sp2-ws'), d = box.querySelector('.sp2-d'); if (g) g.scrollTop = keep.g; if (w && keep.w != null) w.scrollLeft = keep.w; if (d && keep.d != null) d.scrollTop = keep.d; }
+    else { const gr = box.querySelector('.sp2-grid'), g = box.querySelector('.sp2-grid .sel'); if (gr && g) gr.scrollTop = Math.max(0, g.offsetTop - gr.offsetTop - 8); const ws = box.querySelector('.sp2-ws'), w = box.querySelector('.spw.on'); if (ws && w) ws.scrollLeft = Math.max(0, w.offsetLeft - ws.offsetLeft - ws.clientWidth / 2 + w.offsetWidth / 2); }
     const go = box.querySelector('.sp2-go:not([disabled])');
     if (go) go.onclick = () => { el.hidden = true; selIdx = pi; save.plan.cards = save.plan.cards || {}; save.plan.cards[pi] = m.cards.slice(); store(); doTrain(pi); };
   }
@@ -1390,7 +1393,8 @@
   }
   const ROLE_NAME = { captain: 'キャプテン', pk: 'PKキッカー', fk: 'FKキッカー', ck: 'CKキッカー' }, ROLE_TAG = { captain: 'C', pk: 'PK', fk: 'FK', ck: 'CK' };
   // ================= スタメン（カルチョビットAのボード）：マス目のピッチに顔を並べ、ドラッグで動かす・入れ替える =================
-  let sqShow = 'cond', sqDrag = null, sqPop = -1, sqNote = false, sqFromHome = false, sqRes = -1, sqResOpen = false;
+  let sqShow = 'cond', sqDrag = null, sqPop = -1, sqNote = false, sqFromHome = false, sqRes = -1, sqResOpen = false, sqMulti = null;   // sqMulti：まとめて放出で選んだ選手（版692）
+  const resPow = (q) => { try { C.ensurePts(q); return Math.round(D.PARAMS.reduce((a, x) => a + (q.pts[x.k] || 0), 0) / D.PARAMS.length); } catch (_) { return 0; } };   // 版692：リザーブの総合（能力の平均）
   // 顔の白い背景を抜く（ふちから続く白だけ透明に）。小さく描いてもにじまないよう、ほどよい大きさで作っておく
   const cutCache = new Map();
   function cutFace(img) {
@@ -1488,14 +1492,15 @@
     if (sel) { C.ensurePts(sel); const rk = PK.map((k) => C.rankInfo(sel.pts[k]).g);
       pop = `<div class="s2pop" style="${sqPop < 11 && sqPop > 0 && cells[sqPop] ? `left:${Math.min(560, Math.max(30, cx(cells[sqPop].c) - 170))}px;top:${Math.max(70, cy(cells[sqPop].r) - 150)}px` : sqPop === 0 ? `left:${PX0 + PW / 2 - 170}px;top:${PY0 + R * CH - 120}px` : (PHN ? `left:${BX1 - 400}px;top:${BY0 - 60 + ((sqPop - 11) % C.BENCH_N) * BDY}px` : `left:560px;top:${Math.min(470, 60 + (sqPop - 11) * 75)}px`)}"><div class="s2ph"><i class="pos ${POSC[sel.position]}">${sel.position}</i><b>${sel.number}</b><span>${esc(sel.name)}</span>${starHTML(C.ensureStar(sel), sel.totsu)}<button class="s2px xbtn"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></button></div>
         <div class="s2pr">${PK.map((k, j) => `<span title="${esc(D.PARAMS[j].name)}">${ico(k)}<i class="rk2 g-${rk[j]}">${rk[j]}</i></span>`).join('')}</div>
-        <div class="s2pt"><span class="tbadge ${TYPE_CLS[sel.type] || 'ty-bal'}">${esc(sel.type || '')}</span><i class="cdot ${condDot(sel)}"></i><small>疲労 ${Math.round(sel.fatigue || 0)}%</small></div>
+        <div class="s2pt"><span class="tbadge ${TYPE_CLS[sel.type] || 'ty-bal'}">${esc(sel.type || '')}</span><i class="cdot ${condDot(sel)}"></i><small>疲労 ${Math.round(sel.fatigue || 0)}%</small><span class="s2ft">利き足${footSVG(sel.foot)}<b>${sel.foot === 'L' ? '左' : '右'}</b></span></div>
         <div class="s2rl">${Object.keys(ROLE_NAME).map((k) => `<button data-role="${k}" class="${tac.roles[k] === sel.name ? 'on' : ''}"><i class="s2rt rt-${k}">${ROLE_TAG[k]}</i>${ROLE_NAME[k]}</button>`).join('')}</div>
         <button class="s2pd" data-pd="${sqPop}">選手データを見る</button></div>`; }
     // 版517：リザーブの選手を選んだら、その選手の能力も見せる（下に重ねても、その下の選手はタップできる）
     if (!sel && sqResOpen && sqRes >= 0 && save.reserve[sqRes]) { const q = save.reserve[sqRes]; C.ensurePts(q); const rk = PK.map((k) => C.rankInfo(q.pts[k]).g);
       pop = `<div class="s2pop s2rpop" style="left:${PX0 + 4}px;top:9999px"><div class="s2ph"><i class="pos ${POSC[q.position]}">${q.position}</i><span>${esc(q.name)}</span>${starHTML(C.ensureStar(q), q.totsu)}<small class="s2rp-tag">リザーブ</small></div>
         <div class="s2pr">${PK.map((k, j) => `<span title="${esc(D.PARAMS[j].name)}">${ico(k)}<i class="rk2 g-${rk[j]}">${rk[j]}</i></span>`).join('')}</div>
-        <div class="s2pt"><span class="tbadge ${TYPE_CLS[q.type] || 'ty-bal'}">${esc(q.type || '')}</span>${condGauge(q, 'sm')}<small>疲労 ${Math.round(q.fatigue || 0)}%</small></div></div>`; }
+        <div class="s2pt"><span class="tbadge ${TYPE_CLS[q.type] || 'ty-bal'}">${esc(q.type || '')}</span>${condGauge(q, 'sm')}<small>疲労 ${Math.round(q.fatigue || 0)}%</small><span class="s2ft">利き足${footSVG(q.foot)}<b>${q.foot === 'L' ? '左' : '右'}</b></span></div></div>`; }
+    if (sqResOpen && (save.reserve || []).length > 1) save.reserve.sort((a, b) => resPow(b) - resPow(a));   // 版692：能力の高い順
     $('#clubLayer').innerHTML = `<div class="sq2${PHN ? ' ph' : ''}${sqResOpen && (save.reserve || []).length ? ' resopen' : ''}"><div class="s2board"${boardCss}>
         <div class="s2head"><img src="${emblemURL(save.team.name, 40)}" alt=""><b>${esc(save.team.name)}</b><em>［${esc(label)}］</em></div>
         <div class="s2pitch" style="left:${PX0}px;top:${PY0}px;width:${PW}px;height:${PH}px"><i class="s2gk" style="top:${R * CH}px;height:${CH * 2}px"></i><i class="s2box" style="left:${PW * 0.22}px;width:${PW * 0.56}px;top:${R * CH - CH * 0.15}px;height:${CH * 2.15}px"></i><i class="s2box2" style="left:${PW * 0.34}px;width:${PW * 0.32}px;top:${R * CH + CH * 0.85}px;height:${CH * 1.15}px"></i></div>
@@ -1507,7 +1512,7 @@
       <button class="s2btn s2db" data-a="show" title="表示の切りかえ（名前・調子／タイプ／星）"><span><img class="s2chg" src="icons/ui_change.png" alt="切りかえ"></span></button>
       <button class="s2btn s2tb" data-a="tac"><span>${RB_TAC_SVG}</span><b>戦術</b></button>
       ${(save.reserve || []).length ? `<button class="s2btn s2rb" data-a="res"><span>${(save.reserve || []).length}</span><b>リザーブ</b></button>` : ''}
-      ${sqResOpen && (save.reserve || []).length ? `<div class="s2strip"><div class="s2st-h"><b>リザーブ</b><button class="s2res-x xbtn" title="とじる"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></button></div><div class="s2st-l">${save.reserve.map((q, k) => `<div class="s2sc${k === sqRes ? ' on' : ''}" data-r="${k}">${facePic(q, 's2sf')}${sqTag(q)}</div>`).join('')}</div>${sqRes >= 0 ? `<button class="s2rel s2rel2" data-rel="${sqRes}" title="放出"><img src="icons/pc_release.png" alt="放出"></button>` : '<p class="s2st-hint">タップ→チームの選手をタップ／横に引っぱって置く</p>'}</div>` : ''}
+      ${sqResOpen && (save.reserve || []).length ? `<div class="s2strip"><div class="s2st-h"><b>リザーブ</b><button class="s2res-x xbtn" title="とじる"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></button></div><div class="s2st-l">${save.reserve.map((q, k) => `<div class="s2sc${k === sqRes ? ' on' : ''}${sqMulti && sqMulti.has(q) ? ' chk' : ''}" data-r="${k}">${facePic(q, 's2sf')}<i class="s2pw" title="総合（能力の平均）">${C.rankInfo(resPow(q)).g}</i>${sqMulti ? `<i class="s2ck">${sqMulti.has(q) ? '✓' : ''}</i>` : ''}${sqTag(q)}</div>`).join('')}</div>${sqMulti ? `<div class="s2mu"><button class="s2mu-go"${sqMulti.size ? '' : ' disabled'}>${sqMulti.size}人を放出</button><button class="s2mu-x">やめる</button></div>` : (sqRes < 0 ? '<div class="s2mu"><button class="s2mu-on">まとめて放出</button></div>' : '') + (sqRes >= 0 ? `<button class="s2rel s2rel2" data-rel="${sqRes}" title="放出"><img src="icons/pc_release.png" alt="放出"></button>` : '<p class="s2st-hint">タップ→チームの選手をタップ／横に引っぱって置く</p>')}</div>` : ''}
       ${forms}
       <p class="s2hint">選手をドラッグして、マスに置く・ほかの選手（控えとも）と入れ替える。タップでくわしく。</p></div>`;
     const L = $('#clubLayer'), board = L.querySelector('.s2board'); fitSq2();
@@ -1518,10 +1523,10 @@
       if (a === 'note') { sqNote = !sqNote; renderLineup2(); }
       else if (a === 'show') { sqShow = SQ_SHOW[(SQ_SHOW.indexOf(sqShow) + 1) % SQ_SHOW.length]; renderLineup2(); const bd = $('#clubLayer .s2board'); if (bd) { const t = document.createElement('div'); t.className = 's2toast'; t.textContent = '表示：' + SQ_SHOW_NAME[sqShow]; bd.appendChild(t); setTimeout(() => t.remove(), 1300); } }
       else if (a === 'tac') { sqTab = 'tac'; renderLineup(); }
-      else if (a === 'res') { sqResOpen = !sqResOpen; sqRes = -1; renderLineup2(); }
+      else if (a === 'res') { sqResOpen = !sqResOpen; sqRes = -1; sqMulti = null; renderLineup2(); }
       else if (a === 'club') openClub({ onDone: () => renderLineup() }); });
     { const rb = L.querySelector('.s2res-back'); if (rb) rb.onclick = () => { sqRes = -1; renderLineup2(); }; }
-    { const rx = L.querySelector('.s2res-x'); if (rx) rx.onclick = () => { sqResOpen = false; sqRes = -1; renderLineup2(); }; }
+    { const rx = L.querySelector('.s2res-x'); if (rx) rx.onclick = () => { sqResOpen = false; sqRes = -1; sqMulti = null; renderLineup2(); }; }
     // 版517：リザーブとチームの入れかえ（タップでもドラッグでも）
     function swapRes(k, i) {
       const ps = save.team.players, r = save.reserve[k]; if (!r || !ps[i]) return;
@@ -1533,7 +1538,7 @@
     // リザーブの帯から、横に引っぱるとドラッグ（縦はスクロール）
     L.querySelectorAll('.s2sc').forEach((c) => {
       let dg = null;
-      c.addEventListener('pointerdown', (e) => { if (e.target.closest('.s2rel')) return; dg = { x0: e.clientX, y0: e.clientY, on: false, ghost: null, id: e.pointerId };
+      c.addEventListener('pointerdown', (e) => { if (sqMulti || e.target.closest('.s2rel')) return; dg = { x0: e.clientX, y0: e.clientY, on: false, ghost: null, id: e.pointerId };
         const fin = (ev) => { if (ev.pointerId !== e.pointerId) return; removeEventListener('pointerup', fin, true); removeEventListener('pointercancel', fin, true); if (dg && dg.on) end(ev.type === 'pointercancel' && dg.lx != null ? { clientX: dg.lx, clientY: dg.ly } : ev, false); };   // 版531：指を離した合図を画面全体でも受け取る
         addEventListener('pointerup', fin, true); addEventListener('pointercancel', fin, true); });
       c.addEventListener('pointermove', (e) => {
@@ -1548,7 +1553,16 @@
         if (t) swapRes(+c.dataset.r, +t.dataset.i); else renderLineup2(); };
       c.addEventListener('pointerup', (e) => end(e, false)); c.addEventListener('pointercancel', (e) => end(e, true));
     });
-    L.querySelectorAll('.s2sc').forEach((c) => c.onclick = (e) => { if (c.dataset.drag) return; if (e.target.closest('.s2rel')) return; const k = +c.dataset.r; sqRes = sqRes === k ? -1 : k; pick = -1; sqPop = -1; renderLineup2(); });
+    L.querySelectorAll('.s2sc').forEach((c) => c.onclick = (e) => { if (c.dataset.drag) return; if (e.target.closest('.s2rel')) return; const k = +c.dataset.r;
+      if (sqMulti) { const q = save.reserve[k]; if (sqMulti.has(q)) sqMulti.delete(q); else sqMulti.add(q); renderLineup2(); return; }
+      sqRes = sqRes === k ? -1 : k; pick = -1; sqPop = -1; renderLineup2(); });
+    // 版692：まとめて放出（選んだ選手をいっぺんに。覚醒のカケラをまとめてもらう）
+    { const on = L.querySelector('.s2mu-on'); if (on) on.onclick = () => { sqMulti = new Set(); sqRes = -1; renderLineup2(); }; }
+    { const x = L.querySelector('.s2mu-x'); if (x) x.onclick = () => { sqMulti = null; renderLineup2(); }; }
+    { const go = L.querySelector('.s2mu-go'); if (go) go.onclick = async () => { const list = save.reserve.filter((q) => sqMulti.has(q)); if (!list.length) return;
+      const kk = list.reduce((a, q) => a + (C.KAKERA_OF[C.ensureStar(q)] || 1) * (1 + (q.totsu || 0)), 0);
+      if (!(await coachAsk(`${list.length}人を放出しますか？<br><small>${list.map((q) => esc(q.name)).join('・')}<br>ほかのクラブへ移籍します（戻ってきません）。<br>覚醒のカケラ <b>${kk}</b> をもらえます。</small>`))) return;
+      save.reserve = save.reserve.filter((q) => !sqMulti.has(q)); save.kakera = (save.kakera || 0) + kk; sqMulti = null; sqRes = -1; if (!save.reserve.length) sqResOpen = false; done(); }; }
     L.querySelectorAll('.s2rel').forEach((b) => b.onclick = async (e) => { e.stopPropagation(); const k = +b.dataset.rel, q = save.reserve[k]; const kk = (C.KAKERA_OF[C.ensureStar(q)] || 1) * (1 + (q.totsu || 0));
       if (!(await coachAsk(`${esc(q.name)}を放出しますか？<br><small>ほかのクラブへ移籍します（戻ってきません）。<br>覚醒のカケラ <b>${kk}</b> をもらえます。</small>`))) return;
       save.reserve.splice(k, 1); save.kakera = (save.kakera || 0) + kk; sqRes = -1; if (!save.reserve.length) sqResOpen = false; done(); });   // 版508：放出（覚醒のカケラになる）
