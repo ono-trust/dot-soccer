@@ -4374,7 +4374,7 @@
     let scr = $('#cloudScr');
     if (!scr) {
       const st = document.createElement('style');
-      st.textContent = `#cloudScr{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;background:rgba(0,40,10,.55);font-family:inherit}
+      st.textContent = `#cloudScr{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;background:rgba(0,40,10,.55);font-family:inherit}
       #cloudScr .cld-box{position:relative;width:min(760px,94vw);height:min(380px,92vh);border:6px solid #fff;border-radius:22px;overflow:hidden;background:linear-gradient(#2ea8ff 0,#8fd3ff 50%,#4fc83a 50%,#9be04a 100%);box-shadow:0 8px 24px rgba(0,0,0,.4)}
       #cloudScr .cld-x{position:absolute;right:10px;top:8px;width:46px;height:46px;border-radius:50%;background:#2fa53a;border:3px solid #fff;color:#fff;font-size:24px;font-weight:900;line-height:1}
       #cloudScr .cld-inf{position:absolute;left:50%;transform:translateX(-50%);width:58%;padding:8px 14px;border-radius:8px;color:#fff;display:flex;flex-direction:column;gap:2px;font-size:15px;line-height:1.35}
@@ -4388,6 +4388,10 @@
       #cloudScr .cld-code b{display:block;font-size:19px;letter-spacing:1px;font-family:ui-monospace,Menlo,monospace}
       #cloudScr .cld-code button{margin-top:3px;padding:3px 10px;border-radius:7px;border:2px solid #123;background:#ffe45a;font-weight:800;font-size:12px}
       #cloudScr .cld-help{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);color:#fff;font-size:13.5px;font-weight:700;text-align:center;width:92%;text-shadow:0 1px 2px #000,0 0 3px #000}
+      #cloudScr .cld-dlg{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}
+      #cloudScr .cld-dbox{width:min(560px,88vw);max-height:88vh;overflow:auto;background:#fffbe8;color:#2a2a2a;border:4px solid #2a2a2a;border-radius:16px;padding:14px 18px;font-size:14.5px;line-height:1.5;text-align:left}
+      #cloudScr .cld-dbox h2{margin:0 0 6px;font-size:19px}#cloudScr .cld-dbox p{margin:6px 0}
+      #cloudScr .cld-dbtns{display:flex;justify-content:flex-end;gap:10px;margin-top:10px}#cloudScr .cld-dbtns button{min-width:110px;height:44px;border-radius:10px;border:3px solid #2a2a2a;background:#fff;font-size:17px;font-weight:800;color:#2a2a2a}#cloudScr .cld-dbtns button.pri{background:#1f86ff;color:#fff}
       #cloudScr input{width:100%;box-sizing:border-box;font-size:20px;padding:8px;text-align:center;letter-spacing:2px;font-family:ui-monospace,Menlo,monospace;text-transform:uppercase}`;
       document.head.appendChild(st);
       scr = document.createElement('div'); scr.id = 'cloudScr'; document.body.appendChild(scr);
@@ -4406,8 +4410,15 @@
       const cp = scr.querySelector('.cld-copy'); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(fmtCode(code())); msgTxt = 'コピーしました。メモ帳やLINEの自分あてなどに貼って、なくさないようにしてください。'; } catch (_) { msgTxt = 'コピーできませんでした。コードを書き写してください。'; } draw(); };
       scr.querySelector('.cld-save').onclick = doSave; scr.querySelector('.cld-load').onclick = doLoad;
     };
-    const ask = async (html, yes, no) => { scr.style.visibility = 'hidden'; const r = await modal(html, [{ label: no || 'やめる', value: false }, { label: yes, value: true, primary: true }]); scr.style.visibility = ''; return r; };
-    const tell = async (html) => { scr.style.visibility = 'hidden'; await modal(html, [{ label: 'OK', primary: true }]); scr.style.visibility = ''; };
+    // 版673：確認・お知らせは、この画面の中に出す（育成画面の確認窓は、ほかの画面の後ろに隠れて見えないことがあった）
+    const dlg = (html, btns) => new Promise((res) => {
+      const d = document.createElement('div'); d.className = 'cld-dlg';
+      d.innerHTML = `<div class="cld-dbox">${html}<div class="cld-dbtns">${btns.map((b, k) => `<button data-k="${k}" class="${b.primary ? 'pri' : ''}">${esc(b.label)}</button>`).join('')}</div></div>`;
+      scr.appendChild(d); const inp = d.querySelector('input'); if (inp) setTimeout(() => { try { inp.focus(); } catch (_) {} }, 60);
+      d.querySelectorAll('.cld-dbtns button').forEach((b) => b.onclick = () => { const v = btns[+b.dataset.k].value, t = inp ? inp.value : null; d.remove(); res(b.dataset.k === '0' && btns.length > 1 ? null : (inp ? t : v)); });
+    });
+    const ask = async (html, yes, no) => !!(await dlg(html, [{ label: no || 'やめる', value: false }, { label: yes, value: true, primary: true }]));
+    const tell = async (html) => { await dlg(html, [{ label: 'OK', value: true, primary: true }]); };
     async function doSave() {
       if (!(window.DotNet && DotNet.on)) return tell('<h2>通信できません</h2><p>この画面では使えません。</p>');
       if (!(await ask(`<h2>クラウドに保存しますか？</h2><p>この端末のデータを、クラウドに保存します。${cloud ? '<br>クラウドにあるデータは、上書きされます。' : ''}</p>`, '保存する'))) return;
@@ -4424,13 +4435,7 @@
     }
     async function doLoad() {
       if (!(window.DotNet && DotNet.on)) return tell('<h2>通信できません</h2>');
-      scr.style.visibility = 'hidden';
-      const inp = await new Promise((res) => {
-        $('#crModalBody').innerHTML = `<h2>クラウドから復元</h2><p>引き継ぎコード（12文字）を入れてください</p><input id="clIn" maxlength="16" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX" value="${code() ? fmtCode(code()) : ''}" style="width:100%;box-sizing:border-box;font-size:22px;padding:8px;text-align:center;letter-spacing:2px;font-family:ui-monospace,Menlo,monospace"><div class="cr-mbtns"><button data-k="0" class="${ibCls('やめる', false)}">やめる</button><button data-k="1" class="primary ${ibCls('次へ', true)}">次へ</button></div>`;
-        $('#crModal').hidden = false; const el = $('#clIn'); setTimeout(() => { try { el.focus(); } catch (_) {} }, 50);
-        $('#crModalBody').querySelectorAll('.cr-mbtns button').forEach((b) => b.onclick = () => { $('#crModal').hidden = true; res(b.dataset.k === '1' ? el.value : null); });
-      });
-      scr.style.visibility = '';
+      const inp = await dlg(`<h2>クラウドから復元</h2><p>引き継ぎコード（12文字）を入れてください</p><input maxlength="16" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX" value="${code() ? fmtCode(code()) : ''}">`, [{ label: 'やめる', value: null }, { label: '次へ', value: true, primary: true }]);
       if (inp == null) return;
       const c = DotNet.normCode(inp); if (c.length !== 12) return tell('<h2>コードがちがいます</h2><p>引き継ぎコードは12文字です（ハイフンは入れなくてもOK）。</p>');
       msgTxt = 'クラウドのデータを読んでいます…'; draw();
