@@ -92,6 +92,10 @@
     match = D.simulateMatch(mine, theirs, seed, { oneHalf: !!mctx.opts.oneHalf });   // 版560：練習試合は前半だけ
     { const hb = document.getElementById('htTac'); if (hb) hb.hidden = !mctx.opts.onSub; const sb = document.querySelector('#half [data-panel="subs"]'); if (sb) sb.hidden = !!mctx.opts.onSub; }
     { const ab = document.querySelector('#match aside [data-panel="subs"]'); if (ab) ab.style.display = (mctx.opts.watch || mctx.opts.lockEdit) ? 'none' : ''; }   // 観戦：選手交代はない（版622：フレンドのルーム対戦も、2つの画面で同じ試合にするため変更なし）
+    // 版695：プレミアムパス：試合の早送り（1倍→2倍→4倍）。フレンドのルーム対戦（2つの画面で同じ試合）では出さない
+    { let fb = document.getElementById('premFF'); if (!fb) { fb = document.createElement('button'); fb.id = 'premFF'; fb.className = 'prem-ff'; fb.title = '早送り（プレミアムパス）'; const host = document.querySelector('#match .viewport') || document.querySelector('#match'); host.appendChild(fb);
+        fb.onclick = (e) => { e.stopPropagation(); speed = speed >= 4 ? 1 : speed * 2; fb.innerHTML = `<b>▶▶</b><small>×${speed}</small>`; fb.classList.toggle('on', speed > 1); }; }
+      fb.hidden = !(window.__premOn && !mctx.opts.lockEdit); fb.innerHTML = '<b>▶▶</b><small>×1</small>'; fb.classList.remove('on'); }
     $('#match').classList.toggle('watching', !!mctx.opts.watch); { const ws = document.getElementById('wStop'); if (ws) { ws.hidden = !mctx.opts.watch; ws.onclick = async () => {
         { const pn = document.getElementById('panel'); if (pn && !pn.hidden) { pn.hidden = true; return; } }   /* 版491：開いている画面を一つずつ閉じる */
         { const pv = document.getElementById('plv'); if (pv && !pv.hidden) { if (plvMode !== 'both') { plvMode = 'both'; plvDraw(); } else closePlv(); return; } }

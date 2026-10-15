@@ -65,7 +65,8 @@
     document.querySelector('#cv-club .rbtns').hidden = v !== 'club';
     if (v === 'club') pickDrill();
     if (v === 'club') { const l = document.getElementById('rbLineup'), tt = document.getElementById('rbTac'); if (l) l.innerHTML = rbLineupSVG(); if (tt) tt.innerHTML = RB_TAC_SVG; rbLast = -1; }
-    if (v === 'home') { renderHome(); try { drawHome(performance.now()); } catch (_) {} }   // 版624：すぐ今のホームを描く（前に描いた古い絵が一瞬見えないように）
+    if (v === 'home') { renderHome(); try { drawHome(performance.now()); } catch (_) {} }
+    if (v === 'home') { premSync(); setTimeout(premDaily, 600); }   // 版695：プレミアムパスの毎日のプレゼント   // 版624：すぐ今のホームを描く（前に描いた古い絵が一瞬見えないように）
     if (v === 'data') renderData();
     if (v === 'train') renderTrain();
     if (v === 'lineup') renderLineup();
@@ -1348,11 +1349,13 @@
     const keep = el.hidden ? null : { g: (box.querySelector('.sp2-grid') || {}).scrollTop, w: (box.querySelector('.sp2-ws') || {}).scrollLeft, d: (box.querySelector('.sp2-d') || {}).scrollTop };
     const J = { kick: 'キック', technique: 'テクニック', dribble: 'ドリブル', pass: 'パス', speed: 'スピード', dash: '瞬発力', stamina: 'スタミナ', physical: 'フィジカル', jump: 'ジャンプ', defense: '守備', vision: '判断', mental: 'メンタル' };
     const kindOf = (m) => (m.skill ? 'skill' : m.type ? 'type' : 'up');
+    const HN = premHint();   // 版695：プレミアムパスのヒント
     const all = C.SP.map((m, idx) => ({ m, idx })).filter((o) => spFilter === 'all' || kindOf(o.m) === spFilter);
+    if (HN) all.sort((x, y) => (y.m.id === HN.id) - (x.m.id === HN.id));   // 版695：ヒントのメニューをいちばん前に
     if (spSel < 0 || !C.SP[spSel]) { const f = all.find((o) => found.has(o.m.id)); spSel = f ? f.idx : (all[0] || { idx: 0 }).idx; }
     const cardImg = (c, known, cls) => known ? `<span class="spc ${CATC[C.CARDS[c].cat]} ${cls || ''}${(save.cards[c] || 0) < 1 ? ' lack' : ''}"><img src="cards/${c}.jpg" alt="" draggable="false"><em>×${save.cards[c] || 0}</em></span>` : `<span class="spc unk ${CATC[C.CARDS[c].cat]} ${cls || ''}"><i>？</i></span>`;
     const tiles = all.map(({ m, idx }) => { const k = found.has(m.id), kd = kindOf(m);
-      return `<button class="spt${k ? ' k' : ''}${idx === spSel ? ' sel' : ''} kd-${kd}" data-sp="${idx}"><div class="spt-c">${m.cards.map((c) => cardImg(c, k)).join('')}</div><b>${k ? esc(m.name) : '？？？'}</b><small>${k ? (m.skill ? 'スキル：' + esc(D.SKILLS[m.skill].name) : m.type ? 'タイプ：' + esc(m.type) : '能力アップ') : (kd === 'skill' ? 'スキルを覚えるメニュー' : kd === 'type' ? 'タイプが変わるメニュー' : '能力が伸びるメニュー')}</small>${m.gk ? '<i class="spt-gk">GK</i>' : ''}</button>`; }).join('');
+      return `<button class="spt${k ? ' k' : ''}${idx === spSel ? ' sel' : ''} kd-${kd}${!k && HN && HN.id === m.id ? ' hint' : ''}" data-sp="${idx}"><div class="spt-c">${m.cards.map((c) => cardImg(c, k || (HN && HN.id === m.id && HN.c === c), !k && HN && HN.id === m.id && HN.c === c ? 'hintc' : '')).join('')}</div><b>${k ? esc(m.name) : '？？？'}</b><small>${k ? (m.skill ? 'スキル：' + esc(D.SKILLS[m.skill].name) : m.type ? 'タイプ：' + esc(m.type) : '能力アップ') : (kd === 'skill' ? 'スキルを覚えるメニュー' : kd === 'type' ? 'タイプが変わるメニュー' : '能力が伸びるメニュー')}</small>${m.gk ? '<i class="spt-gk">GK</i>' : ''}</button>`; }).join('');
     const m = C.SP[spSel], known = found.has(m.id), p = ps[pi];
     const canP = !(p.injury > 0) && !C.trainedThisWeek(save, p), lack = m.cards.filter((c) => (save.cards[c] || 0) < 1), gkNg = m.gk && p.position !== 'GK';
     const ok = known && canP && !lack.length && !gkNg;
@@ -1364,7 +1367,7 @@
     box.innerHTML = `<div class="sp2"><div class="sp2-h"><b>スペシャルメニュー</b><div class="sp2-bar"><i style="width:${(nF / C.SP.length * 100).toFixed(1)}%"></i></div><span>発見 ${nF} / ${C.SP.length}</span><button class="std-back sp2-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
       <div class="sp2-tabs">${[['all', 'すべて'], ['skill', 'スキル'], ['type', 'タイプ'], ['up', '能力']].map(([k, l]) => `<button data-f="${k}" class="${spFilter === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div class="sp2-grid">${tiles}</div>
-      <div class="sp2-d"><div class="sp2-dc">${m.cards.map((c) => cardImg(c, known, 'big')).join('<i class="sp2-plus">＋</i>')}</div>
+      <div class="sp2-d"><div class="sp2-dc">${m.cards.map((c) => cardImg(c, known || (HN && HN.id === m.id && HN.c === c), 'big')).join('<i class="sp2-plus">＋</i>')}</div>${!known && HN && HN.id === m.id ? '<p class="sp2-hint">プレミアムパスのヒント：このメニューのカードが1枚わかりました</p>' : ''}
         <h3>${known ? esc(m.name) : '？？？'}</h3>
         ${known && m.skill ? `<div class="sp2-sk"><span>覚えるスキル</span><b>${esc(D.SKILLS[m.skill].name)}</b><div class="sp2-rate"><i style="width:${rate}%"></i><em>${esc(p.name)}の成功率 ${rate}%</em></div></div>` : ''}
         ${known && m.type ? `<div class="sp2-sk ty"><span>近づくタイプ</span><b>${esc(m.type)}</b></div>` : ''}
@@ -3826,6 +3829,70 @@
   ];
   const COIN_BASE = 160 / 120;
   const csN = (v) => { const n = (v || 0).toLocaleString().length; return n >= 7 ? 'n7' : n >= 6 ? 'n6' : ''; };   // いちばん小さいパックの「1円あたりのコイン」を基準に、お得さを出す
+  // ================= 版695：プレミアムパス（720円・30日） =================
+  //  買った時：300コイン。毎日（ホームを開いた時に1日1回）：30コイン・特訓カード1枚・覚醒のカケラ2
+  //  持っている間：試合の早送り（2倍・4倍）、SPメニューのヒント（毎週1枚）、特訓カードを199枚まで、名前の横に金のマーク
+  const DAY = 86400000;
+  const midnight = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const premDayN = () => { const P = save && save.prem; if (!P) return 0; return Math.floor((midnight(Date.now()) - midnight(P.start)) / DAY) + 1; };
+  const premLeft = () => { const P = save && save.prem; if (!C.premOn(save)) return 0; return Math.max(1, Math.ceil((P.until - Date.now()) / DAY)); };
+  const premMark = (on) => (on ? '<i class="prem-mk" title="プレミアムパス">P</i>' : '');
+  function premSync() { try { document.documentElement.classList.toggle('prem-on', C.premOn(save)); window.__premOn = C.premOn(save); } catch (_) {} }
+  async function buyPrem(redraw) {
+    const P = C.PREM, on = C.premOn(save);
+    const ok = await coachAsk(`<b>プレミアムパス（${P.days}日）</b>を <b>¥${P.yen.toLocaleString()}</b> で購入しますか？${on ? `<br><small>今のパスに ${P.days}日 足されます（残り ${premLeft()}日 → ${premLeft() + P.days}日）</small>` : ''}<br><small>（テスト版のため、本当のお金はかかりません）</small>`, [{ label: '購入する', value: true }, { label: 'やめる', value: false }], 'sec');
+    if (!ok) return;
+    const now = Date.now();
+    if (on) save.prem.until += P.days * DAY;
+    else save.prem = { start: midnight(now), until: midnight(now) + P.days * DAY, got: [] };
+    save.coins = (save.coins || 0) + P.bonus;
+    (save.buys = save.buys || []).push({ id: 'prem', yen: P.yen, at: now, test: true });
+    store(); premSync();
+    await coachAsk(`プレミアムパスを手に入れました！<br><b>${P.bonus}コイン</b>をどうぞ。<br><small>これから${P.days}日間、毎日ホームでプレゼントを受け取れます。</small>`, [{ label: 'OK', value: true }], 'sec');
+    if (redraw) redraw();
+    premDaily();
+  }
+  // 毎日の受け取り（1〜30日のマス）
+  let premBusy = false;
+  async function premDaily() {
+    if (premBusy || !save || !C.premOn(save)) return;
+    const n = premDayN(), P = save.prem; P.got = P.got || [];
+    if (n < 1 || P.got.includes(n)) return;
+    premBusy = true;
+    for (let k = 0; k < 80 && (document.getElementById('ttTitle') || !$('#crModal').hidden || view !== 'home'); k++) await new Promise((r) => setTimeout(r, 250));   // タイトル・ほかの画面が閉じるまで待つ
+    if (view !== 'home' || P.got.includes(n)) { premBusy = false; return; }
+    const blk = Math.floor((n - 1) / 30), D0 = C.PREM.daily;
+    const cells = Array.from({ length: 30 }, (_, i) => { const d = blk * 30 + i + 1, got = P.got.includes(d), today = d === n, past = d < n && !got;
+      return `<div class="pd-c${got ? ' got' : ''}${today ? ' today' : ''}${past ? ' miss' : ''}"><small>${i + 1}日目</small><span>${COIN}<img src="icons/kakera.png" alt=""></span>${got ? '<b class="pd-ok">受取済</b>' : ''}</div>`; }).join('');
+    const el = document.createElement('div'); el.className = 'pd-wrap';
+    el.innerHTML = `<div class="pd-box"><div class="pd-h"><b>プレミアムパス</b><span>毎日のプレゼント</span><em>残り ${premLeft()}日</em></div>
+      <div class="pd-grid">${cells}</div>
+      <div class="pd-f"><p>今日のプレゼント：${COIN}<b>${D0.coins}</b>コイン　特訓カード<b>${D0.cards}</b>枚　<img class="kk-ico" src="icons/kakera.png" alt="">カケラ<b>${D0.kak}</b></p><button class="pd-go">受け取る</button></div></div>`;
+    (document.getElementById('app') || document.body).appendChild(el);
+    await new Promise((ok) => { el.querySelector('.pd-go').onclick = ok; });
+    // 受け取り
+    const cards = Object.keys(C.CARDS); let cd = null;
+    for (let k = 0; k < D0.cards; k++) { for (let j = 0; j < 40; j++) { const c = cards[Math.floor(Math.random() * cards.length)]; if ((save.cards[c] || 0) < C.cardMax(save)) { cd = c; break; } } if (cd) save.cards[cd] = (save.cards[cd] || 0) + 1; }
+    save.coins = (save.coins || 0) + D0.coins; save.kakera = (save.kakera || 0) + D0.kak; P.got.push(n); store();
+    try { window.DotSound && DotSound.play('reveal'); } catch (_) {}
+    el.querySelector('.pd-c.today').classList.add('got'); el.querySelector('.pd-c.today').insertAdjacentHTML('beforeend', '<b class="pd-ok">受取済</b>');
+    el.querySelector('.pd-f').innerHTML = `<div class="pd-got">${COIN}<b>+${D0.coins}</b>${cd ? `<img class="pd-card" src="cards/${cd}.jpg" alt=""><b>${esc(C.CARDS[cd].name)}</b>` : ''}<img class="kk-ico" src="icons/kakera.png" alt=""><b>+${D0.kak}</b></div><button class="pd-go">OK</button>`;
+    await new Promise((ok) => { el.querySelector('.pd-go').onclick = ok; });
+    el.remove(); premBusy = false;
+    try { renderHome(); } catch (_) {}
+  }
+  // SPメニューのヒント：毎週1つ、まだ見つけていないメニューのカードを1枚見せる
+  function premHint() {
+    if (!C.premOn(save)) return null;
+    const wk = `${save.season}-${save.week}`, found = new Set(save.spFound || []);
+    const P = save.prem;
+    if (P.hint && P.hint.wk === wk && !found.has(P.hint.id)) return P.hint;
+    if (P.hint && P.hint.wk === wk) return null;   // 今週のヒントはもう見つけた
+    const rest = C.SP.filter((m) => !found.has(m.id)); if (!rest.length) return null;
+    const m = rest[Math.floor(Math.random() * rest.length)];
+    P.hint = { wk, id: m.id, c: m.cards[Math.floor(Math.random() * m.cards.length)] }; store();
+    return P.hint;
+  }
   function coinShop(onClose) {
     const el = fullScreen('coinScreen', 'cs-wrap'), box = el.querySelector('.lk-box');
     // 版573：監督の絵（img/coin_shop.jpg）をそのまま使い、押せる場所と「所持」の数字だけ重ねる
@@ -3887,20 +3954,23 @@
           ${hit('', 646, 571, 196, 42, 'data-info="10"', 'パック内容を見る')}<span class="sh3-pr" style="left:977px;top:553px;width:236px">${COIN}<b>${C.PRICE.pack12}</b></span>${hit('sh3-buy', 977, 553, 236, 64, 'data-pack="10"', 'カードパック（大）を買う')}
           ${hit('', 46, 631, 1188, 66, 'data-tab="cards"', '特訓カードを1枚ずつ選ぶ')}</div>`;
       } else if (S.tab === 'prem') {
-        h = `<div class="sh3 sh3-prem"><img class="sh3-bgimg" src="img/shop_prem.jpg" alt="">${head}${hit('', 44, 140, 1192, 560, 'data-soon="1"', 'プレミアムパス（近日公開）')}</div>`;
+        const on = C.premOn(save);
+        h = `<div class="sh3 sh3-prem"><img class="sh3-bgimg" src="img/shop_prem.jpg" alt="">${head}
+          <div class="pm-perks"><b>パスを持っている間</b><span>・毎日 コイン・カード・カケラ</span><span>・試合の早送り（2倍・4倍）</span><span>・SPメニューのヒント（毎週1枚）</span><span>・特訓カードを199枚まで持てる</span><span>・名前の横に金のマーク</span><span>・買った時に ${C.PREM.bonus}コイン</span></div>
+          <button class="pm-buy${on ? ' on' : ''}" data-prem="1">${on ? `<small>残り ${premLeft()}日</small>延長する ¥${C.PREM.yen.toLocaleString()}` : `購入する <b>¥${C.PREM.yen.toLocaleString()}</b><small>30日</small>`}</button></div>`;
       } else {
         const list = Object.keys(C.CARDS).filter((c) => S.cat === 'all' || C.CARDS[c].cat === S.cat);
         if (!S.sel || !list.includes(S.sel)) { S.sel = list[0]; S.qty = 1; }
-        const room = Math.max(0, C.CARD_MAX - ((save.cards || {})[S.sel] || 0)); if (S.qty > Math.max(1, room)) S.qty = Math.max(1, room);   // 版562：持てるのは99枚まで
+        const room = Math.max(0, C.cardMax(save) - ((save.cards || {})[S.sel] || 0)); if (S.qty > Math.max(1, room)) S.qty = Math.max(1, room);   // 版562：持てるのは99枚まで
         const c = S.sel, cd = C.CARDS[c], pr = price(c), tot = pr * S.qty, lack = Math.max(0, tot - (save.coins || 0));
         h = `<div class="sh3 sh3-cards"><img class="sh3-bgimg" src="img/shop_cards.jpg" alt="">${head}
           <div class="sh3-sub">${SH_CATS.map(([k, l]) => `<button data-cat="${k}" class="${S.cat === k ? 'on' : ''}" style="--cc:${SH_CATCOL[k] || '#ee5a12'}">${l}</button>`).join('')}</div>
           <div class="sh3-grid">${list.map((k) => { const d = C.CARDS[k]; return `<button class="sh3-card${k === c ? ' on' : ''}" data-c="${k}" style="--cc:${SH_CATCOL[d.cat]}"><img src="cards/${k}.jpg" alt="${esc(d.name)}" draggable="false"><span class="sh3-cf"><small>所持 ${save.cards[k] || 0}枚</small><em>${COIN}${price(k)}</em></span></button>`; }).join('')}</div>
           <div class="sh3-det"><h3>${esc(cd.name)}</h3><div class="sh3-dr"><img src="cards/${c}.jpg" alt="" style="border-color:${SH_CATCOL[cd.cat]}"><p class="sh3-eff">${esc(effText(c))}</p></div>
             <div class="sh3-one">1枚 ${COIN}<b>${pr}</b><small>コイン</small></div>
-            <div class="sh3-qty"><button data-q="-1" class="m"${S.qty <= 1 ? ' disabled' : ''}>−</button><span>${S.qty}</span><button data-q="1" class="p"${S.qty >= Math.min(99, room) ? ' disabled' : ''}>＋</button></div>
+            <div class="sh3-qty"><button data-q="-1" class="m"${S.qty <= 1 ? ' disabled' : ''}>−</button><span>${S.qty}</span><button data-q="1" class="p"${S.qty >= Math.max(1, room) ? ' disabled' : ''}>＋</button></div>
             <div class="sh3-tot">合計<span>${COIN}<b>${tot}</b><small>コイン</small></span></div>
-            <button class="sh3-go"${lack || !room ? ' disabled' : ''}>${room ? '購入する' : '上限（99枚）'}</button><p class="sh3-lack">${!room ? 'もう99枚持っているので買えません' : lack ? `あと <b>${lack}</b> コイン必要` : ''}</p>
+            <button class="sh3-go"${lack || !room ? ' disabled' : ''}>${room ? '購入する' : `上限（${C.cardMax(save)}枚）`}</button><p class="sh3-lack">${!room ? `もう${C.cardMax(save)}枚持っているので買えません` : lack ? `あと <b>${lack}</b> コイン必要` : ''}</p>
             <button class="sh3-pk" data-tab="rec">まとめ買いならカードパックへ <span>→</span></button></div></div>`;
       }
       box.innerHTML = h;
@@ -3908,7 +3978,7 @@
       box.querySelectorAll('[data-go="back"]').forEach((b) => b.onclick = () => { el.hidden = true; renderHome(); });
       box.querySelectorAll('[data-go="scout"]').forEach((b) => b.onclick = () => { el.hidden = true; openGacha(); });
       box.querySelectorAll('[data-go="coin"]').forEach((b) => b.onclick = () => coinShop(() => draw()));   // 版570：左上のコインを押すと、コイン購入
-      box.querySelectorAll('[data-soon]').forEach((b) => b.onclick = () => toast('プレミアムパスは近日公開です'));
+      box.querySelectorAll('[data-prem]').forEach((b) => b.onclick = () => buyPrem(() => draw()));
       box.querySelectorAll('[data-info]').forEach((b) => b.onclick = () => coachAsk(`<b>カードパック${b.dataset.info === '10' ? '（大）' : ''}</b><br>特訓カード（戦術・テクニック・フィジカル・サポート）から<br>ランダムで <b>${b.dataset.info}枚</b> 入っています。<br><b>${b.dataset.info === '10' ? C.PRICE.pack12 : C.PRICE.pack5}</b> コイン（1枚あたり ${Math.round((b.dataset.info === '10' ? C.PRICE.pack12 : C.PRICE.pack5) / +b.dataset.info)} コイン）<br><small>1枚ずつ買う（${C.PRICE.card}コイン）より、お得です。</small>`, [{ label: 'とじる', value: true }], 'sec'));
       // 版564：カードパックは、必ず確認してから買う → 開ける演出 → 手に入れたカードを全部見せる（黄色いボタンでも、すぐには買わない）
       const packFlow = async (n) => { const big = n >= 10, pr = big ? C.PRICE.pack12 : C.PRICE.pack5;
@@ -4022,7 +4092,7 @@
     const RW = RANK_REWARD[i1] || RANK_REWARD[1];
     const main = Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat !== 'sup' && !C.CARDS[c].sp), sup = Object.keys(C.CARDS).filter((c) => C.CARDS[c].cat === 'sup');
     const cards = Array.from({ length: RW.cards }, () => (Math.random() < 0.25 && sup.length ? sup[Math.floor(Math.random() * sup.length)] : main[Math.floor(Math.random() * main.length)]));
-    save.cards = save.cards || {}; for (const c of cards) save.cards[c] = Math.min(C.CARD_MAX, (save.cards[c] || 0) + 1);
+    save.cards = save.cards || {}; for (const c of cards) save.cards[c] = Math.min(C.cardMax(save), (save.cards[c] || 0) + 1);
     C.ensureGacha(save); save.kakera = (save.kakera || 0) + RW.kak; save.coins = (save.coins || 0) + RW.coins;
     return { cards, kak: RW.kak, coins: RW.coins, rank: i1 };
   }
@@ -4213,7 +4283,7 @@
     try { top = await DotNet.top(50); } catch (_) {}
     const el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box');
     const myI = top.findIndex((p) => p.uid === DotNet.uid);
-    const row = (p, k) => `<div class="ap-rkr${p.uid === DotNet.uid ? ' me' : ''}${k < 3 ? ' top' + (k + 1) : ''}"><span class="ap-rkr-no">${k + 1}</span><img src="${embFromLook(p.emb, 48)}" alt=""><div class="ap-rkr-n"><b>${esc(p.name)}</b><small>${p.mgr ? esc(p.mgr) + '監督' : ''}</small></div>${rankBadge(Math.max(0, Math.min(4, p.rank || 0)))}<b class="ap-rkr-rp">${p.rp || 0}<small>RP</small></b></div>`;
+    const row = (p, k) => `<div class="ap-rkr${p.uid === DotNet.uid ? ' me' : ''}${k < 3 ? ' top' + (k + 1) : ''}"><span class="ap-rkr-no">${k + 1}</span><img src="${embFromLook(p.emb, 48)}" alt=""><div class="ap-rkr-n"><b>${esc(p.name)}${premMark(p.prem)}</b><small>${p.mgr ? esc(p.mgr) + '監督' : ''}</small></div>${rankBadge(Math.max(0, Math.min(4, p.rank || 0)))}<b class="ap-rkr-rp">${p.rp || 0}<small>RP</small></b></div>`;
     box.innerHTML = `${apBg()}<div class="ap-top"><img src="icons/home_online.png" alt=""><div><b>全国ランキング</b><small>RPの多い監督 TOP50</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>
       <div class="ap-rkl">${top.length ? top.map(row).join('') : '<p class="ap-note">まだランキングを読みこめませんでした。</p>'}</div>
       <div class="ap-rkme">あなた：${myI >= 0 ? `<b>${myI + 1}位</b>` : '<b>圏外</b>'}　${rankBadge(rankIdx(on.rp))}　<b>${on.rp}</b> RP</div>`;
@@ -4262,7 +4332,7 @@
   async function publishMe() {
     if (!(window.DotNet && DotNet.on) || pubBusy) return null; pubBusy = true;
     try { const on = ensureOnline(), d = C.guestCode(save), code = await packCode(d);
-      const fid = await DotNet.publish({ fid: on.fid, name: d.name, short: d.short, mgr: d.mgr, lg: d.lg, emb: d.emb, kit: d.kit, rank: rankIdx(on.rp), rp: on.rp, lvl: C.teamLevel(save), code, sv: save.cloudCode || null });
+      const fid = await DotNet.publish({ fid: on.fid, name: d.name, short: d.short, mgr: d.mgr, lg: d.lg, emb: d.emb, kit: d.kit, rank: rankIdx(on.rp), rp: on.rp, lvl: C.teamLevel(save), code, sv: save.cloudCode || null, prem: C.premOn(save) });
       if (fid && fid !== on.fid) { on.fid = fid; store(); } return fid;
     } catch (_) { return null; } finally { pubBusy = false; }
   }
@@ -4343,9 +4413,9 @@
   async function friendMenu(back) {
     if (typeof back === 'function') friendMenu.back = back; else if (back !== 'keep') friendMenu.back = null;
     const on = ensureOnline(); on.flist = on.flist || [];
-    if (window.DotNet && DotNet.on && Date.now() - (friendMenu.fixT || 0) > 60000) { friendMenu.fixT = Date.now(); (async () => { let ch = false; for (const f of on.flist) { if (!f.fid) continue; try { const p = await DotNet.byFid(f.fid); if (p && p.uid && p.uid !== f.uid) { f.uid = p.uid; ch = true; } } catch (_) {} } if (ch) store(); })(); }   // 版672：フレンドが機種変更（データ引き継ぎ）していたら、新しい端末へつなぎ直す
+    if (window.DotNet && DotNet.on && Date.now() - (friendMenu.fixT || 0) > 60000) { friendMenu.fixT = Date.now(); (async () => { let ch = false; for (const f of on.flist) { if (!f.fid) continue; try { const p = await DotNet.byFid(f.fid); if (p && p.uid && p.uid !== f.uid) { f.uid = p.uid; ch = true; } if (p && !!p.prem !== !!f.prem) { f.prem = !!p.prem; ch = true; } } catch (_) {} } if (ch) store(); })(); }   // 版672：フレンドが機種変更（データ引き継ぎ）していたら、新しい端末へつなぎ直す
     const el = fullScreen('apScreen', 'ap-wrap'), box = el.querySelector('.lk-box'), net = !!(window.DotNet && DotNet.on);
-    const card = (f, k) => `<div class="ap-fc"><img src="${embFromLook(f.emb, 96)}" alt=""><div class="ap-fc-n"><b>${esc(f.name)}</b>${f.mgr ? `<small>${esc(f.mgr)}監督</small>` : ''}${f.rank != null ? rankBadge(f.rank) : ''}<small class="ap-fc-r">${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><button class="ap-fc-go${(friendMenu.inv || []).some((r) => r.host === f.uid) ? ' inv' : ''}" data-fu="${k}"><img src="icons/home_stadium.png" alt="">${(friendMenu.inv || []).some((r) => r.host === f.uid) ? 'ルームに入る' : 'ルームを作る'}</button><button class="ap-fc-x xbtn" data-fx="${k}" title="フレンドから外す"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></button></div>`;
+    const card = (f, k) => `<div class="ap-fc"><img src="${embFromLook(f.emb, 96)}" alt=""><div class="ap-fc-n"><b>${esc(f.name)}${premMark(f.prem)}</b>${f.mgr ? `<small>${esc(f.mgr)}監督</small>` : ''}${f.rank != null ? rankBadge(f.rank) : ''}<small class="ap-fc-r">${f.w || 0}勝 ${f.d || 0}分 ${f.l || 0}敗</small></div><button class="ap-fc-go${(friendMenu.inv || []).some((r) => r.host === f.uid) ? ' inv' : ''}" data-fu="${k}"><img src="icons/home_stadium.png" alt="">${(friendMenu.inv || []).some((r) => r.host === f.uid) ? 'ルームに入る' : 'ルームを作る'}</button><button class="ap-fc-x xbtn" data-fx="${k}" title="フレンドから外す"><img class="xbtn-img" src="icons/ui_close.png" alt="×" draggable="false"></button></div>`;
     box.innerHTML = `${apBg()}<div class="ap2">${apTop('フレンド', 'フレンド申請して、いつでも対戦！')}
       <div class="ap-fgrid2">
         <div class="ap-pnl ap-reg"><h3><span class="ap-hi">${AP_SVG.mail}</span>フレンド申請</h3><div class="ap-pb">
@@ -4385,7 +4455,7 @@
     box.innerHTML = `${apBg()}<div class="ap2">${apTop('空港　対戦ロビー', '勝ってライセンスを上げよう！ S級を目指せ')}
       <div class="ap-frame">
       <div class="ap-main">
-        <div class="ap-pnl ap-club"><h3>マイクラブ</h3><div class="ap-pb"><img class="ap-emb" src="${emblemURL(save.team.name, 128)}" alt=""><b class="ap-tn">${esc(save.team.name)}</b>
+        <div class="ap-pnl ap-club"><h3>マイクラブ</h3><div class="ap-pb"><img class="ap-emb" src="${emblemURL(save.team.name, 128)}" alt=""><b class="ap-tn">${esc(save.team.name)}${premMark(C.premOn(save))}</b>
           <div class="ap-fidl"><span>フレンドID</span><b id="apFidL">${net ? (on.fid ? fmtFid(on.fid) : '…') : 'オフライン'}</b></div>
           <div class="ap-stats">${statRow('muscle', '総合力', Math.round(C.teamLevel(save)))}${statRow('trophy2', 'ランクマッチ', wdl(on.w, on.d, on.l))}${statRow('shield', '守備', wdl(on.dw, on.dd, on.dl))}${statRow('hand2', 'フレンド', wdl(on.fw, on.fd, on.fl))}</div></div></div>
         <div class="ap-pnl ap-rankp"><h3>監督ライセンス${net ? `<button class="ap-rkbtn" data-a="ranking">${AP_SVG.trophy2}全国ランキング</button>` : ''}</h3><div class="ap-pb"><div class="ap-rk-row">${apMedal(i, 150)}<div class="ap-rk-info"><b class="ap-rk-n">${RANKS[i].n}ライセンス</b><div class="ap-rk-rp"><b>${on.rp}</b> RP</div>
@@ -4574,6 +4644,7 @@
   }
   window.__career = { trainResult: (o) => trainResult(o), airport, openPost, syncPost, onlineDone, setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
   window.__career.openCloud = openCloud;
+  window.__career.shop = (t) => shop(t); window.__career.premDaily = () => premDaily();
   window.__career.embURL = () => { try { return save ? embFromLook(C.ensureClub(save).emb, 96) : ''; } catch (_) { return ''; } };   // 版680：設定のアカウントIDの横に出す、自分のクラブのエンブレム
   window.__career.myFid = async () => { if (!save) return null; const on = ensureOnline(); if (on.fid && !(window.DotNet && DotNet.FID_MOVE && DotNet.FID_MOVE[on.fid])) return on.fid; return (await publishMe()) || on.fid; };   // 版678：アカウントID（なければ作る）
 })();

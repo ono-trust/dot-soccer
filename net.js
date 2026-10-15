@@ -46,7 +46,7 @@
     lastErr = '';   // 版684：前のエラーが残らないように
     return withTimeout((async () => {
       let fid; try { fid = await ensureFid(me.fid); } catch (e) { lastErr = 'fid: ' + (e && e.message || e); throw e; }
-      await db.collection('players').doc(uid).set({ fid, name: me.name, short: me.short, mgr: me.mgr || '', lg: me.lg || '', emb: me.emb || null, kit: me.kit || null, rank: me.rank, rp: me.rp, lvl: Math.round(me.lvl || 0), code: me.code, sv: me.sv || null, at: Date.now() });
+      await db.collection('players').doc(uid).set({ fid, name: me.name, short: me.short, mgr: me.mgr || '', lg: me.lg || '', emb: me.emb || null, kit: me.kit || null, rank: me.rank, rp: me.rp, lvl: Math.round(me.lvl || 0), code: me.code, sv: me.sv || null, prem: !!me.prem, at: Date.now() });
       return fid;
     })()).catch((e) => { lastErr = lastErr || String(e && e.message || e); throw e; });
   }
@@ -83,7 +83,7 @@
   async function clearInbox(ids) { if (!(await ready())) return; await Promise.all(ids.map((id) => db.collection('battles').doc(id).delete().catch(() => {}))); }
   async function top(n) {
     if (!(await ready())) return [];
-    return withTimeout(db.collection('players').orderBy('rp', 'desc').limit(n || 50).get().then((q) => q.docs.map((d) => ({ uid: d.id, name: d.data().name, mgr: d.data().mgr, emb: d.data().emb, rank: d.data().rank, rp: d.data().rp }))));
+    return withTimeout(db.collection('players').orderBy('rp', 'desc').limit(n || 50).get().then((q) => q.docs.map((d) => ({ uid: d.id, name: d.data().name, mgr: d.data().mgr, emb: d.data().emb, rank: d.data().rank, rp: d.data().rp, prem: !!d.data().prem }))));
   }
   // 版618：ポスト（フレンド申請・承認・お知らせ）
   async function sendMail(to, m) {

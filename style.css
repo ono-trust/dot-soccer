@@ -3568,3 +3568,30 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 .s2p .ovr.s2ov{position:absolute;right:-12px;top:-2px;z-index:4;font-size:14px;padding:1px 4px}
 .s2p.bn .ovr.s2ov{right:-14px;top:-4px;font-size:12px}
 .sq2.ph .s2p .ovr.s2ov{font-size:12px;right:-10px}
+/* 版695：プレミアムパス */
+.prem-mk{display:inline-grid;place-items:center;width:1.15em;height:1.15em;margin-left:.3em;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6b0,#f2b51c 55%,#a86f00);color:#5a3a00;font:italic 900 .7em/1 Arial,sans-serif;font-style:normal;box-shadow:0 0 0 2px #fff,0 2px 0 rgba(0,0,0,.3);vertical-align:.15em}
+.prem-ff{position:absolute;left:14px;bottom:14px;z-index:30;width:84px;height:62px;border-radius:14px;border:3px solid #fff;background:linear-gradient(#ffe36a,#e5a514);color:#5a3a00;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 4px 0 rgba(0,0,0,.35);cursor:pointer;padding:0}
+.prem-ff b{font:900 22px/1 Arial,sans-serif;letter-spacing:-3px}.prem-ff small{font:900 14px/1 Arial,sans-serif}
+.prem-ff.on{background:linear-gradient(#ff9a3a,#d9480f);color:#fff}
+.prem-ff[hidden]{display:none}
+.sh3-prem .pm-perks{position:absolute;left:566px;top:446px;width:660px;height:160px;z-index:2;background:rgba(10,30,80,.94);border:3px solid #ffd23a;border-radius:14px;padding:10px 16px;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;color:#fff;font:800 17px/1.35 "Hiragino Kaku Gothic ProN",sans-serif;align-content:start}
+.sh3-prem .pm-perks b{grid-column:1/-1;color:#ffd23a;font-size:18px;margin-bottom:2px}
+.sh3-prem .pm-buy{position:absolute;left:466px;top:618px;width:350px;height:76px;z-index:3;border-radius:999px;border:4px solid #fff;background:linear-gradient(#ffe36a,#f0a514);color:#5a3a00;font:900 30px/1 "Hiragino Kaku Gothic ProN",sans-serif;box-shadow:0 5px 0 #8a5a00;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer}
+.sh3-prem .pm-buy b{font-size:34px}.sh3-prem .pm-buy small{font-size:16px;background:#fff8;border-radius:999px;padding:3px 10px}
+.sh3-prem .pm-buy.on{background:linear-gradient(#7fe07a,#2f9a2a);color:#fff;border-color:#fff;box-shadow:0 5px 0 #1a5a18;font-size:26px}.sh3-prem .pm-buy.on small{background:#0003;color:#fff}
+.pd-wrap{position:absolute;inset:0;z-index:400;background:rgba(0,0,0,.55);display:grid;place-items:center}
+.pd-box{width:min(94%,980px);background:linear-gradient(#183a8a,#0c2058);border:5px solid #ffd23a;border-radius:20px;padding:14px 18px;color:#fff;box-shadow:0 10px 0 rgba(0,0,0,.35);font-family:"Hiragino Kaku Gothic ProN",sans-serif}
+.pd-h{display:flex;align-items:baseline;gap:14px;margin-bottom:10px}.pd-h b{font-size:30px;color:#ffd23a;font-weight:900}.pd-h span{font-size:18px;font-weight:800}.pd-h em{margin-left:auto;font-style:normal;background:#fff;color:#0c2058;border-radius:999px;padding:3px 14px;font-weight:900}
+.pd-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:6px}
+.pd-c{position:relative;background:#fff;color:#0c2058;border-radius:10px;padding:4px 2px 6px;text-align:center;border:3px solid #c9d6f0}
+.pd-c small{display:block;font-size:12px;font-weight:900}.pd-c span{display:flex;justify-content:center;gap:2px}.pd-c .coin-ico,.pd-c span img{width:22px;height:22px}
+.pd-c.today{border-color:#ff8a1a;background:#fff3c8;box-shadow:0 0 0 3px #ffd23a;animation:pdPulse 1.2s ease-in-out infinite}
+@keyframes pdPulse{50%{transform:scale(1.06)}}
+.pd-c.got{background:#d6dbe6;opacity:.85;animation:none}.pd-c.miss{opacity:.4}
+.pd-ok{position:absolute;inset:0;display:grid;place-items:center;color:#d02a2a;font-size:15px;font-weight:900;transform:rotate(-12deg);text-shadow:0 0 3px #fff,0 0 3px #fff}
+.pd-f{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:12px}
+.pd-f p{margin:0;font-size:18px;font-weight:800;display:flex;align-items:center;gap:4px;flex-wrap:wrap}.pd-f b{color:#ffd23a;font-size:22px;margin:0 2px}.pd-f .coin-ico,.pd-f .kk-ico{width:26px;height:26px}
+.pd-go{min-width:200px;height:60px;border-radius:999px;border:4px solid #fff;background:linear-gradient(#ffe36a,#f0a514);color:#5a3a00;font:900 26px/1 "Hiragino Kaku Gothic ProN",sans-serif;box-shadow:0 5px 0 #8a5a00;cursor:pointer}
+.pd-got{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:900}.pd-got .pd-card{width:46px;height:62px;object-fit:cover;border-radius:6px;border:2px solid #fff}
+.spt.hint{box-shadow:0 0 0 3px #ffd23a}.spc.hintc{box-shadow:0 0 0 3px #ffd23a,0 0 10px #ffd23a}
+.sp2-hint{margin:4px 0 0;color:#b07a00;font-weight:900;font-size:13px;text-align:center}
