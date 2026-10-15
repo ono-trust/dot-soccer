@@ -4218,7 +4218,10 @@
     return postBusy;
   }
   // 版710：絵文字のかわりに絵を使うお知らせ
-  const postImg = (it) => it.kind === 'buy' ? 'icons/coin.png' : (it.kind === 'def' && it.r === 'W') ? 'icons/post_def_win.png' : (it.ico === 'defrp' || (it.kind === 'info' && /^守備で/.test(it.title || ''))) ? 'icons/post_def_rp.png' : '';
+  const postImg = (it) => it.kind === 'buy' ? 'icons/coin.png'
+    : it.kind === 'def' ? (it.r === 'W' ? 'icons/post_def_win.png' : it.r === 'D' ? 'icons/post_def_draw.png' : 'icons/post_def_lose.png')
+    : (it.ico === 'defrp' || (it.kind === 'info' && /^守備で/.test(it.title || ''))) ? 'icons/post_def_rp.png'
+    : it.kind === 'reward' ? 'icons/post_reward.png' : (it.kind === 'news' || it.kind === 'info') ? 'icons/post_news.png' : '';   // 版711：のこりの絵文字も絵に
   const POST_ICO = { buy: '🪙', room: '⚽', freq: '🤝', fok: '🎉', def: '🛡️', info: '📣', reward: '🎁', news: '📰' };
   const fmtAt = (t) => { const d = new Date(t || Date.now()); return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
   async function openPost(back) {
