@@ -3861,6 +3861,7 @@
     if (payBusy || !save || !payReal()) return; payBusy = true;
     try {
       const got = await DotNet.payClaim(); if (!got.length) return;
+      for (let i = 0; i < 600 && document.getElementById('ttTitle'); i++) await new Promise((r) => setTimeout(r, 200));   // 版707：タイトル画面の上では飛ばさない
       for (const g of got) {
         const c0 = save.coins || 0; save.coins = c0 + (g.coins || 0); if (g.premDays) premAdd(g.premDays);
         (save.buys = save.buys || []).push({ id: g.item, coins: g.coins, yen: g.yen, at: Date.now(), pay: g.id, live: !!g.live }); delete save.payPending;
@@ -4218,7 +4219,7 @@
         else if (it.kind === 'room') { t = 'フレンド対戦の招待'; body = `<b>${esc(it.name)}</b>${it.mgr ? `（${esc(it.mgr)}監督）` : ''}がルームを作りました。`; btns = Date.now() - (it.at || 0) < 30 * 60 * 1000 ? `<button class="po-ok" data-room="${it.id}">ルームに入る</button>` : '<span class="po-done">時間切れ</span>'; }
         else if (it.kind === 'news') { t = it.title || 'お知らせ'; body = esc(it.text || '').replace(/\n/g, '<br>'); }
         else { t = it.title || 'お知らせ'; body = esc(it.text || ''); }
-        const emb = it.emb ? `<img src="${embFromLook(it.emb, 56)}" alt="">` : `<span class="po-ico">${POST_ICO[it.kind] || '✉️'}</span>`;
+        const emb = it.emb ? `<img src="${embFromLook(it.emb, 56)}" alt="">` : (it.kind === 'buy' ? `<span class="po-ico po-coin"><img src="icons/coin.png" alt="" draggable="false"></span>` : `<span class="po-ico">${POST_ICO[it.kind] || '✉️'}</span>`);
         return `<div class="po-it${it.read ? '' : ' new'}${it.kind === 'def' ? ' def-' + it.r : ''}" data-id="${it.id}">${emb}<div class="po-b"><div class="po-t"><b>${esc(t)}</b><small>${fmtAt(it.at)}</small></div><p>${body}</p>${btns ? `<div class="po-btns">${btns}</div>` : ''}</div>${it.read ? '' : '<i class="po-dot"></i>'}</div>`;
       };
       box.innerHTML = `${apBg()}<div class="ap-top"><img class="po-top-img" src="icons/post.png" alt=""><div><b>ポスト</b><small>フレンド申請・対戦の結果・お知らせが届きます</small></div><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button></div>

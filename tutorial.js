@@ -441,7 +441,10 @@
       save = sv; if (LAB) return false;
       if (!save.tut) save.tut = { s: (!save.clubSet && (save.week || 1) <= 1 && save.season === 1 && !(save.history || []).length) ? 'start' : 'done' };
       if (step() === 'start') { titled = true; run(opening); return true; }
-      if (!titled) { titled = true; title(); }   // 版691：アプリを開くたびにタイトル画面
+      if (!titled) { titled = true;   // 版691：アプリを開くたびにタイトル画面（版707：お支払いからもどった時は出さない）
+        const paid = /[?&]paid=1/.test(location.search) || (save.payPending && Date.now() - (save.payPending.at || 0) < 30 * 60 * 1000);
+        if (paid) { try { history.replaceState(null, '', location.pathname + location.search.replace(/[?&]paid=1/, '').replace(/^&/, '?') + location.hash); } catch (_) {} }
+        else title(); }
       if (active()) kickHome();
       return active();
     },
