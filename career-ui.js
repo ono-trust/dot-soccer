@@ -3600,7 +3600,7 @@
     const draw = () => {
       box.innerHTML = `<div class="off"><div class="of-room"></div>
         <div class="of-l">${PIC('kit', 'off_kit', 'ユニフォーム')}${PIC('emb', 'off_emblem', 'エンブレム')}${PIC('name', 'off_name', 'チーム名変更')}${PIC('bye', 'off_retire', '退任')}${PIC('set', 'off_setting', '設定')}</div>
-        <div class="of-r">${PIC('biz', 'off_biz', '経営状況')}${PIC('team', 'off_team', 'チーム編成')}${PIC('friend', 'off_friend', 'フレンド')}</div>
+        <div class="of-r">${PIC('biz', 'off_biz', 'クラブ状況')}${PIC('team', 'off_team', 'チーム編成')}${PIC('friend', 'off_friend', 'フレンド')}</div>
         <button class="std-back of-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button>
         ${panel === 'biz' ? bizHTML() : panel === 'team' ? teamHTML() : ''}</div>`;
       box.querySelector('.of-room').appendChild(cvs); drawRoom();
