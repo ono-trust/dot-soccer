@@ -4364,95 +4364,163 @@
     history.replaceState(null, '', location.pathname + location.search);
     modal('<h2>フレンド対戦は、フレンドどうしだけです</h2><p>空港かクラブ事務所の「フレンド」で、相手のフレンドIDに申請してください。相手が承認するとフレンドになり、対戦できます。</p>', [{ label: 'OK', primary: true }]);   // 版621：リンクだけでは対戦しない
   }
-  // ---------- 版672：データ引き継ぎ（クラウドに保存・クラウドから復元） ----------
-  const cloudInfoOf = (sv) => { const k = cal(sv.week || 1); return { season: sv.season || 1, m: k.m, w: k.w, mgr: sv.manager || '', team: (sv.team && sv.team.name) || '', lg: (sv.league && sv.league.name) || '' }; };
+  // ---------- 版672：データ引き継ぎ（クラウドに保存・クラウドから復元）  版674：画面を新しいデザインに ----------
+  const cloudInfoOf = (sv) => { const k = cal(sv.week || 1); return { season: sv.season || 1, m: k.m, w: k.w, mgr: sv.manager || '', team: (sv.team && sv.team.name) || '', lg: (sv.league && sv.league.name) || '', emb: (sv.club && sv.club.emb) || null }; };
   const fmtCode = (c) => (c || '').replace(/(.{4})(?=.)/g, '$1-');
-  const clAt = (t) => { if (!t) return ''; const d = new Date(t), z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}/${z(d.getMonth() + 1)}/${z(d.getDate())} ${d.getHours()}:${z(d.getMinutes())}`; };
-  const infoHtml = (i, at) => i ? `<b>${i.season}年目${i.m}月${i.w}週　${esc(i.mgr)}監督</b><span>${esc(i.team)}（${esc(i.lg)}）</span><small>セーブ日時：${clAt(at)}</small>` : '<span class="cld-none">データがありません</span>';
+  const clAt = (t) => { if (!t) return '—'; const d = new Date(t), z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}/${z(d.getMonth() + 1)}/${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`; };
+  // ドット絵のアイコン（行ごとの文字＝色）
+  const pixSvg = (rows, pal, px) => { const w = rows[0].length, h = rows.length; let r = ''; rows.forEach((row, y) => { for (let x = 0; x < w; x++) { const c = pal[row[x]]; if (c) r += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${c}"/>`; } }); return `<svg viewBox="0 0 ${w} ${h}" width="${w * px}" height="${h * px}" shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`; };
+  const CLOUD_ROWS = ['.....kkkk.......', '....kwwwwk......', '...kwwwwwwkkk...', '.kkwwwwwwwwwwk..', 'kwwwwwwwwwwwwwk.', 'kwwwwwwwwwwwwbwk', 'kwbwwwwwwwwwbbwk', '.kbbbwwwwwbbbbk.', '..kkkkkkkkkkkk..'];
+  const icoCloud = (px) => pixSvg(CLOUD_ROWS, { k: '#24406e', w: '#eaf6ff', b: '#9fd2f5' }, px);
+  const icoPhone = (px) => pixSvg(['.kkkkkk.', 'kbbbbbbk', 'kbccccbk', 'kbccccbk', 'kbccccbk', 'kbccccbk', 'kbccccbk', 'kbbbbbbk', 'kbbwwbbk', '.kkkkkk.'], { k: '#0d1a3a', b: '#e8f0ff', c: '#36a2ff', w: '#8aa0c8' }, px);
+  const icoArrow = (up) => `<svg viewBox="0 0 24 20" width="34" height="28" aria-hidden="true"><path d="M5 17h14a4.5 4.5 0 0 0 .6-9A6.5 6.5 0 0 0 7 6.5 5 5 0 0 0 5 17z" fill="#fff"/><path d="${up ? 'M12 7l-4 4h2.6v5h2.8v-5H16z' : 'M12 17l4-4h-2.6V8h-2.8v5H8z'}" fill="${up ? '#1c9c3c' : '#1662d8'}"/></svg>`;
+  const icoCal = '<svg viewBox="0 0 20 20" width="22" height="22" aria-hidden="true"><rect x="2" y="4" width="16" height="14" rx="2" fill="none" stroke="#24406e" stroke-width="2"/><path d="M2 8h16M6 2v4M14 2v4" stroke="#24406e" stroke-width="2"/><g fill="#24406e"><rect x="5" y="10" width="2" height="2"/><rect x="9" y="10" width="2" height="2"/><rect x="13" y="10" width="2" height="2"/><rect x="5" y="14" width="2" height="2"/><rect x="9" y="14" width="2" height="2"/></g></svg>';
+  const icoMgr = '<svg viewBox="0 0 20 20" width="22" height="22" aria-hidden="true"><circle cx="10" cy="6" r="4" fill="#24406e"/><path d="M2 19c0-5 3.5-7 8-7s8 2 8 7z" fill="#24406e"/><path d="M8.6 12.5h2.8l-.6 4h-1.6z" fill="#fff"/></svg>';
+  const icoClock = '<svg viewBox="0 0 20 20" width="22" height="22" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="#24406e" stroke-width="2"/><path d="M10 5v5l3.5 2" stroke="#24406e" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
+  const icoKey = '<svg viewBox="0 0 24 24" width="40" height="40" aria-hidden="true"><circle cx="8" cy="9" r="5.5" fill="#f2b51d" stroke="#7a4b00" stroke-width="1.6"/><circle cx="8" cy="9" r="2" fill="#fff6d0" stroke="#7a4b00" stroke-width="1.2"/><path d="M12 12l9 9M17 17l-2 2M19.5 19.5l-2 2" stroke="#7a4b00" stroke-width="2.6" stroke-linecap="round"/><path d="M12 12l9 9" stroke="#f2b51d" stroke-width="1.2" stroke-linecap="round"/></svg>';
+  const icoMemo = '<svg viewBox="0 0 16 18" width="18" height="20" aria-hidden="true"><rect x="1" y="1" width="14" height="16" rx="2" fill="#e9e3cf" stroke="#6b6b6b" stroke-width="1.4"/><path d="M4 6h8M4 9h8M4 12h6" stroke="#6b6b6b" stroke-width="1.4"/></svg>';
+  const icoCheck = '<svg viewBox="0 0 40 40" width="46" height="46" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#1fa83f" stroke="#0e5a20" stroke-width="2"/><path d="M11 20.5l6 6 12-13" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const icoWarn = '<svg viewBox="0 0 24 22" width="28" height="26" aria-hidden="true"><path d="M12 2L1 21h22z" fill="#ffcf2e" stroke="#2a2a2a" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 8v6" stroke="#2a2a2a" stroke-width="2.6" stroke-linecap="round"/><circle cx="12" cy="17.3" r="1.5" fill="#2a2a2a"/></svg>';
+  const csEmb = (i, sz) => `<img class="cs-emb" src="${embFromLook(i && i.emb, 96)}" alt="" style="width:${sz}px;height:${sz}px">`;
   async function openCloud() {
     if (!save) { try { window.__career.open(); } catch (_) {} }
     let scr = $('#cloudScr');
-    if (!scr) {
-      const st = document.createElement('style');
-      st.textContent = `#cloudScr{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;background:rgba(0,40,10,.55);font-family:inherit}
-      #cloudScr .cld-box{position:relative;width:min(760px,94vw);height:min(380px,92vh);border:6px solid #fff;border-radius:22px;overflow:hidden;background:linear-gradient(#2ea8ff 0,#8fd3ff 50%,#4fc83a 50%,#9be04a 100%);box-shadow:0 8px 24px rgba(0,0,0,.4)}
-      #cloudScr .cld-x{position:absolute;right:10px;top:8px;width:46px;height:46px;border-radius:50%;background:#2fa53a;border:3px solid #fff;color:#fff;font-size:24px;font-weight:900;line-height:1}
-      #cloudScr .cld-inf{position:absolute;left:50%;transform:translateX(-50%);width:58%;padding:8px 14px;border-radius:8px;color:#fff;display:flex;flex-direction:column;gap:2px;font-size:15px;line-height:1.35}
-      #cloudScr .cld-inf b,#cloudScr .cld-inf span,#cloudScr .cld-inf small{all:unset;display:block;color:#fff;font-size:15px;line-height:1.35;font-weight:400}#cloudScr .cld-inf b{font-weight:800}#cloudScr .cld-inf small{font-size:13px;opacity:.9}#cloudScr .cld-none{opacity:.8}
-      #cloudScr .cld-top{top:20px;background:rgba(30,60,110,.78)}#cloudScr .cld-bot{bottom:58px;background:rgba(10,70,10,.78)}
-      #cloudScr .cld-tag{position:absolute;font-weight:900;font-size:22px;color:#fff;-webkit-text-stroke:1.5px #123;paint-order:stroke}
-      #cloudScr .cld-tag.t1{left:22px;top:16px}#cloudScr .cld-tag.t2{right:24px;bottom:62px}
-      #cloudScr .cld-btn{position:absolute;top:50%;transform:translateY(-50%);width:31%;height:62px;border-radius:14px;border:4px solid #111;color:#fff;font-size:21px;font-weight:900;-webkit-text-stroke:1px #111;paint-order:stroke;display:flex;align-items:center;justify-content:center;line-height:1}
-      #cloudScr .cld-save{left:3%;background:#f04848}#cloudScr .cld-load{right:3%;background:#1f86ff}
-      #cloudScr .cld-code{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30%;text-align:center;color:#123;background:rgba(255,255,255,.92);border-radius:10px;padding:5px 4px;font-size:12px;line-height:1.3}
-      #cloudScr .cld-code b{display:block;font-size:19px;letter-spacing:1px;font-family:ui-monospace,Menlo,monospace}
-      #cloudScr .cld-code button{margin-top:3px;padding:3px 10px;border-radius:7px;border:2px solid #123;background:#ffe45a;font-weight:800;font-size:12px}
-      #cloudScr .cld-help{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);color:#fff;font-size:13.5px;font-weight:700;text-align:center;width:92%;text-shadow:0 1px 2px #000,0 0 3px #000}
-      #cloudScr .cld-dlg{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}
-      #cloudScr .cld-dbox{width:min(560px,88vw);max-height:88vh;overflow:auto;background:#fffbe8;color:#2a2a2a;border:4px solid #2a2a2a;border-radius:16px;padding:14px 18px;font-size:14.5px;line-height:1.5;text-align:left}
-      #cloudScr .cld-dbox h2{margin:0 0 6px;font-size:19px}#cloudScr .cld-dbox p{margin:6px 0}
-      #cloudScr .cld-dbtns{display:flex;justify-content:flex-end;gap:10px;margin-top:10px}#cloudScr .cld-dbtns button{min-width:110px;height:44px;border-radius:10px;border:3px solid #2a2a2a;background:#fff;font-size:17px;font-weight:800;color:#2a2a2a}#cloudScr .cld-dbtns button.pri{background:#1f86ff;color:#fff}
-      #cloudScr input{width:100%;box-sizing:border-box;font-size:20px;padding:8px;text-align:center;letter-spacing:2px;font-family:ui-monospace,Menlo,monospace;text-transform:uppercase}`;
+    if (!document.getElementById('cloudCss')) {
+      const st = document.createElement('style'); st.id = 'cloudCss';
+      st.textContent = `#cloudScr{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;background:rgba(8,20,40,.5);font-family:'M PLUS 1p','Hiragino Sans',sans-serif}
+#cloudScr *{box-sizing:border-box}
+#cloudScr .cs-box{position:relative;width:880px;height:412px;flex:none;background:#fbf6e4;border:5px solid #13306b;border-radius:22px;box-shadow:0 0 0 4px #fff,0 0 0 7px #13306b,0 10px 30px rgba(0,0,0,.45);padding:6px 18px 6px;color:#13306b;transform-origin:center center}
+#cloudScr .cs-hd{display:flex;align-items:center;gap:14px;height:56px}
+#cloudScr .cs-hd h1{margin:0;font-size:33px;line-height:1;font-weight:900;letter-spacing:1px;color:#13306b}
+#cloudScr .cs-hd p{margin:4px 0 0;font-size:15px;font-weight:700;color:#2b3f6b}
+#cloudScr .cs-x{all:unset;cursor:pointer;position:absolute;right:14px;top:8px;width:46px;height:46px;border-radius:50%;background:#13306b;box-shadow:0 0 0 3px #fff,0 0 0 5px #13306b;display:flex;align-items:center;justify-content:center}
+#cloudScr .cs-x svg{width:26px;height:26px}
+#cloudScr .cs-cols{display:flex;gap:12px;height:238px;margin-top:2px}
+#cloudScr .cs-pan{flex:1;border:3px solid #13306b;border-radius:12px;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 0 2px #dfe7f5 inset}
+#cloudScr .cs-ph{height:42px;display:flex;align-items:center;gap:10px;padding:0 12px;color:#fff;font-size:21px;font-weight:900;letter-spacing:.5px}
+#cloudScr .cs-pan.dev .cs-ph{background:#14275a}#cloudScr .cs-pan.cld .cs-ph{background:#1d6fe0}
+#cloudScr .cs-badge{margin-left:auto;font-size:12.5px;font-weight:800;padding:3px 10px;border-radius:99px;white-space:nowrap}
+#cloudScr .cs-badge.new{background:#1fa83f;color:#fff;border:1.5px solid #c9f5d2}#cloudScr .cs-badge.ok{background:#9cc8ff;color:#123c86}#cloudScr .cs-badge.none{background:#c9d0dc;color:#4b5563}
+#cloudScr .cs-pb{flex:1;padding:6px 14px 0;display:flex;flex-direction:column}
+#cloudScr .cs-team{display:flex;align-items:center;gap:12px;height:56px;border-bottom:1.5px solid #dfe5f0}
+#cloudScr .cs-emb{image-rendering:pixelated;object-fit:contain;flex:none}
+#cloudScr .cs-team b{display:block;font-size:24px;font-weight:900;line-height:1.1;color:#13233f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:290px}
+#cloudScr .cs-team small{display:block;font-size:14px;font-weight:700;color:#24406e;margin-top:2px}
+#cloudScr .cs-row{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:#1d2c4a;height:24px}
+#cloudScr .cs-rows{padding:4px 0;border-bottom:1.5px solid #dfe5f0}
+#cloudScr .cs-at{font-size:13.5px;font-weight:600;padding-top:2px}
+#cloudScr .cs-empty{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;color:#5b6b88;font-weight:700;font-size:15px;line-height:1.6}
+#cloudScr .cs-btn{all:unset;cursor:pointer;margin:4px 10px 10px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:12px;color:#fff;font-size:23px;font-weight:900;letter-spacing:1px;border:3px solid #0d1a3a;box-shadow:0 4px 0 #0d1a3a;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+#cloudScr .cs-btn.save{background:linear-gradient(#36c157,#1c9c3c)}#cloudScr .cs-btn.load{background:linear-gradient(#3d8cff,#1662d8)}
+#cloudScr .cs-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0d1a3a}
+#cloudScr .cs-code{margin-top:8px;height:50px;border:3px solid #d9b860;background:#fff6d6;border-radius:12px;display:flex;align-items:center;gap:12px;padding:0 12px}
+#cloudScr .cs-code > b{font-size:20px;font-weight:900;color:#13306b;white-space:nowrap}
+#cloudScr .cs-cv{flex:1;height:40px;border:2px solid #b8bfcc;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font:900 26px/1 ui-monospace,'SF Mono',Menlo,monospace;letter-spacing:2px;color:#13233f}
+#cloudScr .cs-cv.none{font:700 15px/1.2 'M PLUS 1p',sans-serif;letter-spacing:0;color:#6b7280}
+#cloudScr .cs-mini{all:unset;cursor:pointer;height:40px;padding:0 18px;border:3px solid #13306b;border-radius:10px;background:#fff;font-size:17px;font-weight:900;color:#13306b;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 0 #13306b}
+#cloudScr .cs-ft{display:flex;align-items:center;gap:8px;height:32px;margin-top:3px;font-size:14px;font-weight:600;color:#3b4252}
+#cloudScr .cs-ft .cs-mini{margin-left:auto;height:30px;font-size:14px;padding:0 20px;border-width:2px;background:#eaf1ff}
+#cloudScr .cs-dlg{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:rgba(10,20,45,.45);border-radius:17px}
+#cloudScr .cs-db{width:500px;max-height:400px;overflow:auto;background:#fffdf4;border:4px solid #13306b;border-radius:16px;box-shadow:0 0 0 3px #fff,0 8px 20px rgba(0,0,0,.35);padding:12px 18px 14px;text-align:center;color:#13233f}
+#cloudScr .cs-dt{display:flex;align-items:center;justify-content:center;gap:12px;font-size:23px;font-weight:900;color:#13306b;margin:2px 0 8px}
+#cloudScr .cs-card{display:flex;align-items:center;gap:12px;text-align:left;border:2px solid #dfe5f0;border-radius:10px;padding:6px 12px;background:#fff;margin:6px 0}
+#cloudScr .cs-card b{display:block;font-size:20px;font-weight:900;line-height:1.15}#cloudScr .cs-card small{display:block;font-size:13.5px;font-weight:700;color:#24406e}#cloudScr .cs-card i{display:block;font-style:normal;font-size:12px;color:#4b5563}
+#cloudScr .cs-cardh{border:2px solid #1d6fe0;border-radius:10px;overflow:hidden;margin:6px 0;text-align:left}
+#cloudScr .cs-cardh > span{display:block;background:#1d6fe0;color:#fff;font-size:13.5px;font-weight:800;padding:2px 10px}
+#cloudScr .cs-cardh.dev{border-color:#c8ccd4}#cloudScr .cs-cardh.dev > span{background:#dfe2e8;color:#3b4252}
+#cloudScr .cs-cardh .cs-card{border:0;margin:0;border-radius:0}
+#cloudScr .cs-ow{margin-left:auto;align-self:center;background:#ffd2cf;color:#c21d12;font-size:12.5px;font-weight:800;padding:3px 10px;border-radius:99px;white-space:nowrap}
+#cloudScr .cs-warn{display:flex;align-items:center;justify-content:center;gap:8px;background:#fff3c4;border:1.5px solid #f1d27a;border-radius:8px;padding:5px 8px;color:#d1281b;font-size:14.5px;font-weight:800;margin:8px 0}
+#cloudScr .cs-txt{font-size:14.5px;font-weight:600;line-height:1.6;margin:6px 0}
+#cloudScr .cs-db .cs-code{margin:6px 0;height:52px;padding:0 10px}#cloudScr .cs-db .cs-cv{font-size:24px}
+#cloudScr .cs-db input{width:100%;height:50px;border:3px solid #13306b;border-radius:10px;text-align:center;font:900 24px/1 ui-monospace,'SF Mono',Menlo,monospace;letter-spacing:2px;text-transform:uppercase;color:#13233f;margin:4px 0}
+#cloudScr .cs-dbs{display:flex;gap:12px;justify-content:center;margin-top:10px}
+#cloudScr .cs-dbs button{all:unset;cursor:pointer;flex:1;max-width:220px;height:48px;border-radius:12px;border:3px solid #0d1a3a;display:flex;align-items:center;justify-content:center;gap:10px;font-size:20px;font-weight:900;box-shadow:0 3px 0 #0d1a3a}
+#cloudScr .cs-dbs .no{background:#fff;color:#13233f}#cloudScr .cs-dbs .g{background:linear-gradient(#36c157,#1c9c3c);color:#fff}#cloudScr .cs-dbs .b{background:linear-gradient(#3d8cff,#1662d8);color:#fff}
+#cloudScr .cs-dbs svg{width:30px;height:26px}
+#cloudScr .cs-msg{position:absolute;left:50%;bottom:52px;transform:translateX(-50%);background:#13306b;color:#fff;font-size:14px;font-weight:700;padding:6px 16px;border-radius:99px;white-space:nowrap;z-index:4}
+#cloudScr .cs-help{text-align:left;font-size:14px;line-height:1.7;margin:4px 0}#cloudScr .cs-help b{color:#1662d8}`;
       document.head.appendChild(st);
-      scr = document.createElement('div'); scr.id = 'cloudScr'; document.body.appendChild(scr);
     }
-    let cloud = null, msgTxt = '';
+    if (!scr) { scr = document.createElement('div'); scr.id = 'cloudScr'; document.body.appendChild(scr); }
+    let cloud = null, loading = false, msgTxt = '';
     const code = () => save && save.cloudCode;
+    const fit = () => { const b = scr.querySelector('.cs-box'); if (b) b.style.transform = `scale(${Math.min(innerWidth * 0.96 / 900, innerHeight * 0.96 / 430)})`; };
+    const panel = (kind, i, at, badge) => `<div class="cs-pan ${kind}"><div class="cs-ph">${kind === 'dev' ? icoPhone(3) : icoCloud(2.4)}<span>${kind === 'dev' ? 'この端末のデータ' : 'クラウドのデータ'}</span>${badge ? `<span class="cs-badge ${badge[0]}">${badge[1]}</span>` : ''}</div>
+      <div class="cs-pb">${i ? `<div class="cs-team">${csEmb(i, 50)}<div><b>${esc(i.team)}</b><small>${esc(i.lg)}</small></div></div>
+        <div class="cs-rows"><div class="cs-row">${icoCal}<span>${i.season}年目　${i.m}月${i.w}週</span></div><div class="cs-row">${icoMgr}<span>監督　${esc(i.mgr || '—')}</span></div></div>
+        <div class="cs-row cs-at">${icoClock}<span>最終更新日時　${clAt(at)}</span></div>`
+        : `<div class="cs-empty">${loading ? '読み込み中…' : kind === 'cld' ? 'まだクラウドに<br>保存していません' : 'データがありません'}</div>`}</div>
+      <button class="cs-btn ${kind === 'dev' ? 'save' : 'load'}">${icoArrow(kind === 'dev')}<span>${kind === 'dev' ? 'クラウドに保存' : 'クラウドから復元'}</span></button></div>`;
     const draw = () => {
-      scr.innerHTML = `<div class="cld-box"><span class="cld-tag t1">クラウド</span><div class="cld-inf cld-top">${cloud ? infoHtml(cloud.info, cloud.at) : code() ? '<span class="cld-none">読み込み中…</span>' : '<span class="cld-none">まだクラウドに保存していません</span>'}</div>
-        <button class="cld-btn cld-save">クラウドに保存</button>
-        <div class="cld-code">${code() ? `引き継ぎコード<b>${fmtCode(code())}</b><button class="cld-copy">コピー</button>` : '保存すると<br>引き継ぎコードが出ます'}</div>
-        <button class="cld-btn cld-load">クラウドから復元</button>
-        <div class="cld-inf cld-bot">${save ? infoHtml(cloudInfoOf(save), save.savedAt || Date.now()) : '<span class="cld-none">データがありません</span>'}</div><span class="cld-tag t2">この端末</span>
-        <div class="cld-help">${msgTxt || '新しい端末では「クラウドから復元」を押して、引き継ぎコードを入れてください。通信できる所で使ってください。'}</div>
-        <button class="cld-x" aria-label="閉じる">×</button></div>`;
-      scr.querySelector('.cld-x').onclick = () => { scr.remove(); };
-      const cp = scr.querySelector('.cld-copy'); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(fmtCode(code())); msgTxt = 'コピーしました。メモ帳やLINEの自分あてなどに貼って、なくさないようにしてください。'; } catch (_) { msgTxt = 'コピーできませんでした。コードを書き写してください。'; } draw(); };
-      scr.querySelector('.cld-save').onclick = doSave; scr.querySelector('.cld-load').onclick = doLoad;
+      const dAt = (save && save.savedAt) || 0, cAt = (cloud && cloud.at) || 0;
+      const bd = cloud && dAt > cAt + 60000 ? ['new', '新しいデータ'] : null;
+      const bc = !cloud ? (loading ? null : ['none', '未保存']) : cAt > dAt + 60000 ? ['new', '新しいデータ'] : ['ok', '保存済み'];
+      scr.innerHTML = `<div class="cs-box"><div class="cs-hd">${icoCloud(4.4)}<div><h1>クラウドセーブ</h1><p>大切なクラブデータを保存・引き継ぎ</p></div></div>
+        <button class="cs-x" aria-label="閉じる"><svg viewBox="0 0 20 20"><path d="M4 4l12 12M16 4L4 16" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/></svg></button>
+        <div class="cs-cols">${panel('dev', save ? cloudInfoOf(save) : null, dAt, bd)}${panel('cld', cloud && cloud.info, cAt, bc)}</div>
+        <div class="cs-code">${icoKey}<b>引き継ぎコード</b><div class="cs-cv${code() ? '' : ' none'}">${code() ? fmtCode(code()) : 'クラウドに保存すると、ここにコードが出ます'}</div>${code() ? '<button class="cs-mini cs-copy">コピー</button>' : ''}</div>
+        <div class="cs-ft">${icoMemo}<span>新しい端末では、引き継ぎコードを入力して復元できます。</span><button class="cs-mini cs-how">使い方</button></div>
+        ${msgTxt ? `<div class="cs-msg">${esc(msgTxt)}</div>` : ''}</div>`;
+      fit();
+      scr.querySelector('.cs-x').onclick = () => { removeEventListener('resize', fit); scr.remove(); };
+      const cp = scr.querySelector('.cs-copy'); if (cp) cp.onclick = () => copyCode();
+      scr.querySelector('.cs-btn.save').onclick = doSave; scr.querySelector('.cs-btn.load').onclick = doLoad;
+      scr.querySelector('.cs-how').onclick = () => dlg(`<div class="cs-dt">${icoCloud(3)}<span>クラウドセーブの使い方</span></div><div class="cs-help">① 今の端末で <b>「クラウドに保存」</b> を押す<br>② 出てきた <b>引き継ぎコード</b> を、スクリーンショットやメモで残す<br>③ 新しい端末で <b>「クラウドから復元」</b> を押して、コードを入れる<br>・データは1つだけ保存できます（保存するたびに上書き）<br>・通信できる所で使ってください<br>・フレンドIDも新しい端末へ引き継がれます</div>`, [{ label: 'OK', cls: 'b', value: true }]);
     };
-    // 版673：確認・お知らせは、この画面の中に出す（育成画面の確認窓は、ほかの画面の後ろに隠れて見えないことがあった）
+    const copyCode = async () => { let ok = false; try { await navigator.clipboard.writeText(fmtCode(code())); ok = true; } catch (_) {} flash(ok ? 'コピーしました' : 'コピーできませんでした。書き写してください'); };
+    const flash = (t) => { msgTxt = t; draw(); setTimeout(() => { if (msgTxt === t) { msgTxt = ''; if (document.body.contains(scr) && !scr.querySelector('.cs-dlg')) draw(); } }, 2200); };
+    // 確認・お知らせは、この画面の中に出す（版673）
     const dlg = (html, btns) => new Promise((res) => {
-      const d = document.createElement('div'); d.className = 'cld-dlg';
-      d.innerHTML = `<div class="cld-dbox">${html}<div class="cld-dbtns">${btns.map((b, k) => `<button data-k="${k}" class="${b.primary ? 'pri' : ''}">${esc(b.label)}</button>`).join('')}</div></div>`;
-      scr.appendChild(d); const inp = d.querySelector('input'); if (inp) setTimeout(() => { try { inp.focus(); } catch (_) {} }, 60);
-      d.querySelectorAll('.cld-dbtns button').forEach((b) => b.onclick = () => { const v = btns[+b.dataset.k].value, t = inp ? inp.value : null; d.remove(); res(b.dataset.k === '0' && btns.length > 1 ? null : (inp ? t : v)); });
+      const box = scr.querySelector('.cs-box'), d = document.createElement('div'); d.className = 'cs-dlg';
+      d.innerHTML = `<div class="cs-db">${html}<div class="cs-dbs">${btns.map((b, k) => `<button data-k="${k}" class="${b.cls || 'no'}">${b.ico || ''}<span>${esc(b.label)}</span></button>`).join('')}</div></div>`;
+      box.appendChild(d); const inp = d.querySelector('input'); if (inp) setTimeout(() => { try { inp.focus(); } catch (_) {} }, 60);
+      const cp = d.querySelector('.cs-copy'); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(fmtCode(code())); cp.textContent = 'コピー済み'; } catch (_) { cp.textContent = 'できません'; } };
+      d.querySelectorAll('.cs-dbs button').forEach((b) => b.onclick = () => { const bt = btns[+b.dataset.k]; d.remove(); res(bt.value == null ? null : inp ? inp.value : bt.value); });
     });
-    const ask = async (html, yes, no) => !!(await dlg(html, [{ label: no || 'やめる', value: false }, { label: yes, value: true, primary: true }]));
-    const tell = async (html) => { await dlg(html, [{ label: 'OK', value: true, primary: true }]); };
+    const NO = { label: 'やめる', value: null };
+    const card = (i, extra) => `<div class="cs-card">${csEmb(i, 46)}<div><b>${esc(i ? i.team : '—')}</b><small>${i ? `${i.season}年目 ${i.m}月${i.w}週｜${esc(i.lg)}` : ''}</small>${extra || ''}</div></div>`;
+    const err = (t, e) => dlg(`<div class="cs-dt">${icoWarn}<span>${t}</span></div><p class="cs-txt">通信できる所で、もう一度ためしてください。</p>${e ? `<p class="cs-txt" style="font-size:12px;color:#6b7280">${esc(String(e && e.message || e))}</p>` : ''}`, [{ label: 'OK', cls: 'b', value: true }]);
     async function doSave() {
-      if (!(window.DotNet && DotNet.on)) return tell('<h2>通信できません</h2><p>この画面では使えません。</p>');
-      if (!(await ask(`<h2>クラウドに保存しますか？</h2><p>この端末のデータを、クラウドに保存します。${cloud ? '<br>クラウドにあるデータは、上書きされます。' : ''}</p>`, '保存する'))) return;
+      if (!(window.DotNet && DotNet.on)) return err('通信できません');
+      const i = cloudInfoOf(save);
+      if (!(await dlg(`<div class="cs-dt">${icoArrow(true).replace('fill="#fff"', 'fill="#d8eeff" stroke="#24406e" stroke-width="1"')}<span>クラウドに保存しますか？</span></div>${card(i)}<p class="cs-txt">この端末のデータをクラウドに保存します。</p>${cloud ? `<div class="cs-warn">${icoWarn}<span>クラウドのデータは上書きされます。</span></div>` : ''}`, [NO, { label: '保存する', cls: 'g', ico: icoArrow(true), value: true }]))) return;
       msgTxt = '保存しています…'; draw();
       try {
         const on = ensureOnline(); if (!on.fid) { try { await publishMe(); } catch (_) {} }
         save.savedAt = Date.now();
         const c = await DotNet.cloudPut(save.cloudCode, save, cloudInfoOf(save), ensureOnline().fid || null);
         save.cloudCode = c; store(); try { publishMe(); } catch (_) {}
-        cloud = { info: cloudInfoOf(save), at: Date.now() }; msgTxt = '';
-        draw();
-        await tell(`<h2>クラウドに保存しました</h2><p>引き継ぎコード</p><p style="font-size:26px;font-weight:900;letter-spacing:2px;font-family:ui-monospace,Menlo,monospace">${fmtCode(c)}</p><p>新しい端末で「クラウドから復元」を押して、このコードを入れてください。<br><b>コードはなくさないように、スクリーンショットやメモで残してください。</b></p>`);
-      } catch (e) { msgTxt = ''; draw(); tell(`<h2>保存できませんでした</h2><p>通信できる所で、もう一度ためしてください。</p><p><small>${esc(String(e && e.message || e))}</small></p>`); }
+        cloud = { info: cloudInfoOf(save), at: save.savedAt }; msgTxt = ''; draw();
+        await dlg(`<div class="cs-dt">${icoCheck}<span>クラウドに保存しました</span></div><div class="cs-code" style="flex-direction:column;align-items:stretch;height:auto;padding:4px 10px 8px;gap:2px"><b style="font-size:14px;text-align:left">引き継ぎコード</b><div style="display:flex;gap:10px;align-items:center"><div class="cs-cv">${fmtCode(c)}</div><button class="cs-mini cs-copy">コピー</button></div></div><p class="cs-txt">新しい端末で、このコードを入力してください。<br>スクリーンショットやメモで大切に保管してください。</p>`, [{ label: 'OK', cls: 'b', value: true }]);
+      } catch (e) { msgTxt = ''; draw(); err('保存できませんでした', e); }
     }
     async function doLoad() {
-      if (!(window.DotNet && DotNet.on)) return tell('<h2>通信できません</h2>');
-      const inp = await dlg(`<h2>クラウドから復元</h2><p>引き継ぎコード（12文字）を入れてください</p><input maxlength="16" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX" value="${code() ? fmtCode(code()) : ''}">`, [{ label: 'やめる', value: null }, { label: '次へ', value: true, primary: true }]);
+      if (!(window.DotNet && DotNet.on)) return err('通信できません');
+      const inp = await dlg(`<div class="cs-dt">${icoCloud(3)}<span>クラウドから復元</span></div><p class="cs-txt">引き継ぎコード（12文字）を入れてください</p><input maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX" value="${code() ? fmtCode(code()) : ''}">`, [NO, { label: '次へ', cls: 'b', value: true }]);
       if (inp == null) return;
-      const c = DotNet.normCode(inp); if (c.length !== 12) return tell('<h2>コードがちがいます</h2><p>引き継ぎコードは12文字です（ハイフンは入れなくてもOK）。</p>');
+      const c = DotNet.normCode(inp); if (c.length !== 12) return dlg(`<div class="cs-dt">${icoWarn}<span>コードがちがいます</span></div><p class="cs-txt">引き継ぎコードは12文字です（ハイフンは入れなくてもOK）。</p>`, [{ label: 'OK', cls: 'b', value: true }]);
       msgTxt = 'クラウドのデータを読んでいます…'; draw();
-      let got = null; try { got = await DotNet.cloudGet(c); } catch (e) { msgTxt = ''; draw(); return tell('<h2>通信できませんでした</h2><p>通信できる所で、もう一度ためしてください。</p>'); }
+      let got = null; try { got = await DotNet.cloudGet(c); } catch (e) { msgTxt = ''; draw(); return err('通信できませんでした', e); }
       msgTxt = ''; draw();
-      if (!got || !got.save) return tell('<h2>見つかりませんでした</h2><p>この引き継ぎコードのデータはありません。コードをもう一度確かめてください。</p>');
-      if (!(await ask(`<h2>このデータで上書きしますか？</h2><p style="text-align:left;line-height:1.6"><b>クラウド</b><br>${infoHtml(got.info, got.at).replace(/<\/?(b|span|small)[^>]*>/g, ' ')}</p><p style="text-align:left;line-height:1.6"><b>この端末（消えます）</b><br>${save ? infoHtml(cloudInfoOf(save), save.savedAt).replace(/<\/?(b|span|small)[^>]*>/g, ' ') : 'なし'}</p><p><b>この端末のデータは、クラウドのデータで上書きされます。</b>元には戻せません。</p>`, '復元する'))) return;
+      if (!got || !got.save) return dlg(`<div class="cs-dt">${icoWarn}<span>見つかりませんでした</span></div><p class="cs-txt">この引き継ぎコードのデータはありません。<br>コードをもう一度確かめてください。</p>`, [{ label: 'OK', cls: 'b', value: true }]);
+      const gi = got.info || cloudInfoOf(got.save), di = save ? cloudInfoOf(save) : null;
+      if (!(await dlg(`<div class="cs-dt">${icoArrow(false).replace('fill="#fff"', 'fill="#d8eeff" stroke="#24406e" stroke-width="1"')}<span>このデータで復元しますか？</span></div>
+        <div class="cs-cardh"><span>復元するデータ</span>${card(gi, `<i>保存日時：${clAt(got.at)}</i>`)}</div>
+        <div class="cs-cardh dev"><span>この端末のデータ</span><div class="cs-card">${csEmb(di, 40)}<div><b style="font-size:18px">${esc(di ? di.team : 'なし')}</b><small>${di ? `${di.season}年目 ${di.m}月${di.w}週` : ''}</small></div>${di ? '<span class="cs-ow">上書き対象</span>' : ''}</div></div>
+        <div class="cs-warn">${icoWarn}<span>この端末のデータは上書きされ、元に戻せません。</span></div>`, [NO, { label: '復元する', cls: 'b', ico: icoArrow(false), value: true }]))) return;
       try {
         const sv = got.save; sv.cloudCode = c; sv.savedAt = Date.now();
         localStorage.setItem(KEY, JSON.stringify(sv));
         try { await DotNet.cloudClaim(c, (sv.online && sv.online.fid) || got.fid || null); } catch (_) {}
-        await tell('<h2>復元しました</h2><p>データを読み直します。</p>');
+        await dlg(`<div class="cs-dt"><span style="color:#f2b51d;font-size:22px">✦</span>${icoCheck}<span>復元しました</span></div>${card(gi)}<p class="cs-txt">復元したデータでゲームを再開します。</p>`, [{ label: 'ゲームへ戻る', cls: 'b', value: true }]);
         location.reload();
-      } catch (e) { tell(`<h2>復元できませんでした</h2><p><small>${esc(String(e && e.message || e))}</small></p>`); }
+      } catch (e) { err('復元できませんでした', e); }
     }
+    addEventListener('resize', fit);
+    loading = !!(code() && window.DotNet && DotNet.on);
     draw();
-    if (code() && window.DotNet && DotNet.on) { try { const r = await DotNet.cloudInfo(code()); cloud = r ? { info: r.info, at: r.at } : null; } catch (_) { msgTxt = '通信できませんでした（クラウドの情報が読めません）'; } if (document.body.contains(scr)) draw(); }
+    if (loading) { try { const r = await DotNet.cloudInfo(code()); cloud = r ? { info: r.info, at: r.at } : null; } catch (_) { flash('通信できませんでした（クラウドの情報が読めません）'); } loading = false; if (document.body.contains(scr) && !scr.querySelector('.cs-dlg')) draw(); }
   }
   window.__career = { trainResult: (o) => trainResult(o), airport, openPost, syncPost, onlineDone, setVenue: (k) => { venueNow = k; }, champDemo, champAfter, coinShop, faceFill: () => faceFill(), openGacha, venueTalk: (se) => venueTalk(se), matchFace, openOffice, cpuCard, openClub, openAssoc, open, go, stadium, advance, subSheet, labMatch, townRect, tutPractice, shop, store: () => store(), renderHome: () => renderHome(), clubhouseBg: () => clubhouseBg(), isMatchWeek: () => isMatchWeek(), get view() { return view; }, staffFace: (k) => staffFace(k), get save() { return save; }, get drill() { return clubDrill; }, faceURL, starFace, setDrill(d) { clubDrill = d; drillT0 = -1; drillSnap = true; } };
   window.__career.openCloud = openCloud;
