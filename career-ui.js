@@ -3850,7 +3850,12 @@
     if (!(await coachAsk(`<b>${label}</b>を <b>¥${yen.toLocaleString()}</b> で購入しますか？<br><small>支払いの画面（Stripe）が開きます。払い終わったら、ゲームにもどってください。</small>`, [{ label: '支払いへ進む', value: true }, { label: 'やめる', value: false }], 'sec'))) return;
     const t = document.createElement('div'); t.className = 'pay-wait'; t.innerHTML = '<p>支払いの画面を開いています…</p>'; (document.getElementById('app') || document.body).appendChild(t);
     try { const r = await DotNet.payCheckout(item); save.payPending = { item, at: Date.now() }; store();
-      if (window.top !== window) { window.open(r.url, '_blank'); t.remove(); } else {
+      if (window.top !== window) {   // 版709：PCなど、ページの中で開いている時。自動で開けない時は、押して開くボタンを出す
+        let w = null; try { w = window.open(r.url, '_blank'); } catch (_) {}
+        if (w) t.remove();
+        else { t.innerHTML = `<p>下のボタンを押すと、支払いの画面が<br>別のタブで開きます。</p><a class="pay-wait-go" href="${esc(r.url)}" target="_blank" rel="noopener">支払いの画面を開く</a><button type="button" class="pay-wait-x">やめる</button>`;
+          t.querySelector('.pay-wait-go').onclick = () => setTimeout(() => t.remove(), 300); t.querySelector('.pay-wait-x').onclick = () => t.remove(); }
+      } else {
         location.href = r.url;
         // 版708：支払いの画面を閉じてもどった時（iPhoneのホーム画面アプリなど）に「開いています…」が残らないように
         setTimeout(() => { if (t.isConnected) { t.innerHTML = '<p>支払いの画面を開いています…</p><button type="button" class="pay-wait-x">閉じる</button>'; t.querySelector('button').onclick = () => t.remove(); } }, 5000);
@@ -3905,22 +3910,26 @@
   }
   // 毎日の受け取り（1〜30日のマス）
   let premBusy = false;
-  async function premDaily() {
+  async function premDaily(look) {   // look：版709 ショップから「毎日のプレゼント」を見る時
     if (premBusy || !save || !C.premOn(save)) return;
     const n = premDayN(), P = save.prem; P.got = P.got || [];
-    if (n < 1 || P.got.includes(n)) return;
+    if (n < 1 || (!look && P.got.includes(n))) return;
     premBusy = true;
-    for (let k = 0; k < 80 && (document.getElementById('ttTitle') || !$('#crModal').hidden || view !== 'home'); k++) await new Promise((r) => setTimeout(r, 250));   // タイトル・ほかの画面が閉じるまで待つ
-    if (view !== 'home' || P.got.includes(n)) { premBusy = false; return; }
+    if (!look) {
+      for (let k = 0; k < 80 && (document.getElementById('ttTitle') || !$('#crModal').hidden || view !== 'home'); k++) await new Promise((r) => setTimeout(r, 250));   // タイトル・ほかの画面が閉じるまで待つ
+      if (view !== 'home' || P.got.includes(n)) { premBusy = false; return; }
+    }
+    const done = P.got.includes(n);
     const blk = Math.floor((n - 1) / 30), D0 = C.PREM.daily;
     const cells = Array.from({ length: 30 }, (_, i) => { const d = blk * 30 + i + 1, got = P.got.includes(d), today = d === n, past = d < n && !got;
       return `<div class="pd-c${got ? ' got' : ''}${today ? ' today' : ''}${past ? ' miss' : ''}"><small>${i + 1}日目</small><span>${COIN}<img src="icons/kakera.png" alt=""></span>${got ? '<b class="pd-ok">受取済</b>' : ''}</div>`; }).join('');
     const el = document.createElement('div'); el.className = 'pd-wrap';
     el.innerHTML = `<div class="pd-box"><div class="pd-h"><b>プレミアムパス</b><span>毎日のプレゼント</span><em>残り ${premLeft()}日</em></div>
       <div class="pd-grid">${cells}</div>
-      <div class="pd-f"><p>今日のプレゼント：${COIN}<b>${D0.coins}</b>コイン　特訓カード<b>${D0.cards}</b>枚　<img class="kk-ico" src="icons/kakera.png" alt="">カケラ<b>${D0.kak}</b></p><button class="pd-go">受け取る</button></div></div>`;
+      <div class="pd-f">${done ? `<p>今日のプレゼントは、受け取りました。<br><small>明日も ${COIN}<b>${D0.coins}</b>コイン　特訓カード<b>${D0.cards}</b>枚　カケラ<b>${D0.kak}</b> が届きます。</small></p><button class="pd-go">閉じる</button>` : `<p>今日のプレゼント：${COIN}<b>${D0.coins}</b>コイン　特訓カード<b>${D0.cards}</b>枚　<img class="kk-ico" src="icons/kakera.png" alt="">カケラ<b>${D0.kak}</b></p><button class="pd-go">受け取る</button>`}</div></div>`;
     (document.getElementById('app') || document.body).appendChild(el);
     await new Promise((ok) => { el.querySelector('.pd-go').onclick = ok; });
+    if (done) { el.remove(); premBusy = false; return; }
     // 受け取り
     const cards = Object.keys(C.CARDS); let cd = null;
     for (let k = 0; k < D0.cards; k++) { for (let j = 0; j < 40; j++) { const c = cards[Math.floor(Math.random() * cards.length)]; if ((save.cards[c] || 0) < C.cardMax(save)) { cd = c; break; } } if (cd) save.cards[cd] = (save.cards[cd] || 0) + 1; }
@@ -4026,7 +4035,7 @@
         const on = C.premOn(save);
         h = `<div class="sh3 sh3-prem"><img class="sh3-bgimg" src="img/shop_prem.jpg" alt="">${head}
           <div class="pm-perks"><b>パスを持っている間</b><span>・毎日 コイン・カード・カケラ</span><span>・試合の早送り（2倍・4倍）</span><span>・SPメニューのヒント（毎週1枚）</span><span>・特訓カードを199枚まで持てる</span><span>・名前の横に金のマーク</span><span>・買った時に ${C.PREM.bonus}コイン</span></div>
-          <button class="pm-buy${on ? ' on' : ''}" data-prem="1">${on ? `<small>残り ${premLeft()}日</small>延長する ¥${C.PREM.yen.toLocaleString()}` : `購入する <b>¥${C.PREM.yen.toLocaleString()}</b><small>30日</small>`}</button></div>`;
+          <button class="pm-buy${on ? ' on' : ''}" data-prem="1">${on ? `<small>残り ${premLeft()}日</small>延長する ¥${C.PREM.yen.toLocaleString()}` : `購入する <b>¥${C.PREM.yen.toLocaleString()}</b><small>30日</small>`}</button>${on ? '<button class="pm-cal" data-pcal="1">毎日のプレゼント</button>' : ''}</div>`;
       } else {
         const list = Object.keys(C.CARDS).filter((c) => S.cat === 'all' || C.CARDS[c].cat === S.cat);
         if (!S.sel || !list.includes(S.sel)) { S.sel = list[0]; S.qty = 1; }
@@ -4048,6 +4057,7 @@
       box.querySelectorAll('[data-go="scout"]').forEach((b) => b.onclick = () => { el.hidden = true; openGacha(); });
       box.querySelectorAll('[data-go="coin"]').forEach((b) => b.onclick = () => coinShop(() => draw()));   // 版570：左上のコインを押すと、コイン購入
       box.querySelectorAll('[data-prem]').forEach((b) => b.onclick = () => buyPrem(() => draw()));
+      box.querySelectorAll('[data-pcal]').forEach((b) => b.onclick = async () => { await premDaily(true); draw(); });
       box.querySelectorAll('[data-info]').forEach((b) => b.onclick = () => coachAsk(`<b>カードパック${b.dataset.info === '10' ? '（大）' : ''}</b><br>特訓カード（戦術・テクニック・フィジカル・サポート）から<br>ランダムで <b>${b.dataset.info}枚</b> 入っています。<br><b>${b.dataset.info === '10' ? C.PRICE.pack12 : C.PRICE.pack5}</b> コイン（1枚あたり ${Math.round((b.dataset.info === '10' ? C.PRICE.pack12 : C.PRICE.pack5) / +b.dataset.info)} コイン）<br><small>1枚ずつ買う（${C.PRICE.card}コイン）より、お得です。</small>`, [{ label: 'とじる', value: true }], 'sec'));
       // 版564：カードパックは、必ず確認してから買う → 開ける演出 → 手に入れたカードを全部見せる（黄色いボタンでも、すぐには買わない）
       const packFlow = async (n) => { const big = n >= 10, pr = big ? C.PRICE.pack12 : C.PRICE.pack5;
