@@ -1317,7 +1317,7 @@
       <div class="trb-card">${playerCardHTML(selIdx, pv.ups, true)}</div>
       <div class="trb-set">
         <div class="ts-h"><span class="ts-ttl">${HG_ICO.sp}SPメニューをつくる</span></div>
-        <div class="ts-in">${camp ? `<span class="tauto camp">⛺ ${esc(camp.name)}（${camp.week}/${camp.weeks}週目）特訓は週${camp.trains}回・効果${camp.mult}倍</span>` : ''}
+        <div class="ts-in${camp ? ' cp' : ''}">${camp ? `<span class="tauto camp">⛺ ${esc(camp.name)}（${camp.week}/${camp.weeks}週目）特訓は週${camp.trains}回・効果${camp.mult}倍</span>` : ''}
         <div class="tslots2">${slots}</div>${sp}${msg ? `<p class="ts-msg"><span>${msg}</span></p>` : ''}
         <div class="ts-btns"><button id="spList" class="splist2">SPメニュー一覧</button>${mine.length && !done && !(p.injury > 0) ? '<button id="doTrain" class="dotrain">特訓する！</button>' : ''}</div></div>
       </div>
@@ -1902,7 +1902,7 @@
       ${notes.length ? `<p class="trr-notes">${notes.join('　')}</p>` : ''}
       <div class="trr-gr"><span class="trr-gl">能力の成長</span><div class="trr-rows c${cols}">${rows || '<p class="trr-none">―</p>'}</div></div>
       <button class="trr-ok">OK</button></div>`;
-    const fit = () => { const bx = el.querySelector('.trr-box'); if (!bx) return; const k = Math.min((el.clientWidth || innerWidth) * 0.97 / 860, (el.clientHeight || innerHeight) * 0.97 / 580); bx.style.transform = `scale(${k})`; bx.style.setProperty('--k', k); };
+    const fit = () => { const bx = el.querySelector('.trr-box'); if (!bx) return; const k = Math.min((el.clientWidth || innerWidth) * 0.97 / 860, (el.clientHeight || innerHeight) * 0.97 / Math.max(580, bx.offsetHeight || 580));   /* 版675：上がった能力が多い時は箱が縦に伸びるので、その分小さくして全部見せる */ bx.style.transform = `scale(${k})`; bx.style.setProperty('--k', k); };
     el.hidden = false; fit(); addEventListener('resize', fit); requestAnimationFrame(() => el.classList.add('on'));
     try { window.DotSound && DotSound.play(o.got ? 'skill' : 'ok'); } catch (_) {}
     return new Promise((res) => { el.querySelector('.trr-ok').onclick = () => { removeEventListener('resize', fit); el.classList.remove('on'); el.hidden = true; res(); }; });

@@ -2962,7 +2962,7 @@ html.short .h2-post{width:40px;height:40px}
 #trRes{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;background:rgba(0,10,30,.55);opacity:0;transition:opacity .2s}
 #trRes[hidden]{display:none}
 #trRes.on{opacity:1}
-.trr-box{flex:none;width:860px;height:580px;transform-origin:center;display:flex;flex-direction:column;background:#f6f3ea;border:5px solid #0f2a66;border-radius:18px;box-shadow:0 0 0 3px #fff,0 10px 30px rgba(0,0,0,.5);overflow:hidden;font-family:'M PLUS 1p',sans-serif}
+.trr-box{flex:none;width:860px;height:auto;min-height:580px;transform-origin:center;display:flex;flex-direction:column;background:#f6f3ea;border:5px solid #0f2a66;border-radius:18px;box-shadow:0 0 0 3px #fff,0 10px 30px rgba(0,0,0,.5);overflow:hidden;font-family:'M PLUS 1p',sans-serif}
 #trRes.on .trr-box{animation:trrIn .28s cubic-bezier(.2,1.4,.4,1)}
 @keyframes trrIn{from{transform:scale(var(--k,1)) translateY(30px);opacity:0}}
 .trr-h{flex:none;height:62px;display:flex;align-items:center;justify-content:center;gap:12px;background:repeating-linear-gradient(115deg,#1f4fb0 0 22px,#1a46a0 22px 44px);border-bottom:4px solid #0f2a66}
@@ -2998,7 +2998,7 @@ html.short .h2-post{width:40px;height:40px}
 @keyframes trrTw{50%{transform:scale(.5) rotate(20deg);opacity:.5}}
 .trr-notes{flex:none;margin:6px 16px 0;text-align:center;font-size:14px;font-weight:800;color:#334}
 .trr-notes .ty{color:#7a2ad0}.trr-notes .inj{color:#d02a2a}
-.trr-gr{flex:1;min-height:0;position:relative;margin:10px 40px 0;border:2px solid #c8cbd6;border-radius:10px;background:#fff;padding:22px 14px 6px;display:flex}
+.trr-gr{flex:1;min-height:110px;position:relative;margin:10px 40px 0;border:2px solid #c8cbd6;border-radius:10px;background:#fff;padding:22px 14px 6px;display:flex}
 .trr-gl{position:absolute;left:-2px;top:-2px;background:#0f2a66;color:#fff;font-weight:900;font-size:14px;padding:3px 24px 3px 12px;border-radius:10px 0 0 0;clip-path:polygon(0 0,100% 0,88% 100%,0 100%)}
 .trr-rows{flex:1;display:grid;align-content:center;gap:2px 18px}
 .trr-rows.c2{grid-template-columns:1fr 1fr}.trr-rows.c3{grid-template-columns:1fr 1fr 1fr}
@@ -3402,3 +3402,11 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 .sp2-go{display:flex!important;align-items:center;justify-content:center;height:58px!important;padding:0 0 3px!important;font:900 26px/1 'M PLUS 1p','Hiragino Kaku Gothic ProN',sans-serif!important;letter-spacing:.06em;color:#2a1600!important;border:3px solid #6a4200!important;background:linear-gradient(#ffe36a,#ffc21a 55%,#f0a400)!important;text-shadow:0 1px 0 rgba(255,255,255,.6);box-shadow:0 4px 0 #7a5200!important}
 .sp2-go[disabled]{font-size:19px!important;color:#4a4a4a!important;background:#d8d3c0!important;border-color:#9a9480!important;text-shadow:none}
 .nm2-when{cursor:pointer}.nm2-when:active{transform:translateY(2px) scale(.98)}
+
+/* 版675：合宿中は1行（合宿の説明）増えるので、カードを少し小さく・すき間をつめて、下のボタンが切れないように */
+.ts-in.cp{gap:2px;padding:4px 8px 6px}
+.trb-set .ts-in.cp .tslots2 .acard,.trb-set .ts-in.cp .tslot2{width:72px!important;height:86px!important}
+.ts-in.cp .ts-plus{font-size:24px;width:20px}
+.trb-set .ts-in.cp .spban{padding:1px 8px;line-height:1.25}
+.trb-set .ts-in.cp .ts-msg{font-size:12px}
+.ts-in.cp .ts-btns .splist2,.trb-set .ts-in.cp .dotrain{height:36px}
