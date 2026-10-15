@@ -3861,7 +3861,7 @@
   // 版712：月額パスの解約・カードの変更（Stripeのお客さま用ページ）
   async function payManage() {
     const t = document.createElement('div'); t.className = 'pay-wait'; t.innerHTML = '<p>お支払いの管理の画面を開いています…</p>'; (document.getElementById('app') || document.body).appendChild(t);
-    try { const r = await DotNet.payPortal(); payOpen(t, r.url); }
+    try { const r = await DotNet.payPortal(); save.payPending = { item: 'portal', at: Date.now() }; store(); payOpen(t, r.url); }
     catch (e) { t.remove(); coachAsk(`お支払いの管理の画面を開けませんでした。<br><small>ネットにつながっているか確かめて、もう一度お試しください。<br>（${esc(String((e && (e.code || e.message)) || e).slice(0, 80))}）</small>`, [{ label: 'OK', value: true }], 'sec'); }
   }
   function payOpen(t, url) {
@@ -3888,7 +3888,7 @@
     try {
       const got = await DotNet.payClaim();
       { const old = JSON.stringify(save.premSub || null); save.premSub = got.sub || null;   // 版712：月額パスの状態（自動更新中・解約予定）
-        if (JSON.stringify(save.premSub) !== old) { store(); const sb = document.querySelector('#shopScreen:not([hidden])'); if (sb && sb._redraw) sb._redraw(); } }
+        if (JSON.stringify(save.premSub) !== old) { if (save.payPending && save.payPending.item === 'portal') delete save.payPending; store(); const sb = document.querySelector('#shopScreen:not([hidden])'); if (sb && sb._redraw) sb._redraw(); } }
       if (!got.length) return;
       for (let i = 0; i < 600 && document.getElementById('ttTitle'); i++) await new Promise((r) => setTimeout(r, 200));   // 版707：タイトル画面の上では飛ばさない
       for (const g of got) {
@@ -3910,6 +3910,11 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { payWaitOff(); setTimeout(payCollect, 400); } });
   window.addEventListener('pageshow', (e) => { if (e.persisted) { payWaitOff(); setTimeout(payCollect, 400); } });
   addEventListener('focus', () => setTimeout(payCollect, 400));
+  // 版713：iPhoneのホーム画面アプリでは、支払いの画面を閉じても「もどった」合図が来ないことがある。
+  //  払っている途中（payPending）の間は、こちらから見に行く（はじめの2分は3秒ごと、そのあと30分までは20秒ごと）
+  setInterval(() => { const P = save && save.payPending; if (!P || document.hidden || payBusy) return;
+    const age = Date.now() - (P.at || 0); if (age > 30 * 60 * 1000) { delete save.payPending; store(); return; }
+    if (age < 2 * 60 * 1000 || Math.floor(Date.now() / 3000) % 7 === 0) payCollect(); }, 3000);
   async function buyPrem(redraw) {
     const P = C.PREM, on = C.premOn(save);
     if (payReal()) {   // 版712：月額パス
