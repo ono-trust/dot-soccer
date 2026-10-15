@@ -3869,7 +3869,8 @@
         const cs = document.querySelector('#coinScreen:not([hidden]) .lk-box'), sb = document.querySelector('#shopScreen:not([hidden]) .lk-box');
         if (cs && g.coins) { coinGain(cs, cs.querySelector('.cs-have') || cs, c0, save.coins, null); await new Promise((r) => setTimeout(r, 1900)); }
         else if (sb && g.coins) { const cn = sb.querySelector('.sh3-cn'), tg = sb.querySelector('.sh3-coin'); if (cn) { coinGain(sb, sb.querySelector('.pm-buy') || tg, c0, save.coins, null, { to: tg, num: cn }); await new Promise((r) => setTimeout(r, 1900)); } }
-        else { try { DotSound.play('coinBurst'); } catch (_) {} }
+        else { const hc = document.querySelector('.h2-coin'), hb = hc && hc.querySelector('b');   // 版706：ホームの時は、上の帯のコインへ飛ばす
+          if (hc && hb && g.coins) { homeCoinFly(hc, hb, c0, save.coins); await new Promise((r) => setTimeout(r, 1900)); } else { try { DotSound.play('coinBurst'); } catch (_) {} } }
         await coachAsk(g.item === 'prem' ? `ご購入ありがとうございます！<br><b>プレミアムパス（${g.premDays}日）</b>を手に入れました。<br><b>${g.coins}コイン</b>もどうぞ。` : `ご購入ありがとうございます！<br><b>${(g.coins || 0).toLocaleString()} コイン</b>が届きました。`, [{ label: 'OK', value: true }], 'sec');
       }
       if (got.some((g) => g.item === 'prem')) premDaily();
@@ -3957,6 +3958,22 @@
     draw(); el.hidden = false; el._fit(); setTimeout(payCollect, 300);
   }
   // 買ったあとの演出：押したところからコインが飛び出して、上の数字へ吸い込まれ、数字が増えていく
+  // 版706：ホーム画面で、画面のまん中からコインが出て、上の帯の所持コインへ吸い込まれる
+  function homeCoinFly(toEl, numEl, c0, c1) {
+    const S = (n) => { try { DotSound.play(n); } catch (_) {} };
+    const host = document.getElementById('app') || document.body, hr = host.getBoundingClientRect(), to = (toEl.querySelector('.coin-ico') || toEl).getBoundingClientRect();
+    const fx = hr.width / 2, fy = hr.height / 2, tx = to.left + to.width / 2 - hr.left, ty = to.top + to.height / 2 - hr.top;
+    const lay = document.createElement('div'); lay.className = 'hc-lay'; host.appendChild(lay);
+    S('coinBurst');
+    for (let i = 0; i < 14; i++) {
+      const c = document.createElement('img'); c.src = 'icons/coin.png'; c.className = 'cs-fly'; const a = Math.random() * Math.PI * 2, r = 50 + Math.random() * 80;
+      c.style.cssText = `left:${fx}px;top:${fy}px;width:40px;height:40px;margin:-20px 0 0 -20px;--mx:${Math.cos(a) * r}px;--my:${Math.sin(a) * r}px;--tx:${tx - fx}px;--ty:${ty - fy}px;animation-delay:${i * 40}ms`;
+      lay.appendChild(c); setTimeout(() => { c.remove(); S('coin'); if (toEl.animate) toEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.2)' }, { transform: 'scale(1)' }], { duration: 160 }); }, 900 + i * 40);
+    }
+    const t0 = performance.now() + 700, dur = 900;
+    const tick = (now) => { const u = Math.max(0, Math.min(1, (now - t0) / dur)), e = 1 - Math.pow(1 - u, 3); numEl.textContent = Math.round(c0 + (c1 - c0) * e).toLocaleString(); if (u < 1) requestAnimationFrame(tick); else setTimeout(() => lay.remove(), 400); };
+    requestAnimationFrame(tick);
+  }
   function coinGain(box, from, c0, c1, redraw, opt) {   // 版696：opt＝{ to: 吸い込まれる先, num: 数字の所 }（ショップのパスでも使う）
     const S = (n) => { try { DotSound.play(n); } catch (_) {} };
     const toEl = (opt && opt.to) || box.querySelector('.cs-have .coin-ico');
