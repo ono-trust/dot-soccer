@@ -3517,3 +3517,23 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 /* 版688：名前が2行にならないように。能力の表示は列が多いので少しつめる */
 .ot td{white-space:nowrap}
 .ot.ab td{padding:4px 3px}.ot.ab .rk2{font-size:23px}.ot.ab .tbadge{font-size:13px;padding:2px 8px}.ot.ab th.ic .pico{width:26px;height:24px}.ot.ab th{padding:6px 3px}
+/* 版689：タイトル画面（スタジアムの絵・ロゴ・流れる雲・歩く選手） */
+#ttTitle{background:#4fb3f5;font-family:'M PLUS 1p',sans-serif}
+#ttTitle .ttl-stage{position:absolute;left:0;top:0;width:1850px;height:850px;transform-origin:0 0;overflow:hidden}
+#ttTitle .ttl-bg{position:absolute;inset:0;width:100%;height:100%;image-rendering:auto}
+#ttTitle .ttl-cl{position:absolute;left:0;pointer-events:none;animation:ttlcloud linear infinite}
+#ttTitle .ttl-cl.c1{top:40px;animation-duration:150s;animation-delay:-35s}
+#ttTitle .ttl-cl.c2{top:22px;animation-duration:190s;animation-delay:-120s}
+#ttTitle .ttl-cl.c3{top:150px;animation-duration:170s;animation-delay:-150s}
+@keyframes ttlcloud{from{transform:translateX(-460px)}to{transform:translateX(1900px)}}
+#ttTitle .ttl-logo2{position:absolute;left:320px;top:80px;width:1330px;height:382px;pointer-events:none;z-index:2;animation:ttllogo 4s ease-in-out infinite}
+@keyframes ttllogo{50%{transform:translateY(-6px)}}
+#ttTitle .ttl-men{position:absolute;inset:0;z-index:3}
+#ttTitle .ttl-man{position:absolute;left:0;top:0;width:90px;height:120px}
+#ttTitle .ttl-man::before{content:'';position:absolute;left:14px;bottom:-4px;width:62px;height:12px;border-radius:50%;background:rgba(0,40,0,.28)}
+#ttTitle .ttl-man canvas{position:relative;width:90px;height:120px;image-rendering:pixelated;display:block}
+#ttTitle .ttl-ball{position:absolute;left:0;bottom:0;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 50% 50%,#1b2a4a 0 22%,transparent 23%),radial-gradient(circle at 35% 30%,#fff 0,#e9eef5 60%,#b9c4d2 100%);box-shadow:0 0 0 2px #1b2a4a;transition:transform .12s}
+#ttTitle .ttl-ball[hidden]{display:none}
+#ttTitle .ttl-tap{bottom:9%;font-size:34px;font-weight:900;letter-spacing:.06em;color:#fff;text-shadow:0 4px 0 #13233f,3px 0 0 #13233f,-3px 0 0 #13233f,0 -3px 0 #13233f,2px 2px 0 #13233f,-2px 2px 0 #13233f,2px -2px 0 #13233f,-2px -2px 0 #13233f;animation:ttltap 2.4s ease-in-out infinite;z-index:4}
+@keyframes ttltap{0%,100%{opacity:1}50%{opacity:.35}}
+#ttTitle .ttl-ver{z-index:4;font-weight:800;opacity:.85;text-shadow:0 1px 2px rgba(0,0,0,.5);font-size:14px}

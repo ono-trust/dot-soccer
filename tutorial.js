@@ -108,16 +108,56 @@
 
   // ---------- タイトル画面 ----------
   function title() {
+    // 版689：スタジアムの背景・太いロゴ。雲がゆっくり流れ、手前を選手がゆっくり歩く（たまにドリブル）
     return new Promise((res) => {
       const el = document.createElement('div'); el.id = 'ttTitle';
-      const runners = Array.from({ length: 6 }, (_, k) => `<i class="tt-run r${k}" style="animation-delay:${-k * 1.3}s"></i>`).join('');
-      el.innerHTML = `<div class="ttl-sky"></div><div class="ttl-pitch"></div><div class="ttl-runs">${runners}</div>
-        <div class="ttl-logo"><small>サッカークラブ育成シミュレーション</small><b>ドット<span>サッカー</span></b><em>DOT SOCCER</em></div>
-        <p class="ttl-tap">画面をタップしてはじめる</p><p class="ttl-ver">${esc((document.querySelector('script[src*="engine.js"]') || {}).src?.split('v=')[1] || '')}</p>`;
+      const ver = esc((document.querySelector('script[src*="engine.js"]') || {}).src?.split('v=')[1] || '');
+      el.innerHTML = `<div class="ttl-stage"><img class="ttl-bg" src="img/title/bg.jpg" alt="" draggable="false">
+          <img class="ttl-cl c1" src="img/title/cloud1.png" alt=""><img class="ttl-cl c2" src="img/title/cloud2.png" alt=""><img class="ttl-cl c3" src="img/title/cloud3.png" alt="">
+          <img class="ttl-logo2" src="img/title/logo.png" alt="ドットサッカー" draggable="false"><div class="ttl-men"></div></div>
+        <p class="ttl-tap">画面をタップしてはじめる</p><p class="ttl-ver">Ver. ${ver}</p>`;
       (appEl() || document.body).appendChild(el);
-      // 走る選手：試合と同じドット絵
-      try { el.querySelectorAll('.tt-run').forEach((sp, k) => { const cv = A().spriteCanvas({ name: '', number: 1 + k, hair: k % 4, hairColor: k % 3, skin: k % 3, position: 'MF' }, k % 2, 'side', k % 4, true, false); if (cv) { cv.className = 'tt-runcv'; sp.appendChild(cv); } }); } catch (_) {}
-      el.onclick = () => { el.classList.add('out'); setTimeout(() => { el.remove(); res(); }, 450); };
+      const stage = el.querySelector('.ttl-stage'), men = el.querySelector('.ttl-men');
+      const SW = 1850, SH = 850;
+      const fit = () => { const w = el.clientWidth || 1280, h = el.clientHeight || 720, k = Math.max(w / SW, h / SH); stage.style.transform = `translate(${(w - SW * k) / 2}px,${(h - SH * k) / 2}px) scale(${k})`; };
+      fit(); addEventListener('resize', fit);
+      // 選手（試合と同じドット絵）。走りの絵をゆっくり切りかえて「歩き」にする
+      const ppl = [];
+      try {
+        const look = [[0, 0, 0], [1, 1, 1], [2, 2, 0], [3, 0, 2], [1, 2, 1]];
+        look.forEach(([hair, hc, skin], k) => {
+          const team = k % 2, info = { name: '', number: 1 + k, hair, hairColor: hc, skin, position: 'MF' };
+          const fr = [0, 1, 2, 3].map((f) => A().spriteCanvas(info, team, 'side', f, true, false));
+          if (!fr[0]) return;
+          const box = document.createElement('div'); box.className = 'ttl-man';
+          const cv = document.createElement('canvas'); cv.width = fr[0].width; cv.height = fr[0].height; box.appendChild(cv);
+          const ball = document.createElement('i'); ball.className = 'ttl-ball'; ball.hidden = true; box.appendChild(ball);
+          men.appendChild(box);
+          const dir = k % 2 ? -1 : 1;
+          ppl.push({ box, cv, fr, ball, dir, x: 120 + k * 380 + Math.random() * 80, y: 565 + ((k * 37) % 5) * 22, sp: 34 + Math.random() * 14, drib: 0, next: 3 + k * 5 + Math.random() * 4, t: Math.random() * 4 });
+        });
+      } catch (_) {}
+      let last = performance.now(), raf = 0;
+      const tick = (now) => {
+        if (!el.isConnected) return;
+        const dt = Math.max(0, Math.min(0.1, (now - last) / 1000)); last = now;
+        for (const p of ppl) {
+          p.next -= dt;
+          if (p.drib > 0) p.drib -= dt; else if (p.next <= 0 && !ppl.some((q) => q.drib > 0) && p.x > 100 && p.x < SW - 260) { p.drib = 2.5 + Math.random() * 2; p.next = 12 + Math.random() * 16; }   // ドリブルは一度にひとりだけ
+          const fast = p.drib > 0, v = fast ? p.sp * 2.4 : p.sp;
+          p.x += v * p.dir * dt; p.t += dt * (fast ? 9 : 4.2);
+          if (p.dir > 0 && p.x > SW + 80) { p.x = -120; p.y = 560 + Math.random() * 100; }
+          if (p.dir < 0 && p.x < -120) { p.x = SW + 80; p.y = 560 + Math.random() * 100; }
+          const f = ((Math.floor(p.t) % 4) + 4) % 4, c = p.cv.getContext('2d'); c.clearRect(0, 0, p.cv.width, p.cv.height); c.drawImage(p.fr[f], 0, 0);
+          p.box.style.transform = `translate(${p.x}px,${p.y}px)`; p.box.style.zIndex = Math.round(p.y);
+          p.cv.style.transform = p.dir < 0 ? 'scaleX(-1)' : '';
+          p.ball.hidden = !fast;
+          if (fast) { const kick = (Math.floor(p.t) % 4) < 2 ? 1 : 0; p.ball.style.transform = `translate(${p.dir > 0 ? 66 + kick * 10 : -2 - kick * 10}px,0)`; }
+        }
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      el.onclick = () => { el.classList.add('out'); setTimeout(() => { cancelAnimationFrame(raf); removeEventListener('resize', fit); el.remove(); res(); }, 450); };
     });
   }
   // 背景（クラブハウス）と秘書の立ち絵だけの場面
