@@ -3850,7 +3850,11 @@
     if (!(await coachAsk(`<b>${label}</b>を <b>¥${yen.toLocaleString()}</b> で購入しますか？<br><small>支払いの画面（Stripe）が開きます。払い終わったら、ゲームにもどってください。</small>`, [{ label: '支払いへ進む', value: true }, { label: 'やめる', value: false }], 'sec'))) return;
     const t = document.createElement('div'); t.className = 'pay-wait'; t.innerHTML = '<p>支払いの画面を開いています…</p>'; (document.getElementById('app') || document.body).appendChild(t);
     try { const r = await DotNet.payCheckout(item); save.payPending = { item, at: Date.now() }; store();
-      if (window.top !== window) { window.open(r.url, '_blank'); t.remove(); } else location.href = r.url; }
+      if (window.top !== window) { window.open(r.url, '_blank'); t.remove(); } else {
+        location.href = r.url;
+        // 版708：支払いの画面を閉じてもどった時（iPhoneのホーム画面アプリなど）に「開いています…」が残らないように
+        setTimeout(() => { if (t.isConnected) { t.innerHTML = '<p>支払いの画面を開いています…</p><button type="button" class="pay-wait-x">閉じる</button>'; t.querySelector('button').onclick = () => t.remove(); } }, 5000);
+      } }
     catch (e) { t.remove(); coachAsk(`支払いの画面を開けませんでした。<br><small>ネットにつながっているか確かめて、もう一度お試しください。<br>（${esc(String((e && (e.code || e.message)) || e).slice(0, 80))}）</small>`, [{ label: 'OK', value: true }], 'sec'); }
   }
   // パスを足す（購入・受け取りの時）
@@ -3877,7 +3881,9 @@
       if (got.some((g) => g.item === 'prem')) premDaily();
     } catch (_) {} finally { payBusy = false; }
   }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(payCollect, 400); });
+  const payWaitOff = () => document.querySelectorAll('.pay-wait').forEach((e) => e.remove());   // 版708
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { payWaitOff(); setTimeout(payCollect, 400); } });
+  window.addEventListener('pageshow', (e) => { if (e.persisted) { payWaitOff(); setTimeout(payCollect, 400); } });
   addEventListener('focus', () => setTimeout(payCollect, 400));
   async function buyPrem(redraw) {
     const P = C.PREM, on = C.premOn(save);

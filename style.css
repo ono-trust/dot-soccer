@@ -3620,7 +3620,8 @@ b.gr-C{color:#ffe02a;-webkit-text-stroke-color:#4a3a00}b.gr-D{color:#f2f2f2;-web
 .pc-embed .pc-meta span{min-width:46px}
 .pc-embed .pc-meta .tbadge{font-size:min(11px,calc(80px / var(--tl,4)));padding:1px 5px}
 /* 版703：支払いの画面を開いている間 */
-.pay-wait{position:absolute;inset:0;z-index:600;background:rgba(0,0,0,.55);display:grid;place-items:center}
+.pay-wait{position:absolute;inset:0;z-index:600;background:rgba(0,0,0,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.pay-wait-x{font:900 20px/1 "Hiragino Kaku Gothic ProN",sans-serif;color:#13233f;background:#fff;border:4px solid #13306b;border-radius:999px;padding:12px 34px}
 .pay-wait p{background:#fff;color:#13233f;font:900 22px/1.4 "Hiragino Kaku Gothic ProN",sans-serif;padding:20px 34px;border-radius:16px;border:4px solid #635bff}
 #mSheet .st-law{margin-left:auto;margin-right:14px;font-size:13px;font-weight:700;color:#1d5fd1;text-decoration:underline;white-space:nowrap}
 .po-coin{display:inline-flex;align-items:center;gap:3px;color:#c97b00}.po-coin .coin-ico{width:20px;height:20px}
