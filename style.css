@@ -3490,3 +3490,9 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 .ap-medal.ap-lic img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 4px 0 rgba(0,0,0,.18))}
 .ap-lad img{width:42px;height:48px;object-fit:contain;display:block}
 .ap-lad.on img{filter:drop-shadow(0 0 6px var(--rc))}
+/* 版684：ライセンスのバッジを少し小さく・上に（下の「ごほうび」にかからないように） */
+.ap-medal.ap-lic,.ap2 .ap-rankp .ap-medal.ap-lic{height:calc(var(--sz) * .8)!important;width:calc(var(--sz) * .7)!important;align-self:center}
+/* 版684：ランクマッチのライセンス表示：紺の地に白い文字（灰色の地で読みにくかった）。丸い文字をバッジの絵に */
+.rk-lc{background:#14234a!important;color:#fff!important;border:3px solid var(--rc,#7f8c99);text-shadow:none!important}
+.rk-lc img{width:38px;height:44px;object-fit:contain;margin:-10px 0 -10px -8px;filter:drop-shadow(0 2px 0 rgba(0,0,0,.3))}
+.ap-neterr{display:block;color:#c0392b;font-size:11px;font-weight:700;text-align:left;margin:-2px 0 2px;line-height:1.2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}

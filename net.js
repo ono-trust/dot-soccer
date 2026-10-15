@@ -43,6 +43,7 @@
   // 自分のクラブを公開する（名前・エンブレム・ランク・チームのコード）
   async function publish(me) {
     if (!(await ready())) return null;
+    lastErr = '';   // 版684：前のエラーが残らないように
     return withTimeout((async () => {
       let fid; try { fid = await ensureFid(me.fid); } catch (e) { lastErr = 'fid: ' + (e && e.message || e); throw e; }
       await db.collection('players').doc(uid).set({ fid, name: me.name, short: me.short, mgr: me.mgr || '', lg: me.lg || '', emb: me.emb || null, kit: me.kit || null, rank: me.rank, rp: me.rp, lvl: Math.round(me.lvl || 0), code: me.code, sv: me.sv || null, at: Date.now() });

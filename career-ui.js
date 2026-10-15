@@ -4263,7 +4263,7 @@
   function rankConfirm(ri, op, live) {
     const el = fullScreen('rkScreen', 'ap-wrap rk-wrap'), box = el.querySelector('.lk-box');
     const ori = live ? Math.max(0, Math.min(4, live.rank || 0)) : -1;
-    const chip = (k) => (k < 0 ? '<span class="rk-lc cpu"><i>CPU</i>CPUのクラブ</span>' : `<span class="rk-lc" style="--rc:${RANKS[k].c}"><i>${RANKS[k].k}</i>${RANKS[k].n}ライセンス</span>`);
+    const chip = (k) => (k < 0 ? '<span class="rk-lc cpu"><i>CPU</i>CPUのクラブ</span>' : `<span class="rk-lc" style="--rc:${RANKS[k].c}"><img src="icons/lic/${RANKS[k].k}.png" alt="">${RANKS[k].n}ライセンス</span>`);
     const card = (side, emb, nm, mg, k) => `<div class="rk-card ${side}"><small>${side === 'home' ? 'ホーム' : 'アウェー'}</small><div class="rk-cb"><img src="${emb}" alt=""><b>${esc(nm)}</b>${mg ? `<span>${esc(mg)}監督</span>` : ''}${chip(k)}</div></div>`;
     box.innerHTML = `${apBg()}<div class="ap2 rkm"><button class="std-back" title="もどる"><i class="bk-ico" aria-hidden="true"></i></button>
       <div class="rk-box"><div class="rk-ttl">${AP_SVG.gtrophy}<b>ランクマッチ</b></div>
@@ -4380,7 +4380,8 @@
     box.querySelector('.std-back').onclick = close;
     box.querySelector('[data-a="rank"]').onclick = () => { close(); startRank(); };
     box.querySelector('[data-a="friend"]').onclick = () => friendMenu();
-    publishMe().then((fid) => { const e = box.querySelector('#apFidL'); if (e) e.textContent = fid ? fmtFid(fid) : 'つながりません'; });
+    publishMe().then((fid) => { const e = box.querySelector('#apFidL'); if (!e) return; const f = fid || ensureOnline().fid; e.textContent = f ? fmtFid(f) : 'つながりません';   // 版684：公開に失敗しても、IDは見せる。理由を小さく出す
+      if (!fid) { const er = (window.DotNet && DotNet.err) || ''; e.title = er; const fl = e.closest('.ap-fidl'); if (fl && !fl.querySelector('.ap-neterr')) fl.insertAdjacentHTML('afterend', `<small class="ap-neterr">通信エラー${er ? `（${esc(String(er).slice(0, 60))}）` : ''}</small>`); } });
     if (box.querySelector('[data-a="ranking"]')) box.querySelector('[data-a="ranking"]').onclick = () => ranking();
     if (!airport.busy) { airport.busy = true; syncPost(true).then(() => { airport.busy = false; if (!el.hidden && on.rp !== (airport.lastRp ?? on.rp)) airport(); }).catch(() => { airport.busy = false; }); }
     airport.lastRp = on.rp;
