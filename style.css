@@ -3414,3 +3414,45 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 /* 版678：設定のアカウントID */
 #mSheet .m-acct{margin:-6px 0 10px;font-size:13px;color:#445;user-select:text;-webkit-user-select:text}#mSheet .m-acct b{font-size:16px;letter-spacing:1px;font-family:ui-monospace,Menlo,monospace;color:#123}#mSheet .m-acct small{color:#c05a00;font-weight:800}
 #mDev{display:contents}#mDev[hidden]{display:none}
+/* 版679：設定画面を新しいデザインに（太賀さんの案） */
+#mSheet .sheet.st-box{position:fixed;left:50%;top:50%;margin:0;flex:none;width:760px;max-width:none;max-height:none;overflow:visible;height:auto;transform:translate(-50%,-50%);padding:14px 22px 14px;text-align:left;background:#fbf7ea;border:5px solid #13306b;border-radius:22px;box-shadow:0 0 0 4px #fff,0 0 0 7px #13306b,0 10px 30px rgba(0,0,0,.45);transform-origin:center center;font-family:'M PLUS 1p','Hiragino Sans',sans-serif;color:#13233f}
+#mSheet .st-hd{display:flex;align-items:center;gap:16px;height:64px;border-bottom:3px solid #a9bcd6;margin-bottom:12px;padding-bottom:6px}
+#mSheet .st-gear{width:58px;height:58px}
+#mSheet .st-hd b{font-size:38px;font-weight:900;color:#13306b;letter-spacing:2px}
+#mSheet .st-x{all:unset;cursor:pointer;margin-left:auto;width:52px;height:52px;border-radius:50%;background:#13306b;box-shadow:0 0 0 3px #fff,0 0 0 5px #13306b;display:flex;align-items:center;justify-content:center}
+#mSheet .st-x svg{width:24px;height:24px;pointer-events:none}
+#mSheet .st-acct{display:flex;align-items:center;gap:14px;height:62px;padding:0 12px;border-radius:12px;background:#e3eefb;border:2px solid #c9d8ee;margin:0 0 10px;user-select:text;-webkit-user-select:text}
+#mSheet .st-acct img{width:52px;height:52px;object-fit:cover;object-position:50% 8%;border:2.5px solid #13306b;border-radius:6px;background:#9cc8ff}
+#mSheet .st-al{font-size:19px;font-weight:700;color:#1d2c4a}
+#mSheet .st-sep{width:2px;height:30px;background:#9fb3d1;margin:0 16px}
+#mSheet .st-id{font:900 34px/1 ui-monospace,'SF Mono',Menlo,monospace;letter-spacing:2px;color:#13233f}
+#mSheet .st-dev{font-size:13px;font-weight:900;color:#fff;background:#e0781a;border-radius:99px;padding:3px 10px}
+#mSheet .st-copy{margin-left:auto;height:42px!important;min-height:0!important;padding:0 26px!important;border:3px solid #13306b!important;border-radius:12px!important;background:#fff!important;font-size:18px!important;font-weight:900!important;color:#13306b;cursor:pointer;box-shadow:0 2px 0 #13306b}
+#mSheet .st-list{gap:10px}
+#mSheet .mlist .st-row{display:flex;align-items:center;gap:18px;height:auto;min-height:0;padding:10px 22px;text-align:left;border:3px solid #13306b;border-radius:14px;background:#fff;box-shadow:0 3px 0 #13306b}
+#mSheet .st-row svg{width:76px;height:58px;flex:none;pointer-events:none}
+#mSheet .st-row span{flex:1;display:flex;flex-direction:column;gap:2px;pointer-events:none}
+#mSheet .st-row b{font-size:30px;font-weight:900;color:#13233f;line-height:1.1}
+#mSheet .st-row small{font-size:17px;font-weight:600;color:#33435f}
+#mSheet .st-arw{width:16px;height:16px;border-right:5px solid #13233f;border-bottom:5px solid #13233f;transform:rotate(-45deg);margin-right:8px;pointer-events:none}
+#mSheet .st-devrow{display:flex!important;gap:8px;align-items:center;background:#fff1de;border:2px dashed #e0781a;border-radius:12px;padding:6px 10px}
+#mSheet .st-devrow[hidden]{display:none!important}
+#mSheet .st-devrow span{font-weight:900;color:#c05a00;font-size:14px;white-space:nowrap}
+#mSheet .st-devrow button{flex:1;height:38px!important;min-height:0!important;font-size:14px!important;border-width:2px!important;border-radius:9px!important;padding:0 6px!important}
+#mSheet .st-cap{display:flex;align-items:center;gap:12px;margin:4px 0 0;font-size:19px;font-weight:900;color:#13306b}
+#mSheet .st-cap::after{content:'';flex:1;height:3px;background:#a9bcd6}
+#mSheet .st-snd{display:flex;gap:14px}
+#mSheet .mlist .st-tg{flex:1;display:flex;align-items:center;gap:14px;height:66px;min-height:0;padding:0 16px;border:3px solid #13306b;border-radius:14px;background:#fff;box-shadow:0 3px 0 #13306b;text-align:left}
+#mSheet .st-tg svg{width:44px;height:38px;flex:none;pointer-events:none}
+#mSheet .st-tg span{flex:1;font-size:24px;font-weight:900;color:#13233f;pointer-events:none}
+#mSheet .st-sw{position:relative;width:118px;height:44px;border-radius:99px;background:#8b95a6;border:3px solid #4b5563;box-shadow:inset 0 2px 0 rgba(0,0,0,.2);pointer-events:none;display:flex;align-items:center}
+#mSheet .st-sw::after{content:'';position:absolute;top:3px;left:3px;width:32px;height:32px;border-radius:50%;background:#fff;box-shadow:0 2px 0 rgba(0,0,0,.25);transition:left .15s}
+#mSheet .st-sw em{font-style:normal;font-weight:900;font-size:20px;color:#fff;margin-left:auto;margin-right:14px}
+#mSheet .st-tg.on .st-sw{background:linear-gradient(#2ac25a,#119a3e);border-color:#0b6a2a}
+#mSheet .st-tg.on .st-sw::after{left:77px}
+#mSheet .st-tg.on .st-sw em{margin-left:16px;margin-right:auto}
+#mSheet .st-more{display:flex;gap:10px}#mSheet .mlist .st-more button{flex:1;height:38px!important;min-height:0!important;font-size:15px!important;border-width:2px!important}
+#mSheet .st-more:not(:has(button:not([hidden]))){display:none}
+#mSheet .st-ft{display:flex;align-items:center;gap:16px;margin-top:12px;padding-top:10px;border-top:3px solid #a9bcd6}
+#mSheet .st-ft span{font-size:15px;font-weight:600;color:#475569}
+#mSheet .mlist .st-close{margin-left:auto;width:320px;height:60px;border:4px solid #0a1a3e;border-radius:14px;background:linear-gradient(#3f8cff,#1a56d8 60%,#1346b0);color:#fff;font-size:28px;font-weight:900;letter-spacing:4px;box-shadow:0 4px 0 #0a1a3e;cursor:pointer}

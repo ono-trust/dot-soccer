@@ -4599,18 +4599,22 @@
   if (!fsOk) $('#mFull').hidden = true;
   if (!inFrame && $('#mTab')) $('#mTab').hidden = true;
   window.__openMenu = () => $('#mMenu').onclick();
-  const sndLabel = () => { const P = window.DotSound ? DotSound.pref : { sfx: true, bgm: true }; if ($('#mSfx')) $('#mSfx').textContent = '効果音：' + (P.sfx ? 'オン' : 'オフ'); if ($('#mBgm')) $('#mBgm').textContent = 'BGM：' + (P.bgm ? 'オン' : 'オフ'); };
+  const sndLabel = () => { const P = window.DotSound ? DotSound.pref : { sfx: true, bgm: true }; for (const [id, on] of [['#mSfx', P.sfx], ['#mBgm', P.bgm]]) { const b = $(id); if (!b) continue; b.classList.toggle('on', !!on); const em = b.querySelector('.st-sw em'); if (em) em.textContent = on ? 'ON' : 'OFF'; } };   // 版679：スイッチの見た目
   // 版678：アカウントID（＝フレンドID・8けた）を設定に出す。テスト用のボタンは、開発用のアカウントだけに出す
   const DEV_IDS = [];   // ここに開発用のアカウントID（8けた）を入れる
-  const acctShow = (fid) => { const el = $('#mAcct'); if (el) el.innerHTML = `アカウントID：<b>${fid ? String(fid).replace(/(\d{4})(\d{4})/, '$1 $2') : '―'}</b>${fid && DEV_IDS.includes(String(fid)) ? ' <small>（開発用）</small>' : ''}`; const dv = $('#mDev'); if (dv) dv.hidden = !(fid && DEV_IDS.includes(String(fid))); };
+  let acctFid = null;
+  const acctShow = (fid) => { acctFid = fid || null; const dev = !!(fid && DEV_IDS.includes(String(fid))); const b = $('#mAcct .st-id'); if (b) b.textContent = fid ? String(fid).replace(/(\d{4})(\d{4})/, '$1 $2') : '―'; const sm = $('#mAcct .st-dev'); if (sm) sm.hidden = !dev; const dv = $('#mDev'); if (dv) dv.hidden = !dev; stFit(); };
+  const stFit = () => { const bx = document.querySelector('#mSheet .st-box'); if (!bx || $('#mSheet').hidden) return; const h = bx.offsetHeight || 420; bx.style.transform = `translate(-50%,-50%) scale(${Math.min(1.4, innerWidth * 0.96 / 760, innerHeight * 0.96 / h)})`; };
+  addEventListener('resize', stFit);
   window.__devIds = DEV_IDS;
   const acctRefresh = async () => { const sv = window.__career && window.__career.save; let fid = sv && sv.online && sv.online.fid; acctShow(fid); if (!fid && window.__career && window.__career.myFid) { try { fid = await window.__career.myFid(); } catch (_) {} acctShow(fid); } };
-  $('#mMenu').onclick = () => { acctRefresh(); sndLabel(); $('#mFull').textContent = document.fullscreenElement ? '全画面をやめる' : '全画面にする'; if ($('#mGap')) $('#mGap').textContent = topGap ? '画面の上を空けない（上までゲームを広げる）' : '画面の上を空ける（上がさわれない時）'; sheet.hidden = false; };
+  $('#mMenu').onclick = () => { setTimeout(stFit, 0); acctRefresh(); sndLabel(); $('#mFull').textContent = document.fullscreenElement ? '全画面をやめる' : '全画面にする'; if ($('#mGap')) $('#mGap').textContent = topGap ? '画面の上を空けない（上までゲームを広げる）' : '画面の上を空ける（上がさわれない時）'; sheet.hidden = false; };
   addEventListener('fullscreenchange', refit); addEventListener('webkitfullscreenchange', refit);
   sheet.addEventListener('click', async (e) => {
-    const m = e.target.dataset && e.target.dataset.m;
+    const tb = e.target.closest ? e.target.closest('[data-m]') : null, m = tb && tb.dataset.m;   // 版679：ボタンの中の絵や文字を押しても効くように
     if (e.target === sheet) { sheet.hidden = true; return; }
     if (!m) return;
+    if (m === 'copyid') { if (acctFid) { try { await navigator.clipboard.writeText(String(acctFid)); tb.textContent = 'コピー済み'; setTimeout(() => { tb.textContent = 'コピー'; }, 1500); } catch (_) { tb.textContent = 'できません'; } } return; }
     sheet.hidden = true;
     if (m === 'career') window.__career.open();
     else if (m === 'cloud') { window.__career.openCloud(); return; }
