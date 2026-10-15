@@ -3602,3 +3602,8 @@ html.short .rbtns.rb-img button{width:80px!important;height:80px!important}
 .spt.sphint.sel{border-style:solid;box-shadow:0 0 0 3px #ffe23a,0 3px 0 rgba(0,0,0,.3)}
 .spt.sphint::before{content:'ヒント';position:absolute;left:-4px;top:-6px;z-index:2;background:#ffd23a;color:#5a3a00;font:900 12px/1 "Hiragino Kaku Gothic ProN",sans-serif;padding:3px 7px;border-radius:999px;box-shadow:0 2px 0 rgba(0,0,0,.3)}
 .spc.hintc{box-shadow:0 0 0 2px #ffd23a}
+/* 版698：特訓の結果・覚醒の画面のランク（C・Bなど）も、ゲーム全体と同じ色に（S橙・A赤・B青・C黄・D白・E灰。白い地でも読めるふち） */
+.gr-S,.gr-A,.gr-B,.gr-C,.gr-D,.gr-E{-webkit-text-stroke-width:1.2px;paint-order:stroke fill}
+b.gr-S{color:#ffa21f;-webkit-text-stroke-color:#5a2a00}b.gr-A{color:#ff3a2a;-webkit-text-stroke-color:#5a0a00}b.gr-B{color:#2fb0f0;-webkit-text-stroke-color:#082a4a}
+b.gr-C{color:#ffe02a;-webkit-text-stroke-color:#4a3a00}b.gr-D{color:#f2f2f2;-webkit-text-stroke-color:#333}b.gr-E{color:#9aa0a0;-webkit-text-stroke-color:#222}
+.trr-rk b{-webkit-text-stroke-width:1.6px}
