@@ -3615,3 +3615,7 @@ b.gr-C{color:#ffe02a;-webkit-text-stroke-color:#4a3a00}b.gr-D{color:#f2f2f2;-web
 .trr-tyar{font-style:normal;color:#fff;font-size:20px;animation:trrAr .8s ease-in-out infinite}
 @keyframes trrAr{50%{transform:translateX(5px)}}
 .trr-tynear{flex:none;margin:6px 16px 0;text-align:center;font-size:14px;font-weight:900;color:#7a2ad0}
+/* 版700：選手カードの「タイプ」：長い名前（ゴールキーパー・ファンタジスタ・ラインコントローラー）が枠からはみ出さないように */
+.pc-meta .tbadge{white-space:nowrap;flex:0 1 auto;min-width:0;max-width:100%;overflow:hidden;font-size:min(13px,calc(96px / var(--tl,4)));padding:1px 6px}
+.pc-embed .pc-meta span{min-width:46px}
+.pc-embed .pc-meta .tbadge{font-size:min(11px,calc(80px / var(--tl,4)));padding:1px 5px}

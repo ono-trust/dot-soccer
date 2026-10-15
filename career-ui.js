@@ -906,7 +906,7 @@
   // ☆（レア度）の表示：★の数＋凸の印。cap＝育てられる上限のランク
   const starHTML = (n, totsu, cls) => { const t = Math.min(totsu || 0, 3); let h = ''; for (let k = 0; k < n; k++) h += `<i class="tz tz${t}">★</i>`;   /* 版476：無凸＝白、1凸＝銀、2凸＝金、完凸＝虹 */   /* 版467：凸の数で星全部の色が変わる（無凸＝黄、1凸＝青、2凸＝紫、完凸＝虹） */ return `<span class="stars s${n}${t ? ' t' + t : ''} ${cls || ''}" title="☆${n}${t >= 3 ? '・凸MAX' : t ? '・' + t + '凸' : ''}">${h}</span>`; };   // 版456：凸した分だけ、星に色がつく（1凸＝青、2凸＝紫、3凸＝虹）
   const capBadge = (g) => `<span class="capb">上限<b class="rk rk-${g}">${g}</b></span>`;
-  const typeBadge = (t, cls) => `<span class="tbadge ${TYPE_CLS[t] || 'ty-bal'} ${cls || ''}">${esc(t)}</span>`;
+  const typeBadge = (t, cls) => `<span class="tbadge ${TYPE_CLS[t] || 'ty-bal'} ${cls || ''}" style="--tl:${String(t || '').length || 1}">${esc(t)}</span>`;   // 版700：--tl＝文字数（長いタイプ名は文字を小さく）
   // 版514：調子（ポテンシャルの代わり）：本家と同じ5段階の矢印（↑絶好調・↗好調・→普通・↘不調・↓絶不調）
   const COND_UI = { 2: ['絶好調', -90, '#ff3d2e'], 1: ['好調', -45, '#ff9a1a'], 0: ['普通', 0, '#e8c21a'], '-1': ['不調', 45, '#3a9cff'], '-2': ['絶不調', 90, '#7a5cff'] };
   function condArrow(p, size) { const [, deg, col] = COND_UI[C.condOf(p)]; const z = size || 22;
