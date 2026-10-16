@@ -3632,3 +3632,12 @@ b.gr-C{color:#ffe02a;-webkit-text-stroke-color:#4a3a00}b.gr-D{color:#f2f2f2;-web
 
 /* 版714：選手カードの左右の矢印（前後の選手へ）は使わないので出さない。選手の切りかえは下の列から */
 .pc-dots .pc-nav{display:none!important}
+
+/* 版715：見切れ・重なりの直し */
+.nm2-hd{gap:4px;padding-left:6px;padding-right:6px}.nm2-hd>b{flex:none;font-size:14px;letter-spacing:0}
+.nm2-hd .h2-lg{font-size:11px;padding:1px 5px}.nm2-hd small{font-size:11px}
+.nm2-hd .h2-lg{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}.nm2-hd small{flex:none}
+.pc-card:not(.pc-embed) .pc-close{top:4px;right:8px;width:42px;height:42px}
+.s2p.bn .ovr.s2ov{top:1px}
+.sq2.ph .s2p.bn .s2b{top:21px;bottom:auto;right:-12px}
+.pc-embed .pc-main{overflow:hidden}.pc-embed .pc-page{flex:1 1 0;height:auto;min-height:0}.pc-embed .pc-dots{flex:none;padding-bottom:1px}
