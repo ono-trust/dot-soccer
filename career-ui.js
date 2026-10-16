@@ -1940,7 +1940,9 @@
     const fit = () => { const bx = el.querySelector('.trr-box'); if (!bx) return; const k = Math.min((el.clientWidth || innerWidth) * 0.97 / 860, (el.clientHeight || innerHeight) * 0.97 / Math.max(580, bx.offsetHeight || 580));   /* 版675：上がった能力が多い時は箱が縦に伸びるので、その分小さくして全部見せる */ bx.style.transform = `scale(${k})`; bx.style.setProperty('--k', k); };
     el.hidden = false; fit(); addEventListener('resize', fit); requestAnimationFrame(() => el.classList.add('on'));
     try { window.DotSound && DotSound.play(o.got ? 'skill' : 'ok'); } catch (_) {}
-    if (o.typeTo) setTimeout(() => { try { window.DotSound && DotSound.play('typeChange'); } catch (_) {} }, 650);
+    { const rankUp = ups.some(([k, v]) => v > 0 && C.rankInfo(Math.min(C.PMAX - 1, o.before[k] + v)).g !== C.rankInfo(o.before[k]).g);   // 版717：ランクが上がった能力がある時の音
+      if (rankUp) setTimeout(() => { try { window.DotSound && DotSound.play('rankUp'); } catch (_) {} }, 380); }
+    if (o.typeTo) setTimeout(() => { try { window.DotSound && DotSound.play('typeChange'); } catch (_) {} }, 1000);
     return new Promise((res) => { el.querySelector('.trr-ok').onclick = () => { removeEventListener('resize', fit); el.classList.remove('on'); el.hidden = true; res(); }; });
   }
   // 「特訓する！」：その場でこの選手だけ特訓して結果を見せる
