@@ -28,11 +28,13 @@
     if (cm) crowd(cm);
     if (song) { want = song; if (a.state === 'running') bgm(song); else a.onstatechange = ((f) => () => { if (f) f(); if (a.state === 'running' && want && !cur) bgm(want); })(a.onstatechange); }
   }
+  // 版718：iPhoneは、画面にさわっていない時に音の仕組みを作り直すと、次にさわるまで音が出なくなる（試合中の歓声・キック・ドリブルの音が消えていた）。
+  //  そのため、作り直しは「次に画面にさわった時」にする（ずれた時・アプリにもどった時は、印だけつけておく）
   // 音の時計が実際の時間とずれていく時（音の処理が追いつかない・速さが合わない）も作り直す
   setInterval(() => {
     if (!AC || AC.state !== 'running' || document.hidden) { clockA = null; return; }
     const now = performance.now() / 1000, at = AC.currentTime;
-    if (clockA) { const dp = now - clockA[0], da = at - clockA[1]; if (dp > 1.5) { const r = da / dp; driftBad = Math.abs(r - 1) > 0.04 ? driftBad + 1 : 0; if (driftBad >= 2) { driftBad = 0; rebuild(); return; } } }
+    if (clockA) { const dp = now - clockA[0], da = at - clockA[1]; if (dp > 1.5) { const r = da / dp; driftBad = Math.abs(r - 1) > 0.04 ? driftBad + 1 : 0; if (driftBad >= 2) { driftBad = 0; needRebuild = true; return; } } }
     clockA = [now, at];
   }, 2000);
   // iPhoneは、画面にさわった時でないと音が出せない：最初のタッチで音を使えるようにする
@@ -40,8 +42,8 @@
   const startWant = () => { if (AC && AC.state === 'running' && want && !cur) bgm(want); };
   const unlock = () => { if (needRebuild) rebuild(); const a = ctx(); if (!a) return; if (a.state !== 'running') { try { const pr = a.resume(); if (pr && pr.then) pr.then(startWant, () => {}); } catch (_) {} setTimeout(startWant, 120); setTimeout(startWant, 500); } else startWant(); };
   ['pointerdown', 'touchstart', 'touchend', 'pointerup', 'click', 'keydown'].forEach((e) => addEventListener(e, unlock, { passive: true, capture: true }));   // 版561：iPhoneは指を離した時（touchend）でないと音を始められないことがある
-  document.addEventListener('visibilitychange', () => { if (!AC) return; if (document.hidden) { try { AC.suspend(); } catch (_) {} needRebuild = true; } else rebuild(); });   // 版560：戻ってきたら作り直す（一瞬閉じると音がずれていた）
-  addEventListener('pageshow', (e) => { if (e.persisted && AC) rebuild(); });
+  document.addEventListener('visibilitychange', () => { if (!AC) return; if (document.hidden) { try { AC.suspend(); } catch (_) {} needRebuild = true; } else { try { AC.resume(); } catch (_) {} } });   // 版560：戻ってきたら作り直す（一瞬閉じると音がずれていた）
+  addEventListener('pageshow', (e) => { if (e.persisted && AC) { needRebuild = true; try { AC.resume(); } catch (_) {} } });
 
   // ---- 音の部品 ----
   function tone(f, d, type = 'square', vol = 0.2, t0 = 0, slide = null, out = null) {
@@ -168,7 +170,7 @@
   };
   let lastAt = {};
   function play(name) {
-    if (!pref.sfx) return; const a = ctx(); if (!a || a.state !== 'running') return;
+    if (!pref.sfx) return; const a = ctx(); if (!a) return; if (a.state !== 'running') { try { a.resume(); } catch (_) {} return; }
     const now = performance.now(); if (lastAt[name] && now - lastAt[name] < (name === 'kick' ? 70 : name === 'ooh' ? 2500 : 40)) return; lastAt[name] = now; if (window.__sndLog) window.__sndLog.push([name, Math.round(now)]);   // 同じ音が重なりすぎないように
     try { (SFX[name] || (() => {}))(); } catch (_) {}
   }
