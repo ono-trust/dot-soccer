@@ -3629,3 +3629,6 @@ b.gr-C{color:#ffe02a;-webkit-text-stroke-color:#4a3a00}b.gr-D{color:#f2f2f2;-web
 #mSheet .st-law{margin-left:auto;margin-right:14px;font-size:13px;font-weight:700;color:#1d5fd1;text-decoration:underline;white-space:nowrap}
 .po-coin{display:inline-flex;align-items:center;gap:3px;color:#c97b00}.po-coin .coin-ico{width:20px;height:20px}
 .hc-lay{position:absolute;inset:0;z-index:420;pointer-events:none}
+
+/* 版714：選手カードの左右の矢印（前後の選手へ）は使わないので出さない。選手の切りかえは下の列から */
+.pc-dots .pc-nav{display:none!important}
