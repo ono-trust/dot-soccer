@@ -308,7 +308,7 @@
   const sndLive = () => !show || ['replay', 'jreplay'].includes(show.phase);
   function sndTick() {
     const t0 = sndPrevT, t1 = simT; sndPrevT = t1;
-    if (!(t1 > t0 && t1 - t0 < 0.6) || speed >= 4 || !sndLive() || $('#match').hidden) { dribOwner = -1; return; }   // 版532：試合の画面が隠れている時は鳴らさない
+    if (!(t1 > t0 && t1 - t0 < 0.6) || speed >= 4 || !sndLive() || $('#match').hidden) { dribOwner = -1; if (!goalSnd) SND().excite(0); return; }   // 版532：試合の画面が隠れている時は鳴らさない
     // キック：t0〜t1の間に蹴った回数
     let lo = 0, hi = kickAll.length; while (lo < hi) { const m = (lo + hi) >> 1; if (kickAll[m] <= t0) lo = m + 1; else hi = m; }
     if (lo < kickAll.length && kickAll[lo] <= t1) SND().play('kick');
@@ -317,6 +317,8 @@
     // ドリブル：ボールを持って走っている間のタッチ
     const sd = stateAt(t1);
     if (sd.owner >= 0) { const pl = sd.players[sd.owner]; const mv = pl && Math.hypot(pl.vx || 0, pl.vy || 0); if (dribOwner !== sd.owner) { dribOwner = sd.owner; dribT = t1; } else if (t1 - dribT > 0.42 && (mv == null || mv > 1.2)) { dribT = t1; SND().play('touch'); } } else dribOwner = -1;
+    // 版724：チャンスの盛り上がり：ボールを持った選手が相手ゴールに近づくほど（30m以内）、観客の歓声をだんだん上げる
+    if (!goalSnd) { let ex = 0; if (sd.owner >= 0) { const pl = sd.players[sd.owner], tm = sd.owner < 11 ? 0 : 1, gx = (tm === 0) === (sd.side > 0) ? 105 : 0; if (pl) { const d = Math.hypot(pl.x - gx, pl.y - 34); if (d < 30) ex = Math.min(1, (30 - d) / 16); } } SND().excite(ex); }
     // リプレイの中で、ボールがゴールに入る瞬間に歓声
     if (show && show.phase === 'replay' && show.goal && t0 < show.goal.t && t1 >= show.goal.t && !goalSnd) SND().play('cheer');   // 版723：ゴールの歓声が続いている時は重ねない
   }

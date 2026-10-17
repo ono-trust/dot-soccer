@@ -184,22 +184,38 @@
   // ---- 観客の声（試合中ずっと）：版558 本家を測って合わせた — 600〜750Hzに山（ほかより+6dB）、100〜500Hzは平ら、1000Hzから上はなだらかに下がる ----
   // mode：true＝ピッチ（ふつう）、'far'＝入場前の画面（遠くに聞こえる：低い音が細く、9dB小さい）、'duck'＝ロッカールーム（ほぼ聞こえない）
   let crowdParts = [], crowdHp = null, crowdMix = null; const CROWD = 3.1;   // 本家は観客の声が大きい（キックより6dBほど小さいだけ）
-  // 版723：ゴールの盛り上がり。ゴールの瞬間から、次のキックオフ（またはリプレイの終わり）まで大きな歓声を続ける
-  let goalTimer = null, goalOn = false, goalK = 0;
+  // 版724：大歓声は、録音を何十回も少しずつずらして重ねた「12秒のくり返し」（cheerloop.mp3）を、音量だけ上げ下げして使う（波のように切れない）
+  //  goal：ゴールの瞬間から次のキックオフまで大きく。excite：バイタルエリアにドリブルで入った時など、チャンスの大きさ（0〜1）に合わせてだんだん上げる
+  let goalOn = false, cheerSrc = null, cheerG = null, exciteNow = 0;
+  function cheerLoop() {
+    const a = ctx(); if (!a || !FILE.cheerloop || !crowdParts.length) return null;
+    if (cheerSrc && cheerG) return cheerG;
+    cheerG = a.createGain(); cheerG.gain.value = 0.0001; cheerG.connect(sfxG);
+    cheerSrc = a.createBufferSource(); cheerSrc.buffer = FILE.cheerloop; cheerSrc.loop = true; cheerSrc.loopStart = 0.05; cheerSrc.loopEnd = FILE.cheerloop.duration - 0.05;
+    cheerSrc.connect(cheerG); cheerSrc.start(0, Math.random() * 10); crowdParts.push(cheerSrc);
+    return cheerG;
+  }
+  function rampTo(param, v, sec) { const t = AC.currentTime; try { param.cancelScheduledValues(t); param.setValueAtTime(Math.max(0.0001, param.value), t); param.linearRampToValueAtTime(Math.max(0.0001, v), t + sec); } catch (_) {} }
   function goal(on) {
     const a = ctx(); if (!a) return;
     if (on) {
-      if (goalOn) return; goalOn = true; goalK = 0;
-      if (!FILE.big) { SFX.cheer(); return; }
-      playBuf(FILE.big, FILE_VOL.big); if (FILE.clap) playBuf(FILE.clap, FILE_VOL.clap, 0.5);
-      if (crowdMix) { const t = a.currentTime, g = crowdMix.gain; try { g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(crowdBase() * 1.8, t + 0.6); } catch (_) {} }
-      clearInterval(goalTimer);
-      goalTimer = setInterval(() => { if (!goalOn || !AC || AC.state !== 'running') return; goalK++; if (goalK > 20) { goal(false); return; }   // 長くても40秒まで
-        playBuf(FILE.big, FILE_VOL.big * (0.7 + Math.random() * 0.2)); if (FILE.clap && goalK % 2 === 0) playBuf(FILE.clap, FILE_VOL.clap * 0.8, 0.4); }, 2000);
+      if (goalOn) return; goalOn = true;
+      const g = cheerLoop();
+      if (!g) { SFX.cheer(); return; }
+      if (FILE.big) playBuf(FILE.big, FILE_VOL.big * 0.8);   // ゴールの瞬間の「ワッ」
+      rampTo(g.gain, FILE_VOL.cheer, 0.35);
+      if (crowdMix) rampTo(crowdMix.gain, crowdBase() * 1.5, 0.6);
     } else {
-      if (!goalOn) return; goalOn = false; clearInterval(goalTimer); goalTimer = null;
-      if (crowdMix) { const t = a.currentTime, g = crowdMix.gain; try { g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(crowdBase(), t + 2.5); } catch (_) {} }
+      if (!goalOn) return; goalOn = false;
+      if (cheerG) rampTo(cheerG.gain, FILE_VOL.cheer * 0.5 * exciteNow, 3.0);
+      if (crowdMix) rampTo(crowdMix.gain, crowdBase(), 3.0);
     }
+  }
+  function excite(x) {
+    x = Math.max(0, Math.min(1, x || 0)); if (Math.abs(x - exciteNow) < 0.04) return; const up = x > exciteNow; exciteNow = x;
+    if (goalOn || !AC) return; const g = cheerLoop(); if (!g) return;
+    rampTo(g.gain, FILE_VOL.cheer * 0.5 * x, up ? 0.8 : 1.6);   // 上がる時はゆっくり盛り上がり、下がる時はもっとゆっくり静まる
+    if (crowdMix) rampTo(crowdMix.gain, crowdBase() * (1 + 0.35 * x), up ? 0.8 : 1.6);
   }
   const crowdBase = () => CROWD * (crowdModeNow === 'far' ? 0.36 : crowdModeNow === 'duck' ? 0.08 : 1);
   function crowdMode(m) {
@@ -241,16 +257,16 @@
   // 版720：本物の観客の録音（sound/ のmp3）。読みこめたら、作った音の代わりに使う（読みこめない時は、今までの作った音）
   //  crowd＝スタジアムのざわめき（くり返し）、big＝すごいプレーの時のざわめき、ooh＝惜しいシーン（スキルの時も）、clap＝拍手
   let FILE = {}, fileLoading = false;
-  const FILE_VOL = { crowd: 0.25, big: 0.75, ooh: 0.6, clap: 0.6 };
+  const FILE_VOL = { crowd: 0.25, big: 0.75, ooh: 0.6, clap: 0.6, cheer: 0.85 };
   function loadFiles() {
     const a = AC; if (!a || fileLoading || FILE.crowd) return; fileLoading = true;
-    ['crowd', 'big', 'ooh', 'clap'].forEach((n) => {
+    ['crowd', 'big', 'ooh', 'clap', 'cheerloop'].forEach((n) => {
       fetch('sound/' + n + '.mp3').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status))).then((ab) => new Promise((ok, ng) => { try { const p = a.decodeAudioData(ab, ok, ng); if (p && p.then) p.then(ok, ng); } catch (e) { ng(e); } }))
         .then((buf) => { FILE[n] = buf; if (n === 'crowd' && crowdModeNow && crowdParts.length) { const m = crowdModeNow; crowd(false); setTimeout(() => crowd(m), 50); } }, () => {});
     });
   }
   function crowd(on) {
-    const a = ctx(); if (!a) return; if (!on && goalOn) { goalOn = false; clearInterval(goalTimer); goalTimer = null; } crowdModeNow = on || null;
+    const a = ctx(); if (!a) return; if (!on) { goalOn = false; exciteNow = 0; cheerSrc = null; cheerG = null; } crowdModeNow = on || null;
     if (on && crowdParts.length) { crowdMode(on); return; }
     if (on && !crowdParts.length) {
       const out = a.createGain(); out.gain.value = 0.0001; out.gain.exponentialRampToValueAtTime(0.9, a.currentTime + 1.5);
@@ -337,7 +353,7 @@
     if (k === 'bgm') { bgmG.gain.value = v ? 0.55 : 0; }
     if (k === 'vol') master.gain.value = v;
   }
-  window.DotSound = { play, bgm, crowd, goal, set, __render, get __bufs() { return { PRE, FILE }; }, get state() { return { bgm: cur, want, crowd: crowdMix ? +crowdMix.gain.value.toFixed(2) : 0, hp: crowdHp ? Math.round(crowdHp.frequency.value) : 0, pre: Object.keys(PRE).join(',') }; }, get pref() { return { ...pref }; } };
+  window.DotSound = { play, bgm, crowd, goal, excite, set, __render, get __bufs() { return { PRE, FILE }; }, get state() { return { bgm: cur, want, crowd: crowdMix ? +crowdMix.gain.value.toFixed(2) : 0, hp: crowdHp ? Math.round(crowdHp.frequency.value) : 0, pre: Object.keys(PRE).join(',') }; }, get pref() { return { ...pref }; } };
 })();
 // ボタンを押した時の音（戻るボタンは別の音）
 document.addEventListener('click', (e) => {
