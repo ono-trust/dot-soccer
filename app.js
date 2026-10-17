@@ -80,7 +80,7 @@
   // 試合を始める（フリー試合・育成モード共通）。onDone があれば、試合後に呼ぶ
   let onMatchDone = null, mctx = null;
   const SND = () => window.DotSound || { play() {}, crowd() {}, bgm() {} };   // 版499：サウンド
-  let hitAll = [], skAll = [], shownScore = '', dribOwner = -1, dribT = 0, kickAll = [], kickPtr = 0, koWhistleT = -1, oohT = -1, chipHeard = new Map();
+  let hitAll = [], skAll = [], lastShotEv = null, shownScore = '', dribOwner = -1, dribT = 0, kickAll = [], kickPtr = 0, koWhistleT = -1, oohT = -1, chipHeard = new Map();
   function startWith(mine, theirs, seed, homeShort, awayShort, done, opts) {
     closePlv();
     { const dc = document.getElementById('digestCtl'); if (dc) dc.style.display = 'none'; }
@@ -102,7 +102,7 @@
         const was = playing; stop(); if (mctx.opts.confirmQuit && !(await mctx.opts.confirmQuit())) { if (was) play(); return; } closePlv(); ws.hidden = true; onMatchDone = null; SND().crowd(false); document.getElementById('half').hidden = true; const q = mctx.opts.onQuit; if (q) q(); };   /* 版481：「観戦をやめますか？」はい／いいえ */ } }   /* 版477：観戦を途中でやめる */
     match.homeShort = homeShort || match.homeShort; match.awayShort = awayShort || match.awayShort;
     prepTimeline();
-    kickAll = kickTimes.flat().map((k) => k.t).sort((x, y) => x - y); skAll = (match.actions || []).filter((x) => x.a === 'skill' || x.a === 'uniq').map((x) => x.t).sort((x, y) => x - y);   // 版720：スキルが出た時の「おぉー」 hitAll = [...(match.actions || []).filter((x) => x.a === 'head').map((x) => ({ t: x.t, n: 'header' })), ...match.events.filter((e) => e.type === 'save' || (e.type === 'gk' && e.act !== 'miss')).map((e) => ({ t: e.t, n: /parry|punch|fumble/.test(e.act || '') ? 'parry' : 'catch' }))].sort((x, y) => x.t - y.t); kickPtr = 0; koWhistleT = 0.05; oohT = -1; champTried = false; champEnd(); shownScore = ''; chipHeard = new Map(); SND().bgm(null); SND().crowd(mctx && mctx.opts && mctx.opts.noIntro ? true : 'far');   /* 版558：本家は入場前の画面では、観客の声が遠く小さい */
+    kickAll = kickTimes.flat().map((k) => k.t).sort((x, y) => x - y); skAll = (match.actions || []).filter((x) => x.a === 'uniq' || (x.a === 'skill' && SHOT_SKILL.has(x.k))).map((x) => x.t).sort((x, y) => x - y); /* 版720：スキルが出た時の「おぉー」（版721：固有スキルとシュートの技だけ。GKや守備の技では鳴らさない） */ lastShotEv = null; hitAll = [...(match.actions || []).filter((x) => x.a === 'head').map((x) => ({ t: x.t, n: 'header' })), ...match.events.filter((e) => e.type === 'save' || (e.type === 'gk' && e.act !== 'miss')).map((e) => ({ t: e.t, n: /parry|punch|fumble/.test(e.act || '') ? 'parry' : 'catch' }))].sort((x, y) => x.t - y.t); kickPtr = 0; koWhistleT = 0.05; oohT = -1; champTried = false; champEnd(); shownScore = ''; chipHeard = new Map(); SND().bgm(null); SND().crowd(mctx && mctx.opts && mctx.opts.noIntro ? true : 'far');   /* 版558：本家は入場前の画面では、観客の声が遠く小さい */
     warmUp();
     // 育成モードは入場・対戦カードの画面を先に見せているので、すぐキックオフへ
     show = mctx.opts.noIntro ? { phase: 'kickoff', hold: true, koT: 0, start: 0, goal: null, rt: 0, walk: true } : { phase: 'preCrowd', hold: true, koT: 0, start: 0, goal: null, rt: 0 };
@@ -3636,8 +3636,11 @@
       }
       if (e.type === 'goal') { oohT = -1; startGoalShow(e); SND().play('cheer'); }
       if ((e.type === 'foul' || e.type === 'offside') && speed < 16) SND().play('foul');   // 版558：本家のファールは「ピッピッ」
-      if (e.type === 'shot' && speed < 16) { SND().play('shot'); if (!e.on && e.d < 24) oohT = e.t + 0.45; }   // 版558：シュートは強い音。外れたら観客が「おぉー」
-      if ((e.type === 'post' || e.type === 'save') && speed < 16) oohT = e.t + 0.25;
+      // 版721：「おぉー」は本当に惜しい時だけ（ポスト・バー、1対1や近くからのシュートが外れた・止められた時）。ふつうのキャッチでは鳴らさない
+      if (e.type === 'shot') lastShotEv = e;
+      if (e.type === 'shot' && speed < 16) { SND().play('shot'); if (!e.on && (e.one || e.d < 11)) oohT = e.t + 0.45; }
+      if (e.type === 'post' && speed < 16) oohT = e.t + 0.25;
+      if (e.type === 'save' && speed < 16 && lastShotEv && e.t - lastShotEv.t < 2 && (lastShotEv.one || lastShotEv.d < 11)) oohT = e.t + 0.25;
       if (e.type === 'card' && speed < 16) SND().play('card');
       if (e.type === 'half') { SND().play('whistle2'); koWhistleT = e.t + 0.6; }
       if ((e.type === 'offside' || e.type === 'foul') && !show && speed < 4) startJudge(e);
