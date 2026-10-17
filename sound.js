@@ -184,6 +184,24 @@
   // ---- 観客の声（試合中ずっと）：版558 本家を測って合わせた — 600〜750Hzに山（ほかより+6dB）、100〜500Hzは平ら、1000Hzから上はなだらかに下がる ----
   // mode：true＝ピッチ（ふつう）、'far'＝入場前の画面（遠くに聞こえる：低い音が細く、9dB小さい）、'duck'＝ロッカールーム（ほぼ聞こえない）
   let crowdParts = [], crowdHp = null, crowdMix = null; const CROWD = 3.1;   // 本家は観客の声が大きい（キックより6dBほど小さいだけ）
+  // 版723：ゴールの盛り上がり。ゴールの瞬間から、次のキックオフ（またはリプレイの終わり）まで大きな歓声を続ける
+  let goalTimer = null, goalOn = false, goalK = 0;
+  function goal(on) {
+    const a = ctx(); if (!a) return;
+    if (on) {
+      if (goalOn) return; goalOn = true; goalK = 0;
+      if (!FILE.big) { SFX.cheer(); return; }
+      playBuf(FILE.big, FILE_VOL.big); if (FILE.clap) playBuf(FILE.clap, FILE_VOL.clap, 0.5);
+      if (crowdMix) { const t = a.currentTime, g = crowdMix.gain; try { g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(crowdBase() * 1.8, t + 0.6); } catch (_) {} }
+      clearInterval(goalTimer);
+      goalTimer = setInterval(() => { if (!goalOn || !AC || AC.state !== 'running') return; goalK++; if (goalK > 20) { goal(false); return; }   // 長くても40秒まで
+        playBuf(FILE.big, FILE_VOL.big * (0.7 + Math.random() * 0.2)); if (FILE.clap && goalK % 2 === 0) playBuf(FILE.clap, FILE_VOL.clap * 0.8, 0.4); }, 2000);
+    } else {
+      if (!goalOn) return; goalOn = false; clearInterval(goalTimer); goalTimer = null;
+      if (crowdMix) { const t = a.currentTime, g = crowdMix.gain; try { g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(crowdBase(), t + 2.5); } catch (_) {} }
+    }
+  }
+  const crowdBase = () => CROWD * (crowdModeNow === 'far' ? 0.36 : crowdModeNow === 'duck' ? 0.08 : 1);
   function crowdMode(m) {
     if (!crowdMix || !AC) return; const t = AC.currentTime;
     const [g, hp] = m === 'far' ? [CROWD * 0.36, 420] : m === 'duck' ? [CROWD * 0.08, 600] : [CROWD, 40];
@@ -232,7 +250,7 @@
     });
   }
   function crowd(on) {
-    const a = ctx(); if (!a) return; crowdModeNow = on || null;
+    const a = ctx(); if (!a) return; if (!on && goalOn) { goalOn = false; clearInterval(goalTimer); goalTimer = null; } crowdModeNow = on || null;
     if (on && crowdParts.length) { crowdMode(on); return; }
     if (on && !crowdParts.length) {
       const out = a.createGain(); out.gain.value = 0.0001; out.gain.exponentialRampToValueAtTime(0.9, a.currentTime + 1.5);
@@ -319,7 +337,7 @@
     if (k === 'bgm') { bgmG.gain.value = v ? 0.55 : 0; }
     if (k === 'vol') master.gain.value = v;
   }
-  window.DotSound = { play, bgm, crowd, set, __render, get __bufs() { return { PRE, FILE }; }, get state() { return { bgm: cur, want, crowd: crowdMix ? +crowdMix.gain.value.toFixed(2) : 0, hp: crowdHp ? Math.round(crowdHp.frequency.value) : 0, pre: Object.keys(PRE).join(',') }; }, get pref() { return { ...pref }; } };
+  window.DotSound = { play, bgm, crowd, goal, set, __render, get __bufs() { return { PRE, FILE }; }, get state() { return { bgm: cur, want, crowd: crowdMix ? +crowdMix.gain.value.toFixed(2) : 0, hp: crowdHp ? Math.round(crowdHp.frequency.value) : 0, pre: Object.keys(PRE).join(',') }; }, get pref() { return { ...pref }; } };
 })();
 // ボタンを押した時の音（戻るボタンは別の音）
 document.addEventListener('click', (e) => {
