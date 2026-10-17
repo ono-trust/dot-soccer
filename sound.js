@@ -12,7 +12,7 @@
     master = AC.createGain(); master.gain.value = pref.vol; master.connect(AC.destination);
     sfxG = AC.createGain(); sfxG.gain.value = pref.sfx ? 1 : 0; sfxG.connect(master);
     bgmG = AC.createGain(); bgmG.gain.value = pref.bgm ? 0.55 : 0; bgmG.connect(master);
-    clockA = null; setTimeout(prerenderAll, 0);
+    clockA = null; setTimeout(prerenderAll, 0); setTimeout(loadFiles, 0);
     return AC;
   }
   // 版560：音の作り直し。アプリを一瞬閉じて戻った時・画面収録を始めた時などに、音が遅れたり雑音になったりするので、音の仕組みごと作り直す
@@ -138,7 +138,7 @@
     whistle3() { whistle(0.19); whistle(0.19, 0.52); whistle(1.48, 1.03); },
     // 版558：本家のゴール：1秒で観客が「ワーッ」と明るく大きくなり（高めの声が+10dB）、5秒ほど続いて1秒で戻る。低い地鳴りはない。指笛がまじる
     cheer() {
-      if (PRE.cheer) playBuf(PRE.cheer, 0.6); else cheerLive();
+      if (FILE.big) { playBuf(FILE.big, FILE_VOL.big); if (FILE.clap) playBuf(FILE.clap, FILE_VOL.clap, 0.5); } else if (PRE.cheer) playBuf(PRE.cheer, 0.6); else cheerLive();
       if (crowdGain && AC) { const t = AC.currentTime; try { crowdGain.gain.cancelScheduledValues(t); crowdGain.gain.setValueAtTime(crowdGain.gain.value, t); crowdGain.gain.linearRampToValueAtTime(1.3, t + 0.8); crowdGain.gain.setValueAtTime(1.3, t + 5.4); crowdGain.gain.linearRampToValueAtTime(0.9, t + 6.6); } catch (_) {} }
     },
     // 点数が変わる時のファンファーレ
@@ -149,7 +149,8 @@
     },
     goal() { SFX.cheer(); },
     // 版558：おしいシュートの「おぉー」と指笛（本家：声のかたまり＋「ヒュイッ、ヒュイーッ」）
-    ooh() { if (PRE.ooh) playBuf(PRE.ooh, 0.6); else oohLive(); },
+    ooh() { if (FILE.ooh) playBuf(FILE.ooh, FILE_VOL.ooh); else if (PRE.ooh) playBuf(PRE.ooh, 0.6); else oohLive(); },
+    clap() { if (FILE.clap) playBuf(FILE.clap, FILE_VOL.clap); },
     skill() { [880, 1320, 1760, 2349].forEach((f, i) => tone(f, 0.09, 'triangle', 0.12, i * 0.045)); },
     uniq() { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, 0.12, 'square', 0.08, i * 0.05)); noise(0.5, 0.06, 'highpass', 4000, 0.05); },
     card() { whistle(0.09); whistle(0.085, 0.12); },
@@ -172,7 +173,7 @@
   let lastAt = {};
   function play(name) {
     if (!pref.sfx) return; const a = ctx(); if (!a) return; if (a.state !== 'running') { try { a.resume(); } catch (_) {} return; }
-    const now = performance.now(); if (lastAt[name] && now - lastAt[name] < (name === 'kick' ? 70 : name === 'ooh' ? 2500 : 40)) return; lastAt[name] = now; if (window.__sndLog) window.__sndLog.push([name, Math.round(now)]);   // 同じ音が重なりすぎないように
+    const now = performance.now(); if (lastAt[name] && now - lastAt[name] < (name === 'kick' ? 70 : name === 'ooh' ? 4000 : 40)) return; lastAt[name] = now; if (window.__sndLog) window.__sndLog.push([name, Math.round(now)]);   // 同じ音が重なりすぎないように
     try { (SFX[name] || (() => {}))(); } catch (_) {}
   }
 
@@ -214,7 +215,18 @@
       if (AC === a) PRE = { crowd: loop, cheer, ooh };
     } catch (_) { PRE.busy = false; }
   }
-  function playBuf(buf, vol = 1) { const a = ctx(); if (!a || !buf) return; const s2 = a.createBufferSource(); s2.buffer = buf; s2.playbackRate.value = 0.97 + Math.random() * 0.06; const g = a.createGain(); g.gain.value = vol; s2.connect(g); g.connect(sfxG); s2.start(); }
+  function playBuf(buf, vol = 1, t0 = 0) { const a = ctx(); if (!a || !buf) return; const s2 = a.createBufferSource(); s2.buffer = buf; s2.playbackRate.value = 0.97 + Math.random() * 0.06; const g = a.createGain(); g.gain.value = vol; s2.connect(g); g.connect(sfxG); s2.start(a.currentTime + t0); }
+  // 版720：本物の観客の録音（sound/ のmp3）。読みこめたら、作った音の代わりに使う（読みこめない時は、今までの作った音）
+  //  crowd＝スタジアムのざわめき（くり返し）、big＝すごいプレーの時のざわめき、ooh＝惜しいシーン（スキルの時も）、clap＝拍手
+  let FILE = {}, fileLoading = false;
+  const FILE_VOL = { crowd: 0.25, big: 0.75, ooh: 0.6, clap: 0.6 };
+  function loadFiles() {
+    const a = AC; if (!a || fileLoading || FILE.crowd) return; fileLoading = true;
+    ['crowd', 'big', 'ooh', 'clap'].forEach((n) => {
+      fetch('sound/' + n + '.mp3').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status))).then((ab) => new Promise((ok, ng) => { try { const p = a.decodeAudioData(ab, ok, ng); if (p && p.then) p.then(ok, ng); } catch (e) { ng(e); } }))
+        .then((buf) => { FILE[n] = buf; if (n === 'crowd' && crowdModeNow && crowdParts.length) { const m = crowdModeNow; crowd(false); setTimeout(() => crowd(m), 50); } }, () => {});
+    });
+  }
   function crowd(on) {
     const a = ctx(); if (!a) return; crowdModeNow = on || null;
     if (on && crowdParts.length) { crowdMode(on); return; }
@@ -223,7 +235,8 @@
       const mix = a.createGain(); mix.gain.value = CROWD * (on === 'far' ? 0.36 : on === 'duck' ? 0.08 : 1);
       const hp = a.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = on === 'far' ? 420 : 40; hp.Q.value = 0.5;
       const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; lp.connect(hp); hp.connect(out); out.connect(mix); mix.connect(sfxG);
-      if (PRE.crowd) { const src = a.createBufferSource(); src.buffer = PRE.crowd; src.loop = true; src.connect(lp); src.start(0, Math.random() * 10); crowdParts.push(src); }   // 版560：前もって作っておいた観客の声（軽い）
+      if (FILE.crowd) { const src = a.createBufferSource(), fg = a.createGain(); src.buffer = FILE.crowd; src.loop = true; src.loopStart = 0.05; src.loopEnd = FILE.crowd.duration - 0.05; fg.gain.value = FILE_VOL.crowd; src.connect(fg); fg.connect(hp); src.start(0, 0.05 + Math.random() * (FILE.crowd.duration - 0.2)); crowdParts.push(src); }   // 版720：録音のざわめき（こもらないように、高い音を切るフィルターは通さない）
+      else if (PRE.crowd) { const src = a.createBufferSource(); src.buffer = PRE.crowd; src.loop = true; src.connect(lp); src.start(0, Math.random() * 10); crowdParts.push(src); }   // 版560：前もって作っておいた観客の声（軽い）
       else crowdBands(a, lp, crowdParts);
       crowdParts.push({ stop() {}, out });
       crowdGain = out; crowdHp = hp; crowdMix = mix;
@@ -302,7 +315,7 @@
     if (k === 'bgm') { bgmG.gain.value = v ? 0.55 : 0; }
     if (k === 'vol') master.gain.value = v;
   }
-  window.DotSound = { play, bgm, crowd, set, __render, get state() { return { bgm: cur, want, crowd: crowdMix ? +crowdMix.gain.value.toFixed(2) : 0, hp: crowdHp ? Math.round(crowdHp.frequency.value) : 0, pre: Object.keys(PRE).join(',') }; }, get pref() { return { ...pref }; } };
+  window.DotSound = { play, bgm, crowd, set, __render, get __bufs() { return { PRE, FILE }; }, get state() { return { bgm: cur, want, crowd: crowdMix ? +crowdMix.gain.value.toFixed(2) : 0, hp: crowdHp ? Math.round(crowdHp.frequency.value) : 0, pre: Object.keys(PRE).join(',') }; }, get pref() { return { ...pref }; } };
 })();
 // ボタンを押した時の音（戻るボタンは別の音）
 document.addEventListener('click', (e) => {

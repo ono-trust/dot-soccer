@@ -80,7 +80,7 @@
   // 試合を始める（フリー試合・育成モード共通）。onDone があれば、試合後に呼ぶ
   let onMatchDone = null, mctx = null;
   const SND = () => window.DotSound || { play() {}, crowd() {}, bgm() {} };   // 版499：サウンド
-  let hitAll = [], shownScore = '', dribOwner = -1, dribT = 0, kickAll = [], kickPtr = 0, koWhistleT = -1, oohT = -1, chipHeard = new Map();
+  let hitAll = [], skAll = [], shownScore = '', dribOwner = -1, dribT = 0, kickAll = [], kickPtr = 0, koWhistleT = -1, oohT = -1, chipHeard = new Map();
   function startWith(mine, theirs, seed, homeShort, awayShort, done, opts) {
     closePlv();
     { const dc = document.getElementById('digestCtl'); if (dc) dc.style.display = 'none'; }
@@ -102,7 +102,7 @@
         const was = playing; stop(); if (mctx.opts.confirmQuit && !(await mctx.opts.confirmQuit())) { if (was) play(); return; } closePlv(); ws.hidden = true; onMatchDone = null; SND().crowd(false); document.getElementById('half').hidden = true; const q = mctx.opts.onQuit; if (q) q(); };   /* 版481：「観戦をやめますか？」はい／いいえ */ } }   /* 版477：観戦を途中でやめる */
     match.homeShort = homeShort || match.homeShort; match.awayShort = awayShort || match.awayShort;
     prepTimeline();
-    kickAll = kickTimes.flat().map((k) => k.t).sort((x, y) => x - y); hitAll = [...(match.actions || []).filter((x) => x.a === 'head').map((x) => ({ t: x.t, n: 'header' })), ...match.events.filter((e) => e.type === 'save' || (e.type === 'gk' && e.act !== 'miss')).map((e) => ({ t: e.t, n: /parry|punch|fumble/.test(e.act || '') ? 'parry' : 'catch' }))].sort((x, y) => x.t - y.t); kickPtr = 0; koWhistleT = 0.05; oohT = -1; champTried = false; champEnd(); shownScore = ''; chipHeard = new Map(); SND().bgm(null); SND().crowd(mctx && mctx.opts && mctx.opts.noIntro ? true : 'far');   /* 版558：本家は入場前の画面では、観客の声が遠く小さい */
+    kickAll = kickTimes.flat().map((k) => k.t).sort((x, y) => x - y); skAll = (match.actions || []).filter((x) => x.a === 'skill' || x.a === 'uniq').map((x) => x.t).sort((x, y) => x - y);   // 版720：スキルが出た時の「おぉー」 hitAll = [...(match.actions || []).filter((x) => x.a === 'head').map((x) => ({ t: x.t, n: 'header' })), ...match.events.filter((e) => e.type === 'save' || (e.type === 'gk' && e.act !== 'miss')).map((e) => ({ t: e.t, n: /parry|punch|fumble/.test(e.act || '') ? 'parry' : 'catch' }))].sort((x, y) => x.t - y.t); kickPtr = 0; koWhistleT = 0.05; oohT = -1; champTried = false; champEnd(); shownScore = ''; chipHeard = new Map(); SND().bgm(null); SND().crowd(mctx && mctx.opts && mctx.opts.noIntro ? true : 'far');   /* 版558：本家は入場前の画面では、観客の声が遠く小さい */
     warmUp();
     // 育成モードは入場・対戦カードの画面を先に見せているので、すぐキックオフへ
     show = mctx.opts.noIntro ? { phase: 'kickoff', hold: true, koT: 0, start: 0, goal: null, rt: 0, walk: true } : { phase: 'preCrowd', hold: true, koT: 0, start: 0, goal: null, rt: 0 };
@@ -290,7 +290,7 @@
         // 試合終了（ゴール演出の途中でも、ここで締める。止まったままにならないように）
         simT = match.duration;
         if (speed >= 16) { show = null; draw(); finish(); return; }
-        if (!show || !show.hold) { show = { phase: 'endOut', hold: true, rt: 0 }; SND().play('whistle3'); }
+        if (!show || !show.hold) { show = { phase: 'endOut', hold: true, rt: 0 }; SND().play('whistle3'); setTimeout(() => SND().play('clap'), 700); }
       }
       fireEvents();
       if (show) advanceShow(dt);
@@ -311,6 +311,7 @@
     // キック：t0〜t1の間に蹴った回数
     let lo = 0, hi = kickAll.length; while (lo < hi) { const m = (lo + hi) >> 1; if (kickAll[m] <= t0) lo = m + 1; else hi = m; }
     if (lo < kickAll.length && kickAll[lo] <= t1) SND().play('kick');
+    { let l3 = 0, h3 = skAll.length; while (l3 < h3) { const m = (l3 + h3) >> 1; if (skAll[m] <= t0) l3 = m + 1; else h3 = m; } if (l3 < skAll.length && skAll[l3] <= t1) SND().play('ooh'); }   // 版720：スキル → 惜しいシーンの声（4秒に1回まで）
     { let l2 = 0, h2 = hitAll.length; while (l2 < h2) { const m = (l2 + h2) >> 1; if (hitAll[m].t <= t0) l2 = m + 1; else h2 = m; } for (; l2 < hitAll.length && hitAll[l2].t <= t1; l2++) SND().play(hitAll[l2].n); }   // 版504：ヘディング・GKのキャッチ／はじく
     // ドリブル：ボールを持って走っている間のタッチ
     const sd = stateAt(t1);
@@ -682,7 +683,7 @@
   const GK_SAD_T = 2.9;   // ゴールが決まってから、GKが悔しがり終わる（立ち上がってゴールを見つめる）までの間
   function jumpToKickoff() {
     const g = show.goal, koT = koTimeAfter(g.t + 0.5);
-    if (koT >= match.duration - 0.3) { simT = match.duration; show = { phase: 'endOut', hold: true, rt: 0 }; SND().play('whistle3'); return; }
+    if (koT >= match.duration - 0.3) { simT = match.duration; show = { phase: 'endOut', hold: true, rt: 0 }; SND().play('whistle3'); setTimeout(() => SND().play('clap'), 700); return; }
     koWhistleT = koT;
     // 負けている側の得点：リプレイのあとは続きから（ボールを拾って蹴り返し、急いで戻るところを見せる）
     simT = g.hurry ? (show.saveT || simT) : Math.max(show.saveT || simT, koT - 2.6);
