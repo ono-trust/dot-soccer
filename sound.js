@@ -212,10 +212,10 @@
     }
   }
   function excite(x) {
-    x = Math.max(0, Math.min(1, x || 0)); if (Math.abs(x - exciteNow) < 0.04) return; const up = x > exciteNow; exciteNow = x;
+    x = Math.max(0, Math.min(1, x || 0)); x = Math.round(x * 5) / 5; if (x === exciteNow) return; const up = x > exciteNow; exciteNow = x;   // 版725：細かく上げ下げすると波に聞こえるので、5段階にして、ゆっくり動かす
     if (goalOn || !AC) return; const g = cheerLoop(); if (!g) return;
-    rampTo(g.gain, FILE_VOL.cheer * 0.5 * x, up ? 0.8 : 1.6);   // 上がる時はゆっくり盛り上がり、下がる時はもっとゆっくり静まる
-    if (crowdMix) rampTo(crowdMix.gain, crowdBase() * (1 + 0.35 * x), up ? 0.8 : 1.6);
+    rampTo(g.gain, FILE_VOL.cheer * 0.5 * x, up ? 1.5 : 3.0);   // 上がる時はゆっくり盛り上がり、下がる時はもっとゆっくり静まる
+    if (crowdMix) rampTo(crowdMix.gain, crowdBase() * (1 + 0.35 * x), up ? 1.5 : 3.0);
   }
   const crowdBase = () => CROWD * (crowdModeNow === 'far' ? 0.36 : crowdModeNow === 'duck' ? 0.08 : 1);
   function crowdMode(m) {
@@ -257,11 +257,12 @@
   // 版720：本物の観客の録音（sound/ のmp3）。読みこめたら、作った音の代わりに使う（読みこめない時は、今までの作った音）
   //  crowd＝スタジアムのざわめき（くり返し）、big＝すごいプレーの時のざわめき、ooh＝惜しいシーン（スキルの時も）、clap＝拍手
   let FILE = {}, fileLoading = false;
+  const SVER = (() => { try { return (document.currentScript && document.currentScript.src.split('v=')[1]) || ''; } catch (_) { return ''; } })();   // 版725：音を作り直した時に、古い音が残らないように
   const FILE_VOL = { crowd: 0.25, big: 0.75, ooh: 0.6, clap: 0.6, cheer: 0.85 };
   function loadFiles() {
     const a = AC; if (!a || fileLoading || FILE.crowd) return; fileLoading = true;
     ['crowd', 'big', 'ooh', 'clap', 'cheerloop'].forEach((n) => {
-      fetch('sound/' + n + '.mp3').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status))).then((ab) => new Promise((ok, ng) => { try { const p = a.decodeAudioData(ab, ok, ng); if (p && p.then) p.then(ok, ng); } catch (e) { ng(e); } }))
+      fetch('sound/' + n + '.mp3' + (SVER ? '?v=' + SVER : '')).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status))).then((ab) => new Promise((ok, ng) => { try { const p = a.decodeAudioData(ab, ok, ng); if (p && p.then) p.then(ok, ng); } catch (e) { ng(e); } }))
         .then((buf) => { FILE[n] = buf; if (n === 'crowd' && crowdModeNow && crowdParts.length) { const m = crowdModeNow; crowd(false); setTimeout(() => crowd(m), 50); } }, () => {});
     });
   }
