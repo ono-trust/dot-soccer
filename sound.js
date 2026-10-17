@@ -138,7 +138,11 @@
     whistle3() { whistle(0.19); whistle(0.19, 0.52); whistle(1.48, 1.03); },
     // 版558：本家のゴール：1秒で観客が「ワーッ」と明るく大きくなり（高めの声が+10dB）、5秒ほど続いて1秒で戻る。低い地鳴りはない。指笛がまじる
     cheer() {
-      if (FILE.big) { playBuf(FILE.big, FILE_VOL.big); if (FILE.clap) playBuf(FILE.clap, FILE_VOL.clap, 0.5); } else if (PRE.cheer) playBuf(PRE.cheer, 0.6); else cheerLive();
+      if (FILE.big) {   // 版722：ゴールの盛り上がりを長く（約8秒）：歓声を少しずつずらして3回重ね、拍手を2回、うしろのざわめきも一時的に大きく
+        playBuf(FILE.big, FILE_VOL.big); playBuf(FILE.big, FILE_VOL.big * 0.85, 2.2); playBuf(FILE.big, FILE_VOL.big * 0.6, 4.4);
+        if (FILE.clap) { playBuf(FILE.clap, FILE_VOL.clap, 0.5); playBuf(FILE.clap, FILE_VOL.clap * 0.8, 3.6); }
+        if (crowdMix && AC) { const t = AC.currentTime, g = crowdMix.gain, base = g.value; try { g.cancelScheduledValues(t); g.setValueAtTime(base, t); g.linearRampToValueAtTime(base * 1.8, t + 0.6); g.setValueAtTime(base * 1.8, t + 5.5); g.linearRampToValueAtTime(base, t + 8.5); } catch (_) {} }
+      } else if (PRE.cheer) playBuf(PRE.cheer, 0.6); else cheerLive();
       if (crowdGain && AC) { const t = AC.currentTime; try { crowdGain.gain.cancelScheduledValues(t); crowdGain.gain.setValueAtTime(crowdGain.gain.value, t); crowdGain.gain.linearRampToValueAtTime(1.3, t + 0.8); crowdGain.gain.setValueAtTime(1.3, t + 5.4); crowdGain.gain.linearRampToValueAtTime(0.9, t + 6.6); } catch (_) {} }
     },
     // 点数が変わる時のファンファーレ
